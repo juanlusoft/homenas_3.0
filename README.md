@@ -28,6 +28,40 @@
 - **Día 3**: System monitoring charts + complete integration
 - **Semana 2+**: Advanced features según roadmap
 
+## 📋 Changelog
+
+### v3.6.0 (21 Marzo 2026)
+- ✅ **Versioning workflow**: Script automático + changelog en README
+- ✅ Historial previo: v3.0.0 → v3.6.0 (fundación + iteraciones de desarrollo)
+
+### v3.0.0 (21 Marzo 2026) - Initial Release
+- ✅ **Foundation**: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
+- ✅ **Stitch Design**: "Luminous Obsidian" theme completamente integrado
+- ✅ **Components**: GlassCard, GlowPill, StitchButton custom components
+- ✅ **Design Tokens**: Sistema TypeScript para dynamic theming
+- ✅ **Demo Dashboard**: System metrics + disk array + services grid
+- ✅ **Build Pipeline**: Clean tsc + vite build, zero errors
+
+## 📐 Development Guidelines
+
+- **Commits**: Conventional commits (feat:, fix:, docs:, refactor:)
+- **Versioning**: Semantic versioning (MAJOR.MINOR.PATCH)
+  - PATCH: Bug fixes, small improvements
+  - MINOR: New features, backwards compatible
+  - MAJOR: Breaking changes, architecture changes
+- **README**: Update con cada feature/fix significativo
+- **Release**: Cada deploy a NAS = nueva versión
+- **Script**: `./scripts/update-version.sh [patch|minor|major] "Description"`
+
+## 🗺️ Roadmap
+
+- v3.7.0: Storybook component documentation
+- v3.8.0: Socket.io real-time monitoring
+- v3.9.0: Framer Motion animations
+- v4.0.0: Advanced NAS management + multi-device
+
 ---
 
-**Proyecto iniciado por Vision con skills integrados de Anthropic + Community + Custom**
+**Development Team**: Vision 👁️ (HomeLabs Avengers)
+**Deployment Target**: HomePiNAS production environment
+**Version Control**: Automatic via `scripts/update-version.sh`
