@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>HomePiNAS Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Manrope:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-bright": "#353940",
+              "on-tertiary": "#68000c",
+              "inverse-primary": "#006b58",
+              "surface-container": "#1c2026",
+              "inverse-surface": "#dfe2eb",
+              "on-secondary-fixed-variant": "#832600",
+              "surface-dim": "#10141a",
+              "on-error": "#690005",
+              "on-primary-container": "#004e40",
+              "outline-variant": "#3c4a45",
+              "inverse-on-surface": "#2d3137",
+              "secondary": "#ffb59d",
+              "on-surface": "#dfe2eb",
+              "surface-container-high": "#262a31",
+              "on-background": "#dfe2eb",
+              "on-primary-fixed": "#002019",
+              "primary-container": "#00c9a7",
+              "surface": "#10141a",
+              "error": "#ffb4ab",
+              "on-tertiary-container": "#8e0014",
+              "on-tertiary-fixed": "#410004",
+              "primary-fixed-dim": "#38debb",
+              "on-tertiary-fixed-variant": "#930015",
+              "surface-container-highest": "#31353c",
+              "on-primary": "#00382d",
+              "on-secondary-fixed": "#390c00",
+              "tertiary-container": "#ff948e",
+              "error-container": "#93000a",
+              "tertiary-fixed": "#ffdad7",
+              "surface-container-lowest": "#0a0e14",
+              "tertiary": "#ffbdb9",
+              "on-secondary-container": "#ffddd2",
+              "on-secondary": "#5d1900",
+              "secondary-fixed-dim": "#ffb59d",
+              "tertiary-fixed-dim": "#ffb3ae",
+              "primary": "#44e5c2",
+              "primary-fixed": "#5ffbd6",
+              "outline": "#85948e",
+              "surface-container-low": "#181c22",
+              "on-surface-variant": "#bacac3",
+              "on-primary-fixed-variant": "#005142",
+              "background": "#10141a",
+              "secondary-container": "#b83900",
+              "on-error-container": "#ffdad6",
+              "secondary-fixed": "#ffdbd0",
+              "surface-tint": "#38debb",
+              "surface-variant": "#31353c"
+            },
+            fontFamily: {
+              "headline": ["Space Grotesk"],
+              "body": ["Manrope"],
+              "label": ["JetBrains Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(49, 53, 60, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(60, 74, 69, 0.15);
+        }
+        .glow-pill {
+            box-shadow: 0 0 12px rgba(68, 229, 194, 0.2);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #10141a; }
+        ::-webkit-scrollbar-thumb { background: #31353c; border-radius: 10px; }
+
+        @keyframes ring-draw {
+            from { stroke-dashoffset: 176; }
+            to { stroke-dashoffset: var(--final-offset); }
+        }
+
+        @keyframes ring-pulse {
+            0%, 100% { filter: drop-shadow(0 0 2px rgba(68, 229, 194, 0.4)); }
+            50% { filter: drop-shadow(0 0 8px rgba(68, 229, 194, 0.8)); }
+        }
+
+        .animate-ring {
+            animation: ring-draw 0.8s ease-out forwards;
+        }
+
+        .critical-ring {
+            animation: ring-draw 0.8s ease-out forwards, ring-pulse 1.5s infinite;
+        }
+
+        .sidebar-transition {
+            transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar-collapsed { width: 64px; }
+        .sidebar-expanded { width: 256px; }
+
+        .sidebar-collapsed .sidebar-label,
+        .sidebar-collapsed .sidebar-header-text,
+        .sidebar-collapsed .sidebar-footer-text {
+            opacity: 0;
+            display: none;
+        }
+
+        .sidebar-collapsed .nav-item {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        
+        .sidebar-collapsed .nav-item-active {
+            border-right-width: 0;
+            border-left-width: 4px;
+            border-left-color: #00C9A7;
+            translate: 0;
+        }
+
+        .sidebar-collapsed .upgrade-btn-text {
+            display: none;
+        }
+        .sidebar-collapsed .upgrade-btn-icon {
+            display: block !important;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen selection:bg-primary/30">
+<!-- TopAppBar -->
+<header class="fixed top-0 z-50 w-full h-16 bg-[#10141a]/60 backdrop-blur-xl border-b border-[#3c4a45]/15 flex justify-between items-center px-6 shadow-[0_20px_40px_rgba(0,201,167,0.08)]">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-400 hover:bg-[#1c2026] rounded-lg transition-all active:scale-95" id="sidebar-toggle">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="text-2xl font-bold tracking-tighter text-[#00C9A7] font-['Space_Grotesk']">HomePiNAS</span>
+</div>
+<nav class="hidden md:flex gap-6 font-['Space_Grotesk'] tracking-tight">
+<a class="text-[#00C9A7] border-b-2 border-[#00C9A7] pb-1" href="#">Overview</a>
+<a class="text-slate-400 hover:text-slate-100 transition-colors" href="#">Monitoring</a>
+<a class="text-slate-400 hover:text-slate-100 transition-colors" href="#">App Store</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1">
+<button class="p-2 text-slate-400 hover:bg-[#1c2026] rounded-lg transition-all active:scale-95 duration-150">
+<span class="material-symbols-outlined">language</span>
+</button>
+<button class="p-2 text-slate-400 hover:bg-[#1c2026] rounded-lg transition-all active:scale-95 duration-150">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<button class="p-2 text-slate-400 hover:bg-[#1c2026] rounded-lg transition-all active:scale-95 duration-150 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full"></span>
+</button>
+</div>
+<div class="h-8 w-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/30">
+<img alt="User Avatar Profile Image" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcHBlUQIIMPnlmUN0qaLPTl-E0M83GEqJJj0l_oP0h4a9AIsl_TqVQpikJC1x9DRnU8rqP-g4ISFSZnbqZNYVTupsyGY-wcriho1v_9MHXQoku8WhWQifk1tUiTw5TUQcI8_eRVKi0OhYyPi3dEO6gLhZQJZ-JWkYCYumY6YIUpRYTlNkVKQVYm5gfa-my8k7DlTHfZdZNgjgUlG3-4WhgKeHyjzDy01KhpqibOpXtzHdIe36BV32glJ-2CeMuVJyF4zgzVRWwOHQ"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full sidebar-expanded sidebar-transition bg-[#181c22] flex flex-col py-6 border-r border-[#3c4a45]/15 z-40 pt-20" id="sidebar">
+<div class="px-6 mb-8 sidebar-header-text">
+<h2 class="text-[#00C9A7] font-['Space_Grotesk'] font-bold text-lg">System Console</h2>
+<p class="text-xs text-slate-500 font-label">v2.4.0-stable</p>
+</div>
+<nav class="flex-1 space-y-1 overflow-y-auto">
+<a class="nav-item nav-item-active flex items-center gap-3 bg-[#1c2026] text-[#00C9A7] border-r-4 border-[#00C9A7] px-4 py-3 ml-2 rounded-l-lg translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">Overview</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">storage</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">Storage</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">developer_board</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">Docker</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings_backup_restore</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">Backups</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">vpn_lock</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">VPN</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">folder_shared</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">File Sharing</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">Monitoring</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">storefront</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">App Store</span>
+</a>
+<a class="nav-item flex items-center gap-3 text-slate-400 px-4 py-3 hover:text-slate-100 hover:bg-[#1c2026]/50 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Manrope'] font-medium text-sm sidebar-label">Settings</span>
+</a>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full h-10 flex items-center justify-center bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-bold text-xs rounded-lg shadow-lg hover:shadow-primary/20 transition-all active:scale-95 overflow-hidden">
+<span class="upgrade-btn-text">SYSTEM UPGRADE</span>
+<span class="material-symbols-outlined hidden upgrade-btn-icon">upgrade</span>
+</button>
+<div class="border-t border-[#3c4a45]/15 pt-4 sidebar-footer-text">
+<a class="flex items-center gap-3 text-slate-400 px-4 py-2 text-xs hover:text-slate-100" href="#">
+<span class="material-symbols-outlined text-sm">help_outline</span> Support
+            </a>
+<a class="flex items-center gap-3 text-slate-400 px-4 py-2 text-xs hover:text-slate-100" href="#">
+<span class="material-symbols-outlined text-sm">terminal</span> Logs
+            </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pl-64 pt-16 min-h-screen sidebar-transition" id="main-content">
+<div class="p-8 max-w-[1400px] mx-auto space-y-8">
+<!-- Compact Welcome Banner -->
+<section class="glass-panel rounded-lg h-[56px] px-6 flex items-center justify-between gap-6 relative overflow-hidden border-l-4 border-primary">
+<div class="flex items-center gap-2 text-sm z-10">
+<h1 class="font-headline font-bold">Welcome back, <span class="text-primary">Admin</span></h1>
+<span class="text-outline-variant mx-1">|</span>
+<span class="flex items-center gap-1.5 text-slate-400 font-label"><span class="w-2 h-2 rounded-full bg-primary glow-pill"></span> node-pi-01</span>
+<span class="text-outline-variant mx-1">|</span>
+<span class="text-slate-400 font-label">Up: 14 days, 2h 43m</span>
+<span class="text-outline-variant mx-1">|</span>
+<span class="text-primary-fixed-dim font-label">192.168.1.45</span>
+</div>
+<div class="flex gap-2 z-10">
+<button class="px-3 py-1 bg-surface-container-highest border border-outline-variant/30 rounded text-[11px] font-bold uppercase tracking-wider hover:bg-surface-bright transition-colors">Report</button>
+<button class="px-3 py-1 bg-primary/10 border border-primary/20 text-primary rounded text-[11px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-colors">Reboot</button>
+</div>
+</section>
+<!-- KPI Stat Cards -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+<!-- CPU Usage -->
+<div class="glass-panel rounded-xl p-5 flex items-center justify-between group hover:border-primary/30 transition-all">
+<div>
+<p class="text-xs font-medium text-slate-400 mb-1">CPU Load</p>
+<p class="text-2xl font-headline font-bold">24<span class="text-base font-light text-slate-500">%</span></p>
+<p class="text-[10px] text-primary font-label mt-1 whitespace-nowrap">4-core</p>
+</div>
+<div class="relative w-14 h-14 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-highest" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-primary animate-ring" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-dasharray="150" stroke-width="4" style="--final-offset: 114;"></circle>
+</svg>
+<span class="absolute material-symbols-outlined text-primary/40 text-sm group-hover:text-primary transition-colors">memory</span>
+</div>
+</div>
+<!-- RAM Usage -->
+<div class="glass-panel rounded-xl p-5 flex items-center justify-between group hover:border-primary/30 transition-all">
+<div>
+<p class="text-xs font-medium text-slate-400 mb-1">RAM Usage</p>
+<p class="text-2xl font-headline font-bold">5.2<span class="text-base font-light text-slate-500">GB</span></p>
+<p class="text-[10px] text-slate-500 font-label mt-1">Total 8GB</p>
+</div>
+<div class="relative w-14 h-14 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-highest" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-primary animate-ring" cx="28" cy="28" fill="transparent" r="24" stroke="currentColor" stroke-dasharray="176" stroke-width="4" style="--final-offset: 62;"></circle>
+</svg>
+<span class="absolute material-symbols-outlined text-primary/40 text-sm group-hover:text-primary transition-colors">developer_board</span>
+</div>
+</div>
+<!-- CPU Temperature (New) -->
+<div class="glass-panel rounded-xl p-5 flex items-center justify-between group hover:border-primary/30 transition-all">
+<div>
+<p class="text-xs font-medium text-slate-400 mb-1">CPU Temp</p>
+<p class="text-2xl font-label font-bold text-primary">42<span class="text-base font-light">°C</span></p>
+<p class="text-[10px] text-primary font-label mt-1">Status: Stable</p>
+</div>
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">thermometer</span>
+</div>
+</div>
+<!-- Storage -->
+<div class="glass-panel rounded-xl p-5 group hover:border-primary/30 transition-all">
+<div class="flex justify-between items-start mb-3">
+<div>
+<p class="text-xs font-medium text-slate-400 mb-1">Storage</p>
+<p class="text-2xl font-headline font-bold">1.8<span class="text-base font-light text-slate-500">TB</span></p>
+</div>
+<span class="material-symbols-outlined text-primary text-xl">database</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<!-- Usage is 78%, so using amber as per rule > 70% -->
+<div class="h-full bg-[#f59e0b]" style="width: 78%"></div>
+</div>
+<div class="flex justify-between mt-1.5 font-label text-[9px] text-slate-500">
+<span>USED: 1.8TB</span>
+<span>78%</span>
+</div>
+</div>
+<!-- Network -->
+<div class="glass-panel rounded-xl p-5 group hover:border-blue-400/30 transition-all">
+<div class="flex justify-between items-start mb-1">
+<div>
+<p class="text-xs font-medium text-slate-400 mb-1">Network</p>
+<p class="text-2xl font-label font-bold text-[#60a5fa]">84.2<span class="text-base font-light">Mb/s</span></p>
+</div>
+<span class="material-symbols-outlined text-[#60a5fa] text-xl">speed</span>
+</div>
+<div class="h-8 w-full mt-1 flex items-end gap-1">
+<div class="flex-1 bg-[#60a5fa]/10 h-3 rounded-sm"></div>
+<div class="flex-1 bg-[#60a5fa]/20 h-5 rounded-sm"></div>
+<div class="flex-1 bg-[#60a5fa]/40 h-7 rounded-sm"></div>
+<div class="flex-1 bg-[#60a5fa]/20 h-4 rounded-sm"></div>
+<div class="flex-1 bg-[#60a5fa]/60 h-8 rounded-sm"></div>
+<div class="flex-1 bg-[#60a5fa]/30 h-6 rounded-sm"></div>
+<div class="flex-1 bg-[#60a5fa] h-8 rounded-sm"></div>
+</div>
+</div>
+</section>
+<!-- Main Content Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+<!-- Section Shortcut Grid -->
+<div class="xl:col-span-2 space-y-6">
+<h3 class="text-xl font-headline font-bold tracking-tight px-1">Infrastructure Hub</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Storage Card -->
+<div class="glass-panel rounded-xl p-6 hover:bg-[#1c2026] transition-all group border-l-4 border-l-primary">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">folder_open</span>
+</div>
+<span class="text-[10px] font-label px-2 py-1 bg-primary/10 text-primary rounded-full uppercase">3 Disks Online</span>
+</div>
+<h4 class="text-lg font-headline font-semibold mb-1">Main Storage Pool</h4>
+<p class="text-sm text-slate-400 mb-6">RAID-Z1 Configuration • NVMe Cache Active</p>
+<div class="flex items-center justify-between">
+<span class="font-label text-sm">78% Full</span>
+<button class="text-xs font-bold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                MANAGE POOL <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Docker Card -->
+<div class="glass-panel rounded-xl p-6 hover:bg-[#1c2026] transition-all group border-l-4 border-l-[#60a5fa]">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+<span class="material-symbols-outlined">layers</span>
+</div>
+<span class="text-[10px] font-label px-2 py-1 bg-green-500/10 text-green-400 rounded-full uppercase">12 Running</span>
+</div>
+<h4 class="text-lg font-headline font-semibold mb-1">Container Engine</h4>
+<p class="text-sm text-slate-400 mb-6">Docker Swarm • 2 Nodes Healthy</p>
+<div class="flex items-center justify-between">
+<span class="font-label text-sm">1.4GB Overhead</span>
+<button class="text-xs font-bold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                VIEW STACK <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- VPN Card -->
+<div class="glass-panel rounded-xl p-6 hover:bg-[#1c2026] transition-all group border-l-4 border-l-[#a78bfa]">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400">
+<span class="material-symbols-outlined">shield_lock</span>
+</div>
+<span class="text-[10px] font-label px-2 py-1 bg-purple-500/10 text-purple-400 rounded-full uppercase">Wireguard Active</span>
+</div>
+<h4 class="text-lg font-headline font-semibold mb-1">Secure Remote Access</h4>
+<p class="text-sm text-slate-400 mb-6">3 Clients Connected • 0 Leakage</p>
+<div class="flex items-center justify-between">
+<span class="font-label text-sm">AES-256 Encrypted</span>
+<button class="text-xs font-bold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                VPN CONFIG <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Monitoring Card -->
+<div class="glass-panel rounded-xl p-6 hover:bg-[#1c2026] transition-all group border-l-4 border-l-secondary">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">query_stats</span>
+</div>
+<span class="text-[10px] font-label px-2 py-1 bg-secondary/10 text-secondary rounded-full uppercase">1 Alert Pending</span>
+</div>
+<h4 class="text-lg font-headline font-semibold mb-1">System Telemetry</h4>
+<p class="text-sm text-slate-400 mb-6">Grafana &amp; Prometheus Dashboard</p>
+<div class="flex items-center justify-between">
+<span class="font-label text-sm">Temp: 42°C</span>
+<button class="text-xs font-bold text-primary flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                FULL ANALYTICS <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity / Alerts Feed -->
+<div class="space-y-6">
+<h3 class="text-xl font-headline font-bold tracking-tight px-1">System Events</h3>
+<div class="glass-panel rounded-xl overflow-hidden divide-y divide-outline-variant/10">
+<div class="p-4 hover:bg-surface-container-high/50 transition-colors">
+<div class="flex gap-4">
+<div class="mt-1 w-2 h-2 rounded-full bg-primary glow-pill flex-shrink-0"></div>
+<div class="space-y-1 flex-1">
+<div class="flex justify-between items-center w-full">
+<p class="text-sm font-semibold">Snapshot Success</p>
+<span class="text-[10px] font-label text-slate-500">2m ago</span>
+</div>
+<p class="text-xs text-slate-400">Nightly backup of /mnt/data completed successfully.</p>
+</div>
+</div>
+</div>
+<div class="p-4 hover:bg-surface-container-high/50 transition-colors">
+<div class="flex gap-4">
+<div class="mt-1 w-2 h-2 rounded-full bg-secondary glow-pill flex-shrink-0"></div>
+<div class="space-y-1 flex-1">
+<div class="flex justify-between items-center w-full">
+<p class="text-sm font-semibold">High Temperature</p>
+<span class="text-[10px] font-label text-slate-500">14m ago</span>
+</div>
+<p class="text-xs text-slate-400">Node pi-01 hit 65°C. Cooling fan speed increased.</p>
+</div>
+</div>
+</div>
+<div class="p-4 hover:bg-surface-container-high/50 transition-colors bg-error/5">
+<div class="flex gap-4">
+<div class="mt-1 w-2 h-2 rounded-full bg-error shadow-[0_0_10px_rgba(255,180,171,0.5)] flex-shrink-0"></div>
+<div class="space-y-1 flex-1">
+<div class="flex justify-between items-center w-full">
+<p class="text-sm font-semibold text-error">Auth Failure</p>
+<span class="text-[10px] font-label text-slate-500">1h ago</span>
+</div>
+<p class="text-xs text-slate-400">5 failed login attempts from 192.168.1.102. IP blocked.</p>
+</div>
+</div>
+</div>
+<div class="p-4 hover:bg-surface-container-high/50 transition-colors">
+<div class="flex gap-4">
+<div class="mt-1 w-2 h-2 rounded-full bg-primary glow-pill flex-shrink-0"></div>
+<div class="space-y-1 flex-1">
+<div class="flex justify-between items-center w-full">
+<p class="text-sm font-semibold">Docker Update</p>
+<span class="text-[10px] font-label text-slate-500">3h ago</span>
+</div>
+<p class="text-xs text-slate-400">Plex Media Server updated to v1.32.4.</p>
+</div>
+</div>
+</div>
+<div class="p-4 text-center">
+<button class="text-xs font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-widest">
+                            View System Logs
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebar-toggle');
+    const mainContent = document.getElementById('main-content');
+    let isCollapsed = false;
+
+    toggle.addEventListener('click', () => {
+        isCollapsed = !isCollapsed;
+        if (isCollapsed) {
+            sidebar.classList.remove('sidebar-expanded');
+            sidebar.classList.add('sidebar-collapsed');
+            mainContent.classList.remove('pl-64');
+            mainContent.classList.add('pl-16');
+        } else {
+            sidebar.classList.add('sidebar-expanded');
+            sidebar.classList.remove('sidebar-collapsed');
+            mainContent.classList.add('pl-64');
+            mainContent.classList.remove('pl-16');
+        }
+    });
+</script>
+</body></html>
