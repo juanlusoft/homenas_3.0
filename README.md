@@ -1,73 +1,33 @@
-# React + TypeScript + Vite
+# Homenas 3.0
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**NAS Dashboard de nueva generación con diseño Stitch "Luminous Obsidian"**
 
-Currently, two official plugins are available:
+## 🚀 Historial de Desarrollo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### **21 Marzo 2026 - Día 1: Fundación**
+- ✅ **Stack inicial**: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
+- ✅ **Diseño Stitch integrado**: "Luminous Obsidian" theme completo
+  - Sistema de colores: Deep Slate (#10141a) + Teal accents (#44e5c2)
+  - Typography: Space Grotesk (display) + Manrope (body) + JetBrains Mono (code)
+  - Glassmorphism: Backdrop-blur effects + ambient shadows
+  - No-Line Rule: Separación por tonos de superficie (sin borders 1px)
+- ✅ **Componentes custom**: GlassCard, GlowPill, StitchButton
+- ✅ **Design tokens**: Sistema TypeScript para charts/JS dinámico
+- ✅ **Dashboard demo**: Métricas sistema + disk array + services grid
+- ✅ **Build pipeline**: Clean tsc + vite build sin errores
 
-## React Compiler
+### **Stack Tecnológico**
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
+- **UI Components**: shadcn/ui (40+ componentes)
+- **Styling**: Glassmorphism + Stitch design system
+- **State**: Zustand (planificado)
+- **Data Fetching**: React Query (planificado)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### **Próximos Pasos**
+- **Día 2**: Storybook + Socket.io real-time + Framer Motion
+- **Día 3**: System monitoring charts + complete integration
+- **Semana 2+**: Advanced features según roadmap
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+**Proyecto iniciado por Vision con skills integrados de Anthropic + Community + Custom**
