@@ -30,14 +30,6 @@
 
 ## 📋 Changelog
 
-### v3.6.1 (21 March 2026)
-- ✅ test dry-run del script de versioning
-
-
-### v3.6.0 (21 Marzo 2026)
-- ✅ **Versioning workflow**: Script automático + changelog en README
-- ✅ Historial previo: v3.0.0 → v3.6.0 (fundación + iteraciones de desarrollo)
-
 ### v3.0.0 (21 Marzo 2026) - Initial Release
 - ✅ **Foundation**: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - ✅ **Stitch Design**: "Luminous Obsidian" theme completamente integrado
