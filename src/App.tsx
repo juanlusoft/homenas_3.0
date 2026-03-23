@@ -96,6 +96,7 @@ export default function App() {
   }, []);
 
   // Show setup wizard on first run
+  console.log('[App] setupDone:', setupDone, 'localStorage:', localStorage.getItem('homepinas-setup'));
   if (!setupDone) {
     return <SetupWizard onComplete={(data) => {
       localStorage.setItem('homepinas-setup', 'done');
