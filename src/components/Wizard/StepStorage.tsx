@@ -123,10 +123,10 @@ export function StepStorage({ data, update }: StepProps) {
               {POOL_MODES.map(mode => (
                 <button key={mode.id} onClick={() => update('poolMode', mode.id)}
                   disabled={data.selectedDisks.length < mode.minDisks}
-                  className={`px-4 py-3 rounded-lg text-left transition-colors ${
-                    data.poolMode === mode.id ? 'bg-teal/10 text-teal ring-1 ring-teal/30' :
+                  className={`px-4 py-3.5 rounded-lg text-left transition-colors border ${
+                    data.poolMode === mode.id ? 'bg-teal/10 text-teal border-teal/30' :
                     data.selectedDisks.length < mode.minDisks ? 'opacity-30 cursor-not-allowed' :
-                    'text-[var(--text-secondary)] hover:bg-surface-void'
+                    'border-[var(--outline-variant)] text-[var(--text-secondary)] hover:bg-surface-void'
                   }`}>
                   <span className="text-sm font-medium">{mode.icon} {mode.label}</span>
                   <p className="text-xs text-[var(--text-disabled)] mt-1">{mode.desc}</p>
@@ -141,8 +141,8 @@ export function StepStorage({ data, update }: StepProps) {
             <div className="flex gap-2">
               {FS_LIST.map(fs => (
                 <button key={fs.id} onClick={() => update('poolFs', fs.id)}
-                  className={`flex-1 px-4 py-3 rounded-lg text-center transition-colors ${
-                    data.poolFs === fs.id ? 'bg-teal/10 text-teal ring-1 ring-teal/30' : 'text-[var(--text-secondary)] hover:bg-surface-void'
+                  className={`flex-1 px-4 py-3.5 rounded-lg text-center transition-colors border ${
+                    data.poolFs === fs.id ? 'bg-teal/10 text-teal ring-1 ring-teal/30' : 'border-[var(--outline-variant)] text-[var(--text-secondary)] hover:bg-surface-void'
                   }`}>
                   <span className="text-sm font-bold">{fs.label}</span>
                   <p className="text-xs text-[var(--text-disabled)] mt-1">{fs.desc}</p>
@@ -168,8 +168,8 @@ function DiskRow({ disk, selected, onToggle }: { disk: DetectedDisk; selected: b
   return (
     <button
       onClick={() => onToggle(disk.device)}
-      className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-left transition-colors ${
-        selected ? 'bg-teal/10 ring-1 ring-teal/30' : 'hover:bg-surface-void'
+      className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-lg text-left transition-colors border ${
+        selected ? 'bg-teal/10 border-teal/30' : 'border-[var(--outline-variant)] hover:bg-surface-void hover:border-[var(--outline)]'
       }`}
     >
       <input type="checkbox" checked={selected} readOnly className="accent-teal shrink-0" />
