@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
@@ -36,7 +37,7 @@ function UserRow({ user }: { user: User }) {
       </div>
       <div className="flex items-center gap-5">
         <div className="hidden sm:block text-right">
-          <p className="text-xs text-[var(--text-secondary)]">Last login</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('users.lastLogin')}</p>
           <p className="font-mono text-xs text-[var(--text-primary)]">{user.lastLogin}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -64,12 +65,12 @@ export default function UsersPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Total Users</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('users.totalUsers')}</p>
           <p className="font-display text-2xl font-bold text-teal">{users.length}</p>
           <p className="text-xs text-[var(--text-secondary)]">{adminCount} admin</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">2FA Enabled</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('users.twoFA')}</p>
           <p className="font-display text-2xl font-bold text-teal">{twoFaCount}/{users.length}</p>
           <p className="text-xs text-[var(--text-secondary)]">
             {twoFaCount === users.length ? 'All secured' : `${users.length - twoFaCount} without 2FA`}
@@ -78,15 +79,15 @@ export default function UsersPage() {
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Actions</p>
           <div className="flex gap-2 mt-2">
-            <StitchButton size="sm">+ Add User</StitchButton>
-            <StitchButton size="sm" variant="ghost">Audit Log</StitchButton>
+            <StitchButton size="sm">{t('users.addUser')}</StitchButton>
+            <StitchButton size="sm" variant="ghost">{t('users.auditLog')}</StitchButton>
           </div>
         </GlassCard>
       </div>
 
       {/* User list */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">User Accounts</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('users.userAccounts')}</h3>
         <div className="divide-y divide-[var(--outline-variant)]">
           {users.map(user => <UserRow key={user.id} user={user} />)}
         </div>
@@ -94,7 +95,7 @@ export default function UsersPage() {
 
       {/* Security settings */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">Security Settings</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('users.securitySettings')}</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -105,7 +106,7 @@ export default function UsersPage() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-[var(--text-primary)]">Session timeout</p>
+              <p className="text-sm text-[var(--text-primary)]">{t('users.sessionTimeout')}</p>
               <p className="text-xs text-[var(--text-secondary)]">Auto-logout after inactivity</p>
             </div>
             <span className="font-mono text-sm text-teal">30 min</span>

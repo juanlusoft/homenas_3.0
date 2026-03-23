@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useCallback } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -37,17 +38,17 @@ function DiskCard({ disk }: { disk: Disk }) {
       <div className="grid grid-cols-3 gap-3 text-center">
         <div>
           <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{disk.temperature}°C</p>
-          <p className="text-xs text-[var(--text-secondary)]">Temp</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('storage.temp')}</p>
         </div>
         <div>
           <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{(disk.smart.powerOnHours / 24).toFixed(0)}d</p>
-          <p className="text-xs text-[var(--text-secondary)]">Power On</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('storage.powerOn')}</p>
         </div>
         <div>
           <p className={`font-mono text-lg font-bold ${disk.smart.badSectors > 0 ? 'text-red-400' : 'text-teal'}`}>
             {disk.smart.badSectors}
           </p>
-          <p className="text-xs text-[var(--text-secondary)]">Bad Sectors</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('storage.badSectors')}</p>
         </div>
       </div>
     </GlassCard>
@@ -67,22 +68,22 @@ export default function StoragePage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Total Storage</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('storage.totalStorage')}</p>
           <p className="font-display text-2xl font-bold text-teal">{totalSize.toFixed(1)} GB</p>
           <p className="text-xs text-[var(--text-secondary)]">{totalUsed.toFixed(1)} GB used</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Disks</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('storage.disks')}</p>
           <p className="font-display text-2xl font-bold text-teal">{disks?.length || 0}</p>
-          <p className="text-xs text-[var(--text-secondary)]">{healthyCount} healthy</p>
+          <p className="text-xs text-[var(--text-secondary)]">{healthyCount} {t('storage.healthy')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
           <div className="flex items-center justify-between">
             <div>
-              <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Actions</p>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('storage.actions')}</p>
               <div className="flex gap-2 mt-2">
-                <StitchButton size="sm" variant="ghost">SMART Check</StitchButton>
-                <StitchButton size="sm" variant="ghost" onClick={refresh}>Refresh</StitchButton>
+                <StitchButton size="sm" variant="ghost">{t('storage.smartCheck')}</StitchButton>
+                <StitchButton size="sm" variant="ghost" onClick={refresh}>{t('storage.refresh')}</StitchButton>
               </div>
             </div>
           </div>

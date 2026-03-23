@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
@@ -54,11 +55,11 @@ function BackupJobCard({ job }: { job: BackupJob }) {
 
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Last run</span>
+          <span className="text-[var(--text-secondary)]">{t('backup.lastRun')}</span>
           <span className="font-mono text-[var(--text-primary)]">{job.lastRun}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Next run</span>
+          <span className="text-[var(--text-secondary)]">{t('backup.nextRun')}</span>
           <span className="font-mono text-[var(--text-primary)]">{job.nextRun}</span>
         </div>
         <div className="flex justify-between">
@@ -66,14 +67,14 @@ function BackupJobCard({ job }: { job: BackupJob }) {
           <span className="font-mono text-teal">{job.size}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Destination</span>
+          <span className="text-[var(--text-secondary)]">{t('backup.destination')}</span>
           <span className="font-mono text-xs text-[var(--text-primary)]">{job.destination}</span>
         </div>
       </div>
 
       <div className="flex gap-2 mt-4">
-        <StitchButton size="sm" variant="ghost">Run Now</StitchButton>
-        <StitchButton size="sm" variant="ghost">Configure</StitchButton>
+        <StitchButton size="sm" variant="ghost">{t('backup.runNow')}</StitchButton>
+        <StitchButton size="sm" variant="ghost">{t('backup.configure')}</StitchButton>
       </div>
     </GlassCard>
   );
@@ -90,19 +91,19 @@ export default function BackupPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Backup Jobs</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('backup.jobs')}</p>
           <p className="font-display text-2xl font-bold text-teal">{jobs.length}</p>
           <p className="text-xs text-[var(--text-secondary)]">{successCount} successful</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Total Size</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('backup.totalSize')}</p>
           <p className="font-display text-2xl font-bold text-teal">{totalSize.toFixed(1)} GB</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Actions</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('backup.actions')}</p>
           <div className="flex gap-2 mt-2">
-            <StitchButton size="sm">+ New Job</StitchButton>
-            <StitchButton size="sm" variant="ghost">Run All</StitchButton>
+            <StitchButton size="sm">{t('backup.newJob')}</StitchButton>
+            <StitchButton size="sm" variant="ghost">{t('backup.runAll')}</StitchButton>
           </div>
         </GlassCard>
       </div>

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
+import { t, setLanguage } from '@/i18n';
 import DashboardPage from '@/pages/DashboardPage';
 import StoragePage from '@/pages/StoragePage';
 import ServicesPage from '@/pages/ServicesPage';
@@ -23,39 +24,39 @@ import { useNotifications } from '@/hooks/useNotifications';
 type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'homestore' | 'network' | 'logs' | 'terminal' | 'system' | 'settings' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'files', label: 'Files', icon: '📂' },
-  { id: 'shares', label: 'Shares', icon: '🔗' },
-  { id: 'storage', label: 'Storage', icon: '💾' },
-  { id: 'backup', label: 'Backup', icon: '📦' },
-  { id: 'active-backup', label: 'Active Backup', icon: '🖥️' },
-  { id: 'services', label: 'Services', icon: '🐳' },
-  { id: 'stacks', label: 'Stacks', icon: '🏗️' },
-  { id: 'homestore', label: 'HomeStore', icon: '🏪' },
-  { id: 'network', label: 'Network', icon: '🌐' },
-  { id: 'logs', label: 'Logs', icon: '📋' },
-  { id: 'terminal', label: 'Terminal', icon: '🖥️' },
-  { id: 'system', label: 'System', icon: '⚙️' },
-  { id: 'settings', label: 'Settings', icon: '🔧' },
-  { id: 'users', label: 'Users', icon: '👤' },
+  { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
+  { id: 'files', label: t('nav.files'), icon: '📂' },
+  { id: 'shares', label: t('nav.shares'), icon: '🔗' },
+  { id: 'storage', label: t('nav.storage'), icon: '💾' },
+  { id: 'backup', label: t('nav.backup'), icon: '📦' },
+  { id: 'active-backup', label: t('nav.active-backup'), icon: '🖥️' },
+  { id: 'services', label: t('nav.services'), icon: '🐳' },
+  { id: 'stacks', label: t('nav.stacks'), icon: '🏗️' },
+  { id: 'homestore', label: t('nav.homestore'), icon: '🏪' },
+  { id: 'network', label: t('nav.network'), icon: '🌐' },
+  { id: 'logs', label: t('nav.logs'), icon: '📋' },
+  { id: 'terminal', label: t('nav.terminal'), icon: '🖥️' },
+  { id: 'system', label: t('nav.system'), icon: '⚙️' },
+  { id: 'settings', label: t('nav.settings'), icon: '🔧' },
+  { id: 'users', label: t('nav.users'), icon: '👤' },
 ];
 
 const viewSubtitles: Record<View, string> = {
-  dashboard: 'System overview & metrics',
-  files: 'Browse & manage files',
-  shares: 'Samba & NFS shared folders',
-  storage: 'Disk health & capacity',
-  backup: 'Backup jobs & restore points',
-  'active-backup': 'Remote PC backup & restore',
-  services: 'Docker & systemd management',
-  network: 'Network interfaces & traffic',
-  stacks: 'Docker Compose stacks',
-  homestore: 'Install apps on your NAS',
-  logs: 'System & service log viewer',
-  terminal: 'Web terminal access',
-  system: 'Hardware, OS & system settings',
-  settings: 'NAS configuration',
-  users: 'User accounts & access control',
+  dashboard: t('sub.dashboard'),
+  files: t('sub.files'),
+  shares: t('sub.shares'),
+  storage: t('sub.storage'),
+  backup: t('sub.backup'),
+  'active-backup': t('sub.active-backup'),
+  services: t('sub.services'),
+  network: t('sub.network'),
+  stacks: t('sub.stacks'),
+  homestore: t('sub.homestore'),
+  logs: t('sub.logs'),
+  terminal: t('sub.terminal'),
+  system: t('sub.system'),
+  settings: t('sub.settings'),
+  users: t('sub.users'),
 };
 
 const viewComponents: Record<View, React.FC> = {
@@ -99,7 +100,7 @@ export default function App() {
     return <SetupWizard onComplete={(data) => {
       localStorage.setItem('homepinas-setup', 'done');
       localStorage.setItem('homepinas-hostname', data.hostname);
-      localStorage.setItem('homepinas-language', data.language);
+      setLanguage(data.language);
       setSetupDone(true);
       setUser(data.username);
     }} />;
@@ -193,7 +194,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2 lg:gap-3">
               <NotificationBell notifications={notifications} onMarkRead={markRead} onClearAll={clearAll} />
-              <GlowPill status="healthy" label="All Systems" />
+              <GlowPill status="healthy" label={t('header.allSystems')} />
               <StitchButton size="sm" className="hidden sm:inline-flex" onClick={() => navigate('settings')}>
                 Settings
               </StitchButton>

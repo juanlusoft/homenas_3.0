@@ -1,0 +1,20 @@
+export const en: Record<string, string> = {
+  'nav.dashboard': 'Dashboard',
+  'nav.files': 'Files',
+  'nav.shares': 'Shares',
+  'nav.storage': 'Storage',
+  'nav.backup': 'Backup',
+  'nav.active-backup': 'Active Backup',
+  'nav.services': 'Services',
+  'nav.stacks': 'Stacks',
+  'nav.homestore': 'HomeStore',
+  'nav.network': 'Network',
+  'nav.logs': 'Logs',
+  'nav.terminal': 'Terminal',
+  'nav.system': 'System',
+  'nav.settings': 'Settings',
+  'nav.users': 'Users',
+  'header.allSystems': 'All Systems',
+  'header.settings': 'Settings',
+  // English defaults — keys map to themselves
+};

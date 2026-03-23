@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useCallback, lazy, Suspense } from 'react';
 import { GlassCard, GlowPill } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -28,7 +29,7 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
 
       <div className="space-y-3">
         <div className="flex justify-between">
-          <span className="text-sm text-[var(--text-secondary)]">Speed</span>
+          <span className="text-sm text-[var(--text-secondary)]">{t('net.speed')}</span>
           <span className="font-mono text-sm text-[var(--text-primary)]">{iface.speed}</span>
         </div>
         <div className="flex justify-between">
@@ -44,11 +45,11 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
 
         <div className="grid grid-cols-2 gap-5 text-center">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">Received</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">{t('net.received')}</p>
             <p className="font-mono text-lg font-bold text-teal">{formatBytes(iface.rx_bytes)}</p>
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">Sent</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">{t('net.sent')}</p>
             <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{formatBytes(iface.tx_bytes)}</p>
           </div>
         </div>
@@ -79,7 +80,7 @@ export default function NetworkPage() {
       <GlassCard elevation="low">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Network Interfaces</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('net.interfaces')}</p>
             <p className="font-display text-2xl font-bold text-teal">{activeCount}/{interfaces?.length || 0} active</p>
           </div>
           <GlowPill status={activeCount > 0 ? 'healthy' : 'error'} label={activeCount > 0 ? 'Connected' : 'No Connection'} />

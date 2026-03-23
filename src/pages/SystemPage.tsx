@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useCallback } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -45,13 +46,13 @@ export default function SystemPage() {
       {/* Live status */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">CPU</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('sys.cpu')}</p>
           <p className={`font-display text-3xl font-bold ${parseFloat(metrics?.cpu || '0') > 80 ? 'text-red-400' : 'text-teal'}`}>
             {metrics?.cpu ?? '—'}%
           </p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Memory</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.memory')}</p>
           <p className="font-display text-3xl font-bold text-teal">
             {metrics?.memory.used ?? '—'}%
           </p>
@@ -60,7 +61,7 @@ export default function SystemPage() {
           </p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Temperature</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.temperature')}</p>
           <p className={`font-display text-3xl font-bold ${(metrics?.temperature ?? 0) > 70 ? 'text-red-400' : 'text-teal'}`}>
             {metrics?.temperature ?? '—'}°C
           </p>
@@ -76,7 +77,7 @@ export default function SystemPage() {
       {/* System info */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <GlassCard elevation="low">
-          <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">System Information</h3>
+          <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('sys.systemInfo')}</h3>
           {infoLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-6 animate-pulse rounded bg-surface-void" />)}
@@ -93,7 +94,7 @@ export default function SystemPage() {
         </GlassCard>
 
         <GlassCard elevation="low">
-          <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">Hardware</h3>
+          <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('sys.hardware')}</h3>
           {infoLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => <div key={i} className="h-6 animate-pulse rounded bg-surface-void" />)}
@@ -110,7 +111,7 @@ export default function SystemPage() {
 
       {/* Actions */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">System Actions</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('sys.actions')}</h3>
         <div className="flex flex-wrap gap-3">
           <StitchButton size="sm" variant="ghost">📊 Full Diagnostics</StitchButton>
           <StitchButton size="sm" variant="ghost">🔄 Check Updates</StitchButton>

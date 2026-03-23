@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useCallback, lazy, Suspense } from 'react';
 import { GlassCard, GlowPill } from '@/components/UI';
 
@@ -81,7 +82,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard elevation="mid">
           <div className="mb-2">
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">CPU Usage</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.cpuUsage')}</p>
           </div>
           {loading ? (
             <div className="h-9 w-20 animate-pulse rounded bg-surface-void" />
@@ -92,7 +93,7 @@ export default function DashboardPage() {
 
         <GlassCard elevation="mid">
           <div className="mb-2">
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Memory</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.memory')}</p>
           </div>
           {loading ? (
             <div className="h-9 w-24 animate-pulse rounded bg-surface-void" />
@@ -102,7 +103,7 @@ export default function DashboardPage() {
         </GlassCard>
 
         <GlassCard elevation="mid">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Temperature</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.temperature')}</p>
           {loading ? (
             <div className="h-9 w-16 animate-pulse rounded bg-surface-void" />
           ) : (
@@ -111,7 +112,7 @@ export default function DashboardPage() {
         </GlassCard>
 
         <GlassCard elevation="mid">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Network I/O</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.networkIO')}</p>
           {loading || !live?.network ? (
             <div className="h-9 w-20 animate-pulse rounded bg-surface-void" />
           ) : (
@@ -143,10 +144,10 @@ export default function DashboardPage() {
         </Suspense>
       )}
 
-      {/* Disk Array */}
+      {/* t('dash.diskArray') */}
       <GlassCard elevation="low">
         <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">
-          Disk Array
+          t('dash.diskArray')
         </h2>
         {disksLoading ? (
           <div className="space-y-3">

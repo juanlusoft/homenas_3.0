@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
@@ -61,7 +62,7 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-3xl">
       {/* General */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">General</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.general')}</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-xs text-[var(--text-secondary)] mb-1">Hostname</label>
@@ -104,7 +105,7 @@ export default function SettingsPage() {
 
       {/* Network & Security */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">Network & Security</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.networkSecurity')}</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Toggle checked={settings.sshEnabled} onChange={() => update('sshEnabled', !settings.sshEnabled)} label="SSH Access" />
@@ -122,7 +123,7 @@ export default function SettingsPage() {
 
       {/* Notifications */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">Notifications</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.notifications')}</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-xs text-[var(--text-secondary)] mb-1">Email for alerts</label>
@@ -141,7 +142,7 @@ export default function SettingsPage() {
 
       {/* Hardware */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">Hardware</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.hardware')}</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-xs text-[var(--text-secondary)] mb-1">Fan control mode</label>
