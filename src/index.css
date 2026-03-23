@@ -198,6 +198,26 @@
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+  }
+
+  /* Global element padding */
+  button {
+    cursor: pointer;
+  }
+
+  select {
+    padding: 0.5rem 0.75rem;
+    background: var(--surface-void);
+    border: 1px solid var(--outline-variant);
+    border-radius: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: var(--primary-raw);
   }
 
   h1, h2, h3, .display {
@@ -235,6 +255,8 @@
     border-top-color: rgba(68, 229, 194, 0.4);
     color: var(--on-primary);
     font-weight: 600;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
     transition: all 0.2s ease;
   }
 
@@ -247,6 +269,8 @@
     background: transparent;
     border: 1px solid var(--outline);
     color: var(--text-primary);
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
     transition: all 0.2s ease;
   }
 
@@ -314,6 +338,9 @@
     background: var(--surface-void);
     border: 1px solid transparent;
     border-bottom: 1px solid var(--outline-variant);
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
     transition: all 0.2s ease;
   }
 
