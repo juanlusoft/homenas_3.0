@@ -8,9 +8,12 @@ export interface SetupData {
   staticIp: string;
   gateway: string;
   dns: string;
-  poolMode: 'snapraid' | 'single' | 'mirror' | 'raidz';
-  poolFs: 'ext4' | 'btrfs' | 'zfs';
+  poolMode: 'snapraid';
+  poolFs: 'ext4' | 'btrfs' | 'xfs';
   selectedDisks: string[];
+  parityDisks: string[];
+  dataDisks: string[];
+  cacheDisks: string[];
 }
 
 export type StepProps = {

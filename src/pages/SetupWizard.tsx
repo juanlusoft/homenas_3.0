@@ -16,7 +16,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     language: 'es', hostname: 'homepinas', username: 'admin',
     password: '', passwordConfirm: '', networkMode: 'dhcp',
     staticIp: '', gateway: '', dns: '8.8.8.8',
-    poolMode: 'snapraid', poolFs: 'ext4', selectedDisks: [],
+    poolMode: 'snapraid', poolFs: 'ext4', selectedDisks: [], parityDisks: [], dataDisks: [], cacheDisks: [],
   });
   const [error, setError] = useState('');
 
@@ -32,9 +32,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
     if (step === 2 && !data.hostname) return false;
     if (step === 3 && data.networkMode === 'static' && !data.staticIp) return false;
-    if (step === 4 && data.selectedDisks.length === 0) return false;
-    if (step === 4 && data.poolMode === 'mirror' && data.selectedDisks.length < 2) return false;
-    if (step === 4 && data.poolMode === 'raidz' && data.selectedDisks.length < 3) return false;
+    if (step === 4 && (data.parityDisks.length === 0 || data.dataDisks.length === 0)) return false;
     return true;
   };
 
@@ -263,14 +261,20 @@ function StepReady({ data }: { data: SetupData }) {
           </span>
         </div>
         <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
-          <span className="text-[var(--text-secondary)]">Storage Pool</span>
-          <span className="font-mono text-[var(--text-primary)]">
-            {data.selectedDisks.length} disk{data.selectedDisks.length !== 1 ? 's' : ''} · {data.poolMode} · {data.poolFs}
-          </span>
+          <span className="text-[var(--text-secondary)]">Storage</span>
+          <span className="font-mono text-[var(--text-primary)]">SnapRAID + MergerFS · {data.poolFs}</span>
+        </div>
+        <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
+          <span className="text-[var(--text-secondary)]">🛡️ Parity</span>
+          <span className="font-mono text-xs text-orange">{data.parityDisks.join(', ') || 'None'}</span>
+        </div>
+        <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
+          <span className="text-[var(--text-secondary)]">💾 Data</span>
+          <span className="font-mono text-xs text-teal">{data.dataDisks.join(', ') || 'None'}</span>
         </div>
         <div className="flex justify-between py-2">
-          <span className="text-[var(--text-secondary)]">Disks</span>
-          <span className="font-mono text-xs text-teal">{data.selectedDisks.join(', ')}</span>
+          <span className="text-[var(--text-secondary)]">⚡ Cache</span>
+          <span className="font-mono text-xs text-purple-400">{data.cacheDisks.join(', ') || 'None'}</span>
         </div>
       </div>
       <p className="mt-4 text-xs text-[var(--text-disabled)] text-center">
