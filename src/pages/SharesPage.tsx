@@ -93,9 +93,9 @@ export default function SharesPage() {
   const nfsCount = shares.filter(s => s.protocol === 'nfs').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Shares</p>
           <p className="font-display text-2xl font-bold text-teal">{activeCount}/{shares.length}</p>
@@ -122,7 +122,7 @@ export default function SharesPage() {
       </div>
 
       {/* Share cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         {shares.map(share => <ShareCard key={share.id} share={share} />)}
       </div>
     </div>

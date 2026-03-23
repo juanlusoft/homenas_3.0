@@ -57,7 +57,7 @@ function ServiceRow({ service }: { service: SystemdService }) {
           {service.enabled && <span className="ml-2 text-xs text-[var(--text-disabled)]">enabled</span>}
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         <span className="text-xs text-[var(--text-secondary)]">{service.uptime}</span>
         <GlowPill status={status} label={service.state} />
       </div>
@@ -76,9 +76,9 @@ export default function ServicesPage() {
   const activeServices = services?.filter((s) => s.status === 'active').length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-stitch-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Docker Containers</p>
           <p className="font-display text-2xl font-bold text-teal">{runningContainers}/{containers?.length || 0}</p>
@@ -93,13 +93,13 @@ export default function ServicesPage() {
 
       {/* Docker containers */}
       <div>
-        <h2 className="mb-stitch-4 font-display text-lg font-semibold text-[var(--text-primary)]">Docker Containers</h2>
+        <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">Docker Containers</h2>
         {dockerLoading ? (
-          <div className="grid grid-cols-1 gap-stitch-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {[1, 2, 3].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-surface-void" />)}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-stitch-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {containers?.map((c) => <ContainerCard key={c.id} container={c} />)}
           </div>
         )}
@@ -107,7 +107,7 @@ export default function ServicesPage() {
 
       {/* Systemd services */}
       <GlassCard elevation="low">
-        <h2 className="mb-stitch-4 font-display text-lg font-semibold text-[var(--text-primary)]">System Services</h2>
+        <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">System Services</h2>
         {systemdLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => <div key={i} className="h-10 animate-pulse rounded bg-surface-void" />)}

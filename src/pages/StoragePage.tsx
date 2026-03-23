@@ -63,9 +63,9 @@ export default function StoragePage() {
   const healthyCount = disks?.filter((d) => d.health === 'healthy').length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-stitch-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Total Storage</p>
           <p className="font-display text-2xl font-bold text-teal">{totalSize.toFixed(1)} GB</p>
@@ -91,11 +91,11 @@ export default function StoragePage() {
 
       {/* Disk grid */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-stitch-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => <div key={i} className="h-48 animate-pulse rounded-xl bg-surface-void" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-stitch-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {disks?.map((disk) => <DiskCard key={disk.device} disk={disk} />)}
         </div>
       )}

@@ -41,9 +41,9 @@ export default function SystemPage() {
   const { metrics, isConnected } = useLiveMetrics();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Live status */}
-      <div className="grid grid-cols-1 gap-stitch-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">CPU</p>
           <p className={`font-display text-3xl font-bold ${parseFloat(metrics?.cpu || '0') > 80 ? 'text-red-400' : 'text-teal'}`}>
@@ -74,7 +74,7 @@ export default function SystemPage() {
       </div>
 
       {/* System info */}
-      <div className="grid grid-cols-1 gap-stitch-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <GlassCard elevation="low">
           <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">System Information</h3>
           {infoLoading ? (

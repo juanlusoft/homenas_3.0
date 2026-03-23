@@ -86,9 +86,9 @@ export default function BackupPage() {
   const totalSize = jobs.reduce((acc, j) => acc + parseFloat(j.size), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-stitch-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Backup Jobs</p>
           <p className="font-display text-2xl font-bold text-teal">{jobs.length}</p>
@@ -108,7 +108,7 @@ export default function BackupPage() {
       </div>
 
       {/* Job cards */}
-      <div className="grid grid-cols-1 gap-stitch-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         {jobs.map(job => <BackupJobCard key={job.id} job={job} />)}
       </div>
     </div>

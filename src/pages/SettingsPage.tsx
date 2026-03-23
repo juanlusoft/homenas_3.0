@@ -58,7 +58,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-8 max-w-3xl">
       {/* General */}
       <GlassCard elevation="low">
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">General</h3>
@@ -71,7 +71,7 @@ export default function SettingsPage() {
               className="stitch-input rounded-lg px-3 py-2 text-sm w-full text-[var(--text-primary)]"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div>
               <label className="block text-xs text-[var(--text-secondary)] mb-1">Timezone</label>
               <select

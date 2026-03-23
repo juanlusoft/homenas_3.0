@@ -42,7 +42,7 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
 
         <div className="h-px bg-[var(--outline-variant)]" />
 
-        <div className="grid grid-cols-2 gap-4 text-center">
+        <div className="grid grid-cols-2 gap-5 text-center">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">Received</p>
             <p className="font-mono text-lg font-bold text-teal">{formatBytes(iface.rx_bytes)}</p>
@@ -65,7 +65,7 @@ export default function NetworkPage() {
   const activeCount = interfaces?.filter((i) => i.status === 'up').length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Real-time throughput chart */}
       {history.length > 5 && (
         <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface-void" />}>
@@ -88,11 +88,11 @@ export default function NetworkPage() {
 
       {/* Interface cards */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-stitch-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {[1, 2].map((i) => <div key={i} className="h-64 animate-pulse rounded-xl bg-surface-void" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-stitch-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {interfaces?.map((iface) => <InterfaceCard key={iface.name} iface={iface} />)}
         </div>
       )}

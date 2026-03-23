@@ -63,9 +63,9 @@ export default function ActiveBackupPage() {
   const backingUpCount = devices?.filter(d => d.status === 'backing-up').length ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Devices</p>
           <p className="font-display text-2xl font-bold text-teal">{devices?.length ?? 0}</p>
@@ -111,11 +111,11 @@ export default function ActiveBackupPage() {
 
       {/* Device grid */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map(i => <div key={i} className="h-64 animate-pulse rounded-xl bg-surface-void" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {devices?.map(device => (
             <DeviceCard
               key={device.id}
@@ -130,7 +130,7 @@ export default function ActiveBackupPage() {
       {/* How it works */}
       <GlassCard elevation="low">
         <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">How Active Backup Works</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 text-center text-sm">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 text-center text-sm">
           <div>
             <p className="text-2xl mb-2">📥</p>
             <p className="font-medium text-[var(--text-primary)]">1. Install Agent</p>

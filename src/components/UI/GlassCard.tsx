@@ -10,15 +10,14 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const elevationStyles: Record<Elevation, string> = {
-  low: "bg-surface-low",
-  mid: "bg-surface-mid",
-  high: "bg-surface-high",
+  low: "bg-surface-low border border-[var(--outline-variant)]",
+  mid: "bg-surface-mid border border-[var(--outline-variant)]",
+  high: "bg-surface-high border border-[var(--outline-variant)]",
   glass: "glass",
 };
 
 /**
- * Surface card following Stitch "No-Line Rule".
- * No 1px borders for sectioning — tonal shifts only.
+ * Surface card with subtle border for visual separation.
  */
 export function GlassCard({
   children,
@@ -30,7 +29,7 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        "rounded-stitch p-stitch-6",
+        "rounded-xl p-5 lg:p-6",
         elevationStyles[elevation],
         pulse && "animate-node-pulse",
         className,

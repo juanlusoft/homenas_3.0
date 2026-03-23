@@ -34,7 +34,7 @@ function UserRow({ user }: { user: User }) {
           <p className={`text-xs font-mono ${ROLE_COLORS[user.role]}`}>{user.role}</p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-5">
         <div className="hidden sm:block text-right">
           <p className="text-xs text-[var(--text-secondary)]">Last login</p>
           <p className="font-mono text-xs text-[var(--text-primary)]">{user.lastLogin}</p>
@@ -60,9 +60,9 @@ export default function UsersPage() {
   const twoFaCount = users.filter(u => u.twoFactor).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Total Users</p>
           <p className="font-display text-2xl font-bold text-teal">{users.length}</p>

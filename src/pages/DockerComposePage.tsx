@@ -75,9 +75,9 @@ export default function DockerComposePage() {
   const runningCount = stacks.filter(s => s.status === 'running').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Stacks</p>
           <p className="font-display text-2xl font-bold text-teal">{stacks.length}</p>

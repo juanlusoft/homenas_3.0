@@ -117,9 +117,9 @@ export default function HomeStorePage() {
   const runningCount = apps.filter(a => a.running).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Installed</p>
           <p className="font-display text-2xl font-bold text-teal">{installedCount}</p>
@@ -174,7 +174,7 @@ export default function HomeStorePage() {
       </div>
 
       {/* App grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filtered.map(app => (
           <AppCard
             key={app.id}
