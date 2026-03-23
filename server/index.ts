@@ -15,6 +15,7 @@ import { activeBackupRouter } from './routes/active-backup.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
+const HOST = process.env.HOST || '127.0.0.1';  // Only listen on localhost — nginx handles external
 const app = express();
 const httpServer = createServer(app);
 
@@ -61,7 +62,7 @@ io.on('connection', (socket) => {
 // Start real-time metrics emitter
 startMetricsEmitter(io);
 
-httpServer.listen(PORT, () => {
-  console.log(`[server] HomePiNAS API running on http://localhost:${PORT}`);
+httpServer.listen(PORT, HOST, () => {
+  console.log(`[server] HomePiNAS API running on http://${HOST}:${PORT}`);
   console.log(`[server] Socket.io ready for real-time connections`);
 });
