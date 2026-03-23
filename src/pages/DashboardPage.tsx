@@ -1,5 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, lazy, Suspense } from 'react';
 import { GlassCard, GlowPill } from '@/components/UI';
+
+const MetricsChart = lazy(() => import('@/components/Charts/MetricsChart').then(m => ({ default: m.MetricsChart })));
+const NetworkChart = lazy(() => import('@/components/Charts/NetworkChart').then(m => ({ default: m.NetworkChart })));
 import { useAPI } from '@/hooks/useAPI';
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
 import { api } from '@/api/client';
@@ -53,21 +56,6 @@ function DiskRow({ disk }: { disk: Disk }) {
   );
 }
 
-/** Mini sparkline from metric history */
-function Sparkline({ data, color = '#44e5c2' }: { data: number[]; color?: string }) {
-  if (data.length < 2) return null;
-  const max = Math.max(...data, 1);
-  const h = 24;
-  const w = 80;
-  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(' ');
-
-  return (
-    <svg width={w} height={h} className="opacity-60">
-      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export default function DashboardPage() {
   const { metrics: live, isConnected, history } = useLiveMetrics();
   const fetchDisks = useCallback(() => api.getDisks(), []);
@@ -80,8 +68,6 @@ export default function DashboardPage() {
   const temp = live?.temperature ?? 0;
   const loading = !live;
 
-  const cpuHistory = history.map(h => parseFloat(h.cpu));
-  const memHistory = history.map(h => h.memory.used);
 
   return (
     <div className="space-y-6">
@@ -94,9 +80,8 @@ export default function DashboardPage() {
       {/* Metrics row */}
       <div className="grid grid-cols-1 gap-stitch-4 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard elevation="mid">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2">
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">CPU Usage</p>
-            <Sparkline data={cpuHistory} color={cpu > 80 ? '#ff6b6b' : '#44e5c2'} />
           </div>
           {loading ? (
             <div className="h-9 w-20 animate-pulse rounded bg-surface-void" />
@@ -106,9 +91,8 @@ export default function DashboardPage() {
         </GlassCard>
 
         <GlassCard elevation="mid">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2">
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Memory</p>
-            <Sparkline data={memHistory} />
           </div>
           {loading ? (
             <div className="h-9 w-24 animate-pulse rounded bg-surface-void" />
@@ -138,6 +122,26 @@ export default function DashboardPage() {
           )}
         </GlassCard>
       </div>
+
+      {/* Real-time charts (lazy loaded) */}
+      {history.length > 5 && (
+        <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface-void" />}>
+          <div className="grid grid-cols-1 gap-stitch-4 lg:grid-cols-2">
+            <GlassCard elevation="low">
+              <MetricsChart data={history} dataKey="cpu" label="CPU History" />
+            </GlassCard>
+            <GlassCard elevation="low">
+              <MetricsChart data={history} dataKey="memory" label="Memory History" color="#64b5f6" />
+            </GlassCard>
+            <GlassCard elevation="low">
+              <MetricsChart data={history} dataKey="temperature" label="Temperature" maxY={90} unit="°C" />
+            </GlassCard>
+            <GlassCard elevation="low">
+              <NetworkChart data={history} />
+            </GlassCard>
+          </div>
+        </Suspense>
+      )}
 
       {/* Disk Array */}
       <GlassCard elevation="low">
