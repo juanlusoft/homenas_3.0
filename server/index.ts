@@ -11,6 +11,7 @@ import { metricsRouter } from './routes/metrics.js';
 import { storageRouter } from './routes/storage.js';
 import { networkRouter } from './routes/network.js';
 import { servicesRouter } from './routes/services.js';
+import { activeBackupRouter } from './routes/active-backup.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -31,6 +32,7 @@ app.use('/api/system', metricsRouter);
 app.use('/api/storage', storageRouter);
 app.use('/api/network', networkRouter);
 app.use('/api/services', servicesRouter);
+app.use('/api/active-backup', activeBackupRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

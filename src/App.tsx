@@ -6,6 +6,7 @@ import ServicesPage from '@/pages/ServicesPage';
 import NetworkPage from '@/pages/NetworkPage';
 import SystemPage from '@/pages/SystemPage';
 import BackupPage from '@/pages/BackupPage';
+import ActiveBackupPage from '@/pages/ActiveBackupPage';
 import UsersPage from '@/pages/UsersPage';
 import FilesPage from '@/pages/FilesPage';
 import SharesPage from '@/pages/SharesPage';
@@ -15,7 +16,7 @@ import LoginPage from '@/pages/LoginPage';
 import { NotificationBell } from '@/components/Notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 
-type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'services' | 'network' | 'logs' | 'terminal' | 'system' | 'users';
+type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'network' | 'logs' | 'terminal' | 'system' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -23,6 +24,7 @@ const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'shares', label: 'Shares', icon: '🔗' },
   { id: 'storage', label: 'Storage', icon: '💾' },
   { id: 'backup', label: 'Backup', icon: '📦' },
+  { id: 'active-backup', label: 'Active Backup', icon: '🖥️' },
   { id: 'services', label: 'Services', icon: '🐳' },
   { id: 'network', label: 'Network', icon: '🌐' },
   { id: 'logs', label: 'Logs', icon: '📋' },
@@ -37,6 +39,7 @@ const viewSubtitles: Record<View, string> = {
   shares: 'Samba & NFS shared folders',
   storage: 'Disk health & capacity',
   backup: 'Backup jobs & restore points',
+  'active-backup': 'Remote PC backup & restore',
   services: 'Docker & systemd management',
   network: 'Network interfaces & traffic',
   logs: 'System & service log viewer',
@@ -51,6 +54,7 @@ const viewComponents: Record<View, React.FC> = {
   shares: SharesPage,
   storage: StoragePage,
   backup: BackupPage,
+  'active-backup': ActiveBackupPage,
   services: ServicesPage,
   network: NetworkPage,
   logs: LogsPage,
