@@ -11,7 +11,7 @@ REPO_URL="https://github.com/juanlusoft/homenas_3.0.git"
 BRANCH="main"
 INSTALL_DIR="/opt/homepinas-v3"
 SERVICE_NAME="homepinas-v3"
-PORT=3001
+PORT=3001  # Backend API port (internal)
 NODE_MIN="20"
 
 # Colors
@@ -185,17 +185,40 @@ fi
 # ── Configure nginx (optional) ─────────────────────────────
 
 if command -v nginx &>/dev/null; then
-    info "Configuring nginx reverse proxy..."
+    info "Configuring nginx reverse proxy (80 + 443)..."
+
+    # Generate self-signed cert if not exists
+    CERT_DIR="${INSTALL_DIR}/certs"
+    if [ ! -f "$CERT_DIR/server.crt" ]; then
+        info "Generating self-signed SSL certificate..."
+        bash "${INSTALL_DIR}/scripts/setup-ssl.sh"
+    fi
+
     cat > /etc/nginx/sites-available/homepinas-v3 << NGINX
+# HTTP → HTTPS redirect
 server {
     listen 80;
     server_name _;
+    return 301 https://\$host\$request_uri;
+}
 
+# HTTPS
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    ssl_certificate     ${CERT_DIR}/server.crt;
+    ssl_certificate_key ${CERT_DIR}/server.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+
+    # Frontend
     location / {
         root ${INSTALL_DIR}/dist;
         try_files \$uri \$uri/ /index.html;
     }
 
+    # API proxy
     location /api/ {
         proxy_pass http://127.0.0.1:${PORT};
         proxy_http_version 1.1;
@@ -203,8 +226,10 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
+    # WebSocket proxy
     location /socket.io/ {
         proxy_pass http://127.0.0.1:${PORT};
         proxy_http_version 1.1;
@@ -215,8 +240,9 @@ server {
 }
 NGINX
     ln -sf /etc/nginx/sites-available/homepinas-v3 /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
     nginx -t && systemctl reload nginx
-    ok "Nginx configured (port 80 → dashboard)"
+    ok "Nginx configured: HTTP→HTTPS redirect, SSL on port 443"
 fi
 
 # ── Summary ────────────────────────────────────────────────
@@ -230,7 +256,8 @@ LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 echo -e "${GREEN}║${NC}   Dashboard: http://${LOCAL_IP:-localhost}:${PORT}"
 
 if command -v nginx &>/dev/null; then
-    echo -e "${GREEN}║${NC}   Via nginx: http://${LOCAL_IP:-localhost}"
+    echo -e "${GREEN}║${NC}   HTTPS:     https://${LOCAL_IP:-localhost}"
+    echo -e "${GREEN}║${NC}   HTTP:      http://${LOCAL_IP:-localhost} (→ HTTPS)"
 fi
 
 echo -e "${GREEN}║${NC}   Service:   sudo systemctl status ${SERVICE_NAME}"
