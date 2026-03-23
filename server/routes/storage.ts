@@ -54,26 +54,60 @@ storageRouter.get('/detect-disks', async (_req, res) => {
   try {
     const layout = await si.diskLayout();
 
-    const result = layout
-      .filter(d => d.size > 1e9) // Filter empty ports (0 bytes or tiny)
-      .map((d, i) => {
-        const isNvme = d.interfaceType === 'NVMe' || d.name?.includes('nvme');
-        const isSsd = d.type === 'SSD' || (d.interfaceType === 'SATA' && !d.type?.includes('HD'));
+    // Filter: no empty ports, no SD cards, no boot devices
+    const filtered = layout.filter(d => {
+      if (d.size < 1e9) return false;                           // empty port
+      if (d.device?.includes('mmcblk')) return false;           // SD card
+      if (d.device?.includes('boot') || d.device?.includes('loop')) return false;
+      // JMB585 phantom: model is numeric-only AND size < 1GB
+      const modelStr = (d.name || d.model || '').trim();
+      if (/^\d+$/.test(modelStr) && d.size < 1e9) return false;
+      return true;
+    });
 
-        return {
-          device: d.device || `/dev/sd${String.fromCharCode(97 + i)}`,
-          name: d.name || d.device || '',
-          size: d.size,
-          sizeHuman: formatBytes(d.size),
-          vendor: d.vendor?.trim() || 'Unknown',
-          model: (d.name || d.model || 'Unknown').trim(),
-          type: isNvme ? 'nvme' : isSsd ? 'ssd' : 'hdd',
-          bay: isNvme ? `NVMe ${i + 1}` : `Bay ${i + 1}`,
-          serial: d.serialNum || '',
-          temperature: d.temperature ?? 0,
-          connected: true,
-        };
-      });
+    let nvmeIdx = 0;
+    let bayIdx = 0;
+
+    const result = filtered.map(d => {
+      const modelStr = (d.name || d.model || '').trim();
+      const vendorStr = (d.vendor || '').trim();
+
+      // Detect NVMe: by interface, device path, or JMB585 bridge (ASM vendor + sda/sdb)
+      const isNvmeByInterface = d.interfaceType === 'NVMe' || d.device?.includes('nvme');
+      const isNvmeByBridge = vendorStr === 'ASM' && /^\d+$/.test(modelStr);
+      const isNvme = isNvmeByInterface || isNvmeByBridge;
+
+      const isSsd = !isNvme && (
+        d.type === 'SSD' ||
+        modelStr.toLowerCase().includes('ssd') ||
+        modelStr.toLowerCase().includes('evo')
+      );
+
+      // Clean model name for JMB585 bridge NVMe
+      let cleanModel = modelStr;
+      let cleanVendor = vendorStr;
+      if (isNvmeByBridge) {
+        cleanModel = 'NVMe (JMB585 Bridge)';
+        cleanVendor = 'NVMe';
+      }
+
+      const type = isNvme ? 'nvme' as const : isSsd ? 'ssd' as const : 'hdd' as const;
+      const bay = isNvme ? `NVMe ${++nvmeIdx}` : `Bay ${++bayIdx}`;
+
+      return {
+        device: d.device || '',
+        name: d.name || d.device || '',
+        size: d.size,
+        sizeHuman: formatBytes(d.size),
+        vendor: cleanVendor || 'Unknown',
+        model: cleanModel || 'Unknown',
+        type,
+        bay,
+        serial: d.serialNum || '',
+        temperature: d.temperature ?? 0,
+        connected: true,
+      };
+    });
 
     res.json(result);
   } catch {
