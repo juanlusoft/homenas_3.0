@@ -386,3 +386,14 @@
     box-shadow: 0 8px 30px rgba(68, 229, 194, 0.2);
   }
 }
+
+/* ============================================
+   RESPONSIVE FIXES
+   ============================================ */
+@media (max-width: 640px) {
+  .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .font-display.text-3xl { font-size: 1.5rem; }
+  .font-display.text-2xl { font-size: 1.25rem; }
+  table { font-size: 0.75rem; }
+  .glass-elevated { max-width: calc(100vw - 2rem); }
+}

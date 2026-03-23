@@ -1,0 +1,13 @@
+{
+  "name": "HomePiNAS",
+  "short_name": "HomePiNAS",
+  "description": "NAS Dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#10141a",
+  "theme_color": "#44e5c2",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icons.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

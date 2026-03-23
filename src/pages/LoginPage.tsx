@@ -16,10 +16,20 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    if (username && password.length >= 4) {
-      onLogin(username);
-    } else {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        localStorage.setItem('homepinas-token', data.token);
+        onLogin(data.user.username);
+      } else {
+        setError(data.error || t('login.invalidCredentials'));
+      }
+    } catch {
       setError(t('login.invalidCredentials'));
     }
     setLoading(false);

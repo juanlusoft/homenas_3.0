@@ -45,11 +45,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agent-${{ matrix.platform }}
+          retention-days: 90
           path: |
             agent/dist/*.exe
             agent/dist/*.dmg
             agent/dist/*.AppImage
             agent/dist/*.yml
+            agent/dist/*.blockmap
 
   release:
     needs: build
