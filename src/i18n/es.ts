@@ -43,6 +43,7 @@ export const es: Record<string, string> = {
   'dash.temperature': 'Temperatura',
   'dash.networkIO': 'Red E/S',
   'dash.diskArray': 'Array de Discos',
+  'dash.diskUsage': 'Uso de Disco',
   'dash.realtime': 'Tiempo real',
   'dash.connecting': 'Conectando...',
   'dash.cpuHistory': 'Historial CPU',
@@ -364,4 +365,63 @@ export const es: Record<string, string> = {
   'common.openMenu': 'Abrir menú',
   'common.settingsSaved': 'Ajustes guardados',
   "set.httpsLE": "HTTPS (Let's Encrypt)",
+  // Status translations (for data from API)
+  'status.running': 'en ejecución',
+  'status.stopped': 'detenido',
+  'status.active': 'activo',
+  'status.inactive': 'inactivo',
+  'status.enabled': 'habilitado',
+  'status.disabled': 'deshabilitado',
+  'status.dead': 'detenido',
+  'status.success': 'exitoso',
+  'status.scheduled': 'programado',
+  'status.failed': 'fallido',
+  'status.complete': 'completo',
+  'status.read-write': 'lectura y escritura',
+  'status.read-only': 'solo lectura',
+  'status.everyone': 'todos',
+  'status.guest': 'invitado',
+  'status.full': 'completo',
+  'status.incremental': 'incremental',
+  'status.snapshot': 'instantánea',
+
+  // Schedule translations
+  'sched.daily': 'Diario',
+  'sched.every': 'Cada',
+  'sched.weekly': 'Semanal',
+
+  // Services extra
+  'svc.start': '▶ Iniciar',
+  'svc.stop': '⏹ Parar',
+  'svc.startStop': 'Iniciar/Parar',
+
+  // Network edit
+  'net.edit': 'Editar',
+  'net.editWarning': 'Cambiar la configuración de red puede desconectarte temporalmente.',
+  'net.dhcpMode': 'DHCP (Automático)',
+  'net.staticMode': 'IP Estática',
+  'net.ip': 'Dirección IP',
+  'net.dns': 'DNS',
+  'net.dnsPrimary': 'DNS Primario',
+  'net.dnsSecondary': 'DNS Secundario',
+  'net.save': 'Guardar',
+  'net.cancel': 'Cancelar',
+
+  // Telegram
+  'set.telegram': 'Telegram',
+  'set.telegramToken': 'Token del Bot',
+  'set.telegramChatId': 'Chat ID',
+  'set.telegramEnabled': 'Activar notificaciones Telegram',
+  'set.telegramTest': 'Probar',
+
+  // Users extra
+  'users.createUser': 'Crear Usuario',
+  'users.username': 'Nombre de usuario',
+  'users.password': 'Contraseña',
+  'users.confirmPassword': 'Confirmar contraseña',
+  'users.role': 'Rol',
+  'users.create': 'Crear',
+  'users.edit': 'Editar',
+  'users.delete': 'Eliminar',
+  'users.cannotDeleteSelf': 'No puedes eliminarte a ti mismo',
 };

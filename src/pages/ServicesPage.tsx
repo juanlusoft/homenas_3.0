@@ -1,6 +1,6 @@
-import { t } from '@/i18n';
+import { t, ts } from '@/i18n';
 import { useCallback } from 'react';
-import { GlassCard, GlowPill } from '@/components/UI';
+import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { api } from '@/api/client';
 import type { DockerContainer, SystemdService } from '@/api/client';
@@ -15,7 +15,7 @@ function ContainerCard({ container }: { container: DockerContainer }) {
           <h3 className="font-display text-base font-semibold text-[var(--text-primary)] capitalize">{container.name}</h3>
           <p className="font-mono text-xs text-[var(--text-secondary)]">{container.image}</p>
         </div>
-        <GlowPill status={status} label={container.status} />
+        <GlowPill status={status} label={ts(container.status)} />
       </div>
 
       <div className="grid grid-cols-3 gap-3 text-center mb-3">
@@ -46,21 +46,24 @@ function ContainerCard({ container }: { container: DockerContainer }) {
   );
 }
 
-function ServiceRow({ service }: { service: SystemdService }) {
+function ServiceRow({ service, onToggle }: { service: SystemdService; onToggle: (name: string, start: boolean) => void }) {
   const status = service.status === 'active' ? 'healthy' : service.status === 'failed' ? 'error' : 'warning';
+  const isRunning = service.status === 'active';
 
   return (
     <div className="flex items-center justify-between py-3">
       <div className="flex items-center gap-3">
-        <div className={`h-2 w-2 rounded-full ${service.status === 'active' ? 'bg-teal animate-pulse' : 'bg-[var(--text-disabled)]'}`} />
+        <div className={`h-2 w-2 rounded-full ${isRunning ? 'bg-teal animate-pulse' : 'bg-[var(--text-disabled)]'}`} />
         <div>
           <span className="font-mono text-sm text-[var(--text-primary)]">{service.name}</span>
-          {service.enabled && <span className="ml-2 text-xs text-[var(--text-disabled)]">enabled</span>}
+          {service.enabled && <span className="ml-2 text-xs text-[var(--text-disabled)]">{ts('enabled')}</span>}
         </div>
       </div>
-      <div className="flex items-center gap-5">
-        <span className="text-xs text-[var(--text-secondary)]">{service.uptime}</span>
-        <GlowPill status={status} label={service.state} />
+      <div className="flex items-center gap-3">
+        <GlowPill status={status} label={ts(service.state)} />
+        <StitchButton size="sm" variant="ghost" onClick={() => onToggle(service.name, !isRunning)}>
+          {isRunning ? t('svc.stop') : t('svc.start')}
+        </StitchButton>
       </div>
     </div>
   );
@@ -71,7 +74,13 @@ export default function ServicesPage() {
   const fetchSystemd = useCallback(() => api.getSystemd(), []);
 
   const { data: containers, loading: dockerLoading } = useAPI<DockerContainer[]>(fetchDocker, 5000);
-  const { data: services, loading: systemdLoading } = useAPI<SystemdService[]>(fetchSystemd, 10000);
+  const { data: services, loading: systemdLoading, refresh: refreshSvc } = useAPI<SystemdService[]>(fetchSystemd, 10000);
+
+  const API = import.meta.env.VITE_API_URL || '/api';
+  const handleToggleService = useCallback(async (name: string, start: boolean) => {
+    await fetch(`${API}/services/${start ? 'start' : 'stop'}/${name}`, { method: 'POST' });
+    refreshSvc();
+  }, [API, refreshSvc]);
 
   const runningContainers = containers?.filter((c) => c.status === 'running').length || 0;
   const activeServices = services?.filter((s) => s.status === 'active').length || 0;
@@ -83,12 +92,12 @@ export default function ServicesPage() {
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('svc.containers')}</p>
           <p className="font-display text-2xl font-bold text-teal">{runningContainers}/{containers?.length || 0}</p>
-          <p className="text-xs text-[var(--text-secondary)]">running</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('svc.running')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('svc.systemServices')}</p>
           <p className="font-display text-2xl font-bold text-teal">{activeServices}/{services?.length || 0}</p>
-          <p className="text-xs text-[var(--text-secondary)]">active</p>
+          <p className="text-xs text-[var(--text-secondary)]">{ts('active')}</p>
         </GlassCard>
       </div>
 
@@ -115,7 +124,7 @@ export default function ServicesPage() {
           </div>
         ) : (
           <div className="divide-y divide-[var(--outline-variant)]">
-            {services?.map((s) => <ServiceRow key={s.name} service={s} />)}
+            {services?.map((s) => <ServiceRow key={s.name} service={s} onToggle={handleToggleService} />)}
           </div>
         )}
       </GlassCard>

@@ -12,6 +12,8 @@ import { storageRouter } from './routes/storage.js';
 import { networkRouter } from './routes/network.js';
 import { servicesRouter } from './routes/services.js';
 import { activeBackupRouter } from './routes/active-backup.js';
+import { filesRouter } from './routes/files.js';
+import { settingsRouter } from './routes/settings.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -34,6 +36,8 @@ app.use('/api/storage', storageRouter);
 app.use('/api/network', networkRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/active-backup', activeBackupRouter);
+app.use('/api/files', filesRouter);
+app.use('/api/settings', settingsRouter);
 
 // Serve built frontend in production
 if (process.env.NODE_ENV === 'production') {

@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t, ts } from '@/i18n';
 import { useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
@@ -48,9 +48,9 @@ function BackupJobCard({ job }: { job: BackupJob }) {
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="font-display text-base font-semibold text-[var(--text-primary)]">{job.name}</h3>
-          <p className="text-xs text-[var(--text-secondary)]">{job.type} · {job.schedule}</p>
+          <p className="text-xs text-[var(--text-secondary)]">{ts(job.type)} · {job.schedule}</p>
         </div>
-        <GlowPill status={statusToGlow(job.status)} label={job.status} />
+        <GlowPill status={statusToGlow(job.status)} label={ts(job.status)} />
       </div>
 
       <div className="space-y-2 text-sm">

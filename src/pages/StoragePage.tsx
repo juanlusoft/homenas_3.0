@@ -5,18 +5,32 @@ import { useAPI } from '@/hooks/useAPI';
 import { api } from '@/api/client';
 import type { Disk } from '@/api/client';
 
+const ROLE_BADGE: Record<string, { color: string; label: string }> = {
+  cache: { color: 'bg-blue-500/10 text-blue-400 border-blue-500/30', label: 'Caché' },
+  data: { color: 'bg-teal/10 text-teal border-teal/30', label: 'Datos' },
+  parity: { color: 'bg-orange/10 text-orange border-orange/30', label: 'Paridad' },
+};
+
 function DiskCard({ disk }: { disk: Disk }) {
   const status = disk.health === 'healthy' ? 'healthy' : disk.health === 'warning' ? 'warning' : 'error';
   const barColor = disk.usage > 90 ? 'bg-red-500' : disk.usage > 75 ? 'bg-amber-500' : 'bg-teal';
+  const badge = disk.role ? ROLE_BADGE[disk.role] : null;
 
   return (
     <GlassCard elevation="mid" className="hover:shadow-lg transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="font-display text-base font-semibold text-[var(--text-primary)]">{disk.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-base font-semibold text-[var(--text-primary)]">{disk.name}</h3>
+            {badge && (
+              <span className={`text-xs font-mono px-2 py-0.5 rounded-full border ${badge.color}`}>
+                {badge.label}
+              </span>
+            )}
+          </div>
           <p className="font-mono text-xs text-[var(--text-secondary)]">{disk.device} · {disk.type}</p>
         </div>
-        <GlowPill status={status} label={disk.smart.status} />
+        <GlowPill status={status} label={disk.smart?.status || 'N/A'} />
       </div>
 
       {/* Usage bar */}
@@ -37,16 +51,20 @@ function DiskCard({ disk }: { disk: Disk }) {
       {/* SMART details */}
       <div className="grid grid-cols-3 gap-3 text-center">
         <div>
-          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{disk.temperature}°C</p>
+          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">
+            {disk.temperature > 0 ? `${disk.temperature}°C` : 'N/A'}
+          </p>
           <p className="text-xs text-[var(--text-secondary)]">{t('storage.temp')}</p>
         </div>
         <div>
-          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{(disk.smart.powerOnHours / 24).toFixed(0)}d</p>
+          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">
+            {disk.smart.powerOnHours > 0 ? `${Math.floor(disk.smart.powerOnHours / 24)}d` : 'N/A'}
+          </p>
           <p className="text-xs text-[var(--text-secondary)]">{t('storage.powerOn')}</p>
         </div>
         <div>
           <p className={`font-mono text-lg font-bold ${disk.smart.badSectors > 0 ? 'text-red-400' : 'text-teal'}`}>
-            {disk.smart.badSectors}
+            {disk.smart.status === 'N/A' ? 'N/A' : disk.smart.badSectors}
           </p>
           <p className="text-xs text-[var(--text-secondary)]">{t('storage.badSectors')}</p>
         </div>

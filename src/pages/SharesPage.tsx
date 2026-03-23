@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t, ts } from '@/i18n';
 import { useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
@@ -53,19 +53,19 @@ function ShareCard({ share }: { share: Share }) {
           </div>
           <p className="font-mono text-xs text-[var(--text-secondary)] mt-1">{share.path}</p>
         </div>
-        <GlowPill status={share.status === 'active' ? 'healthy' : 'error'} label={share.status} />
+        <GlowPill status={share.status === 'active' ? 'healthy' : 'error'} label={ts(share.status)} />
       </div>
 
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-[var(--text-secondary)]">{t('shares.access')}</span>
           <span className={`font-mono ${share.accessMode === 'read-write' ? 'text-teal' : 'text-[var(--text-primary)]'}`}>
-            {share.accessMode}
+            {ts(share.accessMode)}
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--text-secondary)]">{t('shares.users')}</span>
-          <span className="font-mono text-xs text-[var(--text-primary)]">{share.allowedUsers.join(', ')}</span>
+          <span className="font-mono text-xs text-[var(--text-primary)]">{share.allowedUsers.map(u => ts(u)).join(', ')}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--text-secondary)]">{t('shares.connected')}</span>

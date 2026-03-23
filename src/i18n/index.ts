@@ -23,3 +23,11 @@ export function t(key: string, fallback?: string): string {
     ?? fallback
     ?? key;
 }
+
+
+/** Translate status/state values from API */
+export function ts(value: string): string {
+  const key = 'status.' + value.toLowerCase();
+  const translated = t(key);
+  return translated !== key ? translated : value;
+}

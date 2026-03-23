@@ -51,6 +51,34 @@ servicesRouter.get('/systemd', async (_req, res) => {
   }
 });
 
+/** POST /api/services/start/:name — Start a service */
+servicesRouter.post('/start/:name', async (req, res) => {
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(ef);
+    await execFileAsync('sudo', ['systemctl', 'start', name], { timeout: 10000 });
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, error: `Failed to start ${name}` });
+  }
+});
+
+/** POST /api/services/stop/:name — Stop a service */
+servicesRouter.post('/stop/:name', async (req, res) => {
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(ef);
+    await execFileAsync('sudo', ['systemctl', 'stop', name], { timeout: 10000 });
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, error: `Failed to stop ${name}` });
+  }
+});
+
 function timeSince(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return `${seconds}s`;

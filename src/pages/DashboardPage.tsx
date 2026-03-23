@@ -9,16 +9,13 @@ import { useLiveMetrics } from '@/hooks/useLiveMetrics';
 import { api } from '@/api/client';
 import type { Disk } from '@/api/client';
 
-function formatBytes(bytes: number): string {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
-  return `${(bytes / 1e3).toFixed(1)} KB`;
-}
-
-function formatSpeed(bytesPerSec: number): string {
-  if (bytesPerSec >= 1e6) return `${(bytesPerSec / 1e6).toFixed(1)} MB/s`;
-  if (bytesPerSec >= 1e3) return `${(bytesPerSec / 1e3).toFixed(1)} KB/s`;
-  return `${Math.round(bytesPerSec)} B/s`;
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 function MetricValue({ value, unit, color = 'text-teal' }: { value: string | number; unit: string; color?: string }) {
@@ -30,18 +27,29 @@ function MetricValue({ value, unit, color = 'text-teal' }: { value: string | num
   );
 }
 
+const ROLE_BORDERS: Record<string, string> = {
+  cache: 'border-l-4 border-l-blue-400',
+  data: 'border-l-4 border-l-teal',
+  parity: 'border-l-4 border-l-orange',
+  system: '',
+};
+
 function DiskRow({ disk }: { disk: Disk }) {
   const status = disk.health === 'healthy' ? 'healthy' : disk.health === 'warning' ? 'warning' : 'error';
   const barColor = disk.usage > 90 ? 'bg-red-500' : disk.usage > 75 ? 'bg-amber-500' : 'bg-teal';
+  const roleBorder = ROLE_BORDERS[disk.role || ''] || '';
 
   return (
-    <div className="flex items-center justify-between py-3">
+    <div className={`flex items-center justify-between py-3 pl-3 ${roleBorder}`}>
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         <span className="font-mono text-sm text-[var(--text-primary)]">{disk.name}</span>
-        <span className="text-xs text-[var(--text-secondary)]">{disk.device} · {disk.type} · {disk.size}</span>
+        <span className="text-xs text-[var(--text-secondary)]">
+          {disk.device} · {disk.type}
+          {disk.temperature > 0 ? ` · ${disk.temperature}°C` : ''}
+          {disk.smart?.powerOnHours > 0 ? ` · ${Math.floor(disk.smart.powerOnHours / 24)}d` : ''}
+        </span>
       </div>
       <div className="flex items-center gap-4">
-        <span className="font-mono text-sm text-[var(--text-secondary)]">{disk.temperature}°C</span>
         <div className="w-28">
           <div className="h-1.5 rounded-full bg-surface-void">
             <div className={`h-1.5 rounded-full ${barColor} transition-all duration-500`} style={{ width: `${disk.usage}%` }} />
@@ -51,7 +59,7 @@ function DiskRow({ disk }: { disk: Disk }) {
             <span className="font-mono text-xs text-[var(--text-disabled)]">{disk.usage}%</span>
           </div>
         </div>
-        <GlowPill status={status} label={disk.smart.status} />
+        <GlowPill status={status} label={disk.smart?.status || 'N/A'} />
       </div>
     </div>
   );
@@ -60,30 +68,30 @@ function DiskRow({ disk }: { disk: Disk }) {
 export default function DashboardPage() {
   const { metrics: live, isConnected, history } = useLiveMetrics();
   const fetchDisks = useCallback(() => api.getDisks(), []);
+  const fetchUptime = useCallback(() =>
+    fetch(`${import.meta.env.VITE_API_URL || '/api'}/system/metrics`).then(r => r.json()), []);
   const { data: disks, loading: disksLoading } = useAPI<Disk[]>(fetchDisks, 10000);
+  const { data: sysMetrics } = useAPI<{ uptime: number }>(fetchUptime, 5000);
 
-  // Use live metrics if available, otherwise show loading
   const cpu = live ? parseFloat(live.cpu) : 0;
   const memUsed = live?.memory.used ?? 0;
-  const memTotal = live?.memory.total ?? 0;
-  const temp = live?.temperature ?? 0;
   const loading = !live;
 
+  // Main disk usage (first data disk or largest)
+  const mainDisk = disks?.find(d => d.role === 'data') ?? disks?.[0];
 
   return (
     <div className="space-y-8">
       {/* Connection status */}
       <div className="flex items-center gap-2 text-xs text-[var(--text-disabled)]">
         <span className={`inline-block w-2 h-2 rounded-full ${isConnected ? 'bg-teal animate-pulse' : 'bg-red-500'}`} />
-        {isConnected ? 'Real-time' : 'Connecting...'}
+        {isConnected ? t('dash.realtime') : t('dash.connecting')}
       </div>
 
-      {/* Metrics row */}
+      {/* Metrics row: CPU, Memory, Uptime, Disk Usage */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard elevation="mid">
-          <div className="mb-2">
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.cpuUsage')}</p>
-          </div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.cpuUsage')}</p>
           {loading ? (
             <div className="h-9 w-20 animate-pulse rounded bg-surface-void" />
           ) : (
@@ -92,50 +100,49 @@ export default function DashboardPage() {
         </GlassCard>
 
         <GlassCard elevation="mid">
-          <div className="mb-2">
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.memory')}</p>
-          </div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.memory')}</p>
           {loading ? (
             <div className="h-9 w-24 animate-pulse rounded bg-surface-void" />
           ) : (
-            <MetricValue value={memUsed} unit={`% / ${formatBytes(memTotal * 1024 * 1024)}`} />
+            <MetricValue value={memUsed} unit="%" />
           )}
         </GlassCard>
 
         <GlassCard elevation="mid">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.temperature')}</p>
-          {loading ? (
-            <div className="h-9 w-16 animate-pulse rounded bg-surface-void" />
-          ) : (
-            <MetricValue value={temp} unit="°C" color={temp > 70 ? 'text-red-400' : 'text-teal'} />
-          )}
-        </GlassCard>
-
-        <GlassCard elevation="mid">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.networkIO')}</p>
-          {loading || !live?.network ? (
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('sys.uptime')}</p>
+          {!sysMetrics ? (
             <div className="h-9 w-20 animate-pulse rounded bg-surface-void" />
           ) : (
-            <div className="flex flex-col gap-0.5">
-              <span className="font-mono text-sm text-teal">↓ {formatSpeed(live.network.rx)}</span>
-              <span className="font-mono text-sm text-orange">↑ {formatSpeed(live.network.tx)}</span>
-            </div>
+            <MetricValue value={formatUptime(sysMetrics.uptime)} unit="" />
+          )}
+        </GlassCard>
+
+        <GlassCard elevation="mid">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('dash.diskUsage')}</p>
+          {!mainDisk ? (
+            <div className="h-9 w-20 animate-pulse rounded bg-surface-void" />
+          ) : (
+            <MetricValue
+              value={mainDisk.usage}
+              unit={`% · ${mainDisk.free}`}
+              color={mainDisk.usage > 90 ? 'text-red-400' : 'text-teal'}
+            />
           )}
         </GlassCard>
       </div>
 
-      {/* Real-time charts (lazy loaded) */}
+      {/* Real-time charts */}
       {history.length > 5 && (
         <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface-void" />}>
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <GlassCard elevation="low">
-              <MetricsChart data={history} dataKey="cpu" label={t("dash.cpuHistory")} />
+              <MetricsChart data={history} dataKey="cpu" label={t('dash.cpuHistory')} />
             </GlassCard>
             <GlassCard elevation="low">
-              <MetricsChart data={history} dataKey="memory" label={t("dash.memHistory")} color="#64b5f6" />
+              <MetricsChart data={history} dataKey="memory" label={t('dash.memHistory')} color="#64b5f6" />
             </GlassCard>
             <GlassCard elevation="low">
-              <MetricsChart data={history} dataKey="temperature" label={t("dash.tempHistory")} maxY={90} unit="°C" />
+              <MetricsChart data={history} dataKey="temperature" label={t('dash.tempHistory')} maxY={90} unit="°C" />
             </GlassCard>
             <GlassCard elevation="low">
               <NetworkChart data={history} />
@@ -144,7 +151,8 @@ export default function DashboardPage() {
         </Suspense>
       )}
 
-            <GlassCard elevation="low">
+      {/* Disk Array */}
+      <GlassCard elevation="low">
         <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">
           {t('dash.diskArray')}
         </h2>
@@ -152,10 +160,12 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {[1, 2, 3].map((i) => <div key={i} className="h-12 animate-pulse rounded bg-surface-void" />)}
           </div>
-        ) : (
+        ) : disks && disks.length > 0 ? (
           <div className="divide-y divide-[var(--outline-variant)]">
-            {disks?.map((disk) => <DiskRow key={disk.device} disk={disk} />)}
+            {disks.map((disk) => <DiskRow key={disk.device} disk={disk} />)}
           </div>
+        ) : (
+          <p className="text-sm text-[var(--text-disabled)] text-center py-4">{t('pool.noDisks')}</p>
         )}
       </GlassCard>
     </div>

@@ -30,6 +30,7 @@ export interface Disk {
   health: 'healthy' | 'warning' | 'critical';
   temperature: number;
   type: string;
+  role?: 'cache' | 'data' | 'parity' | 'system';
   smart: { status: string; powerOnHours: number; badSectors: number };
 }
 
