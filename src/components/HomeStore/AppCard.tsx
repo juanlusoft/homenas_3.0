@@ -9,13 +9,12 @@ import type { StoreApp } from './types';
 interface AppCardProps {
   app: StoreApp;
   busy?: 'installing' | 'uninstalling';
-  onInstall: (id: string) => void;
   onUninstall: (id: string) => void;
   onOpen: (id: string) => void;
   onConfigure: (id: string) => void;
 }
 
-export function AppCard({ app, busy, onInstall, onUninstall, onOpen, onConfigure }: AppCardProps) {
+export function AppCard({ app, busy, onUninstall, onOpen, onConfigure }: AppCardProps) {
   return (
     <GlassCard elevation="mid" className="flex flex-col">
       <div className="flex items-start gap-3 mb-3">
