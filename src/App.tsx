@@ -23,7 +23,8 @@ import { useNotifications } from '@/hooks/useNotifications';
 
 type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'homestore' | 'network' | 'logs' | 'terminal' | 'system' | 'settings' | 'users';
 
-const navItems: { id: View; label: string; icon: string }[] = [
+function getNavItems(): { id: View; label: string; icon: string }[] {
+  return [
   { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
   { id: 'files', label: t('nav.files'), icon: '📂' },
   { id: 'shares', label: t('nav.shares'), icon: '🔗' },
@@ -40,8 +41,10 @@ const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'settings', label: t('nav.settings'), icon: '🔧' },
   { id: 'users', label: t('nav.users'), icon: '👤' },
 ];
+}
 
-const viewSubtitles: Record<View, string> = {
+function getSubtitles(): Record<View, string> {
+  return {
   dashboard: t('sub.dashboard'),
   files: t('sub.files'),
   shares: t('sub.shares'),
@@ -58,6 +61,7 @@ const viewSubtitles: Record<View, string> = {
   settings: t('sub.settings'),
   users: t('sub.users'),
 };
+}
 
 const viewComponents: Record<View, React.FC> = {
   dashboard: DashboardPage,
@@ -136,7 +140,7 @@ export default function App() {
         </div>
 
         <nav className="flex-1 px-3 overflow-y-auto">
-          {navItems.map((item) => (
+          {getNavItems().map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(item.id)}
@@ -188,7 +192,7 @@ export default function App() {
                   {currentView}
                 </h2>
                 <p className="text-xs lg:text-sm text-[var(--text-secondary)]">
-                  {viewSubtitles[currentView]}
+                  {getSubtitles()[currentView]}
                 </p>
               </div>
             </div>

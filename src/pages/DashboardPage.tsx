@@ -144,10 +144,9 @@ export default function DashboardPage() {
         </Suspense>
       )}
 
-      {/* t('dash.diskArray') */}
-      <GlassCard elevation="low">
+            <GlassCard elevation="low">
         <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">
-          t('dash.diskArray')
+          {t('dash.diskArray')}
         </h2>
         {disksLoading ? (
           <div className="space-y-3">

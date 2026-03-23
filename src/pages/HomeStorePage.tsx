@@ -4,16 +4,18 @@ import { GlassCard } from '@/components/UI';
 import { AppCard } from '@/components/HomeStore';
 import type { StoreApp, AppCategory } from '@/components/HomeStore';
 
-const CATEGORIES: { id: AppCategory | 'all'; label: string; icon: string }[] = [
-  { id: 'all', label: t('store.all'), icon: '🏪' },
-  { id: 'media', label: t('store.media'), icon: '🎬' },
-  { id: 'productivity', label: t('store.productivity'), icon: '📝' },
-  { id: 'security', label: t('store.security'), icon: '🔒' },
-  { id: 'development', label: t('store.development'), icon: '💻' },
-  { id: 'network', label: t('store.network'), icon: '🌐' },
-  { id: 'backup', label: t('store.backup'), icon: '📦' },
-  { id: 'monitoring', label: t('store.monitoring'), icon: '📊' },
-];
+function getCategories(): { id: AppCategory | 'all'; label: string; icon: string }[] {
+  return [
+    { id: 'all', label: t('store.all'), icon: '🏪' },
+    { id: 'media', label: t('store.media'), icon: '🎬' },
+    { id: 'productivity', label: t('store.productivity'), icon: '📝' },
+    { id: 'security', label: t('store.security'), icon: '🔒' },
+    { id: 'development', label: t('store.development'), icon: '💻' },
+    { id: 'network', label: t('store.network'), icon: '🌐' },
+    { id: 'backup', label: t('store.backup'), icon: '📦' },
+    { id: 'monitoring', label: t('store.monitoring'), icon: '📊' },
+  ];
+}
 
 const INITIAL_APPS: StoreApp[] = [
   // Media
@@ -145,7 +147,7 @@ export default function HomeStorePage() {
 
       {/* Categories + filter */}
       <div className="flex flex-wrap items-center gap-2">
-        {CATEGORIES.map(cat => (
+        {getCategories().map(cat => (
           <button
             key={cat.id}
             onClick={() => setCategory(cat.id)}
