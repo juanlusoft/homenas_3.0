@@ -5,12 +5,14 @@ import StoragePage from '@/pages/StoragePage';
 import ServicesPage from '@/pages/ServicesPage';
 import NetworkPage from '@/pages/NetworkPage';
 import SystemPage from '@/pages/SystemPage';
+import BackupPage from '@/pages/BackupPage';
 
-type View = 'dashboard' | 'storage' | 'services' | 'network' | 'system';
+type View = 'dashboard' | 'storage' | 'services' | 'network' | 'system' | 'backup';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'storage', label: 'Storage', icon: '💾' },
+  { id: 'backup', label: 'Backup', icon: '📦' },
   { id: 'services', label: 'Services', icon: '🐳' },
   { id: 'network', label: 'Network', icon: '🌐' },
   { id: 'system', label: 'System', icon: '⚙️' },
@@ -19,6 +21,7 @@ const navItems: { id: View; label: string; icon: string }[] = [
 const viewComponents: Record<View, React.FC> = {
   dashboard: DashboardPage,
   storage: StoragePage,
+  backup: BackupPage,
   services: ServicesPage,
   network: NetworkPage,
   system: SystemPage,
@@ -81,6 +84,7 @@ export default function App() {
               {currentView === 'services' && 'Docker & systemd management'}
               {currentView === 'network' && 'Network interfaces & traffic'}
               {currentView === 'system' && 'Hardware, OS & system settings'}
+              {currentView === 'backup' && 'Backup jobs & restore points'}
             </p>
           </div>
           <div className="flex items-center gap-3">
