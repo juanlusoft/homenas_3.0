@@ -1,6 +1,6 @@
 import { t } from '@/i18n';
-import { useState, useCallback } from 'react';
-import { GlassCard, StitchButton } from '@/components/UI';
+import { useState, useCallback, useRef } from 'react';
+import { GlassCard, StitchButton, Modal } from '@/components/UI';
 
 interface FileEntry {
   name: string;
@@ -11,22 +11,16 @@ interface FileEntry {
 }
 
 const FILE_ICONS: Record<string, string> = {
-  directory: '📁',
-  image: '🖼️',
-  video: '🎬',
-  audio: '🎵',
-  document: '📄',
-  archive: '📦',
-  code: '💻',
-  default: '📃',
+  directory: '📁', image: '🖼️', video: '🎬', audio: '🎵',
+  document: '📄', archive: '📦', code: '💻', default: '📃',
 };
 
 function getFileIcon(entry: FileEntry): string {
   if (entry.type === 'directory') return FILE_ICONS.directory;
   const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return FILE_ICONS.image;
-  if (['mp4', 'mkv', 'avi', 'mov', 'wmv'].includes(ext)) return FILE_ICONS.video;
-  if (['mp3', 'flac', 'wav', 'aac', 'ogg'].includes(ext)) return FILE_ICONS.audio;
+  if (['mp4', 'mkv', 'avi', 'mov'].includes(ext)) return FILE_ICONS.video;
+  if (['mp3', 'flac', 'wav', 'aac'].includes(ext)) return FILE_ICONS.audio;
   if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'].includes(ext)) return FILE_ICONS.document;
   if (['zip', 'tar', 'gz', 'rar', '7z'].includes(ext)) return FILE_ICONS.archive;
   if (['js', 'ts', 'py', 'sh', 'json', 'html', 'css'].includes(ext)) return FILE_ICONS.code;
@@ -41,59 +35,84 @@ function formatSize(bytes: number): string {
   return `${bytes} B`;
 }
 
-// Mock filesystem
-const MOCK_FS: Record<string, FileEntry[]> = {
-  '/': [
-    { name: 'Documents', type: 'directory', size: 0, modified: '2026-03-22', permissions: 'rwxr-xr-x' },
-    { name: 'Media', type: 'directory', size: 0, modified: '2026-03-20', permissions: 'rwxr-xr-x' },
-    { name: 'Backups', type: 'directory', size: 0, modified: '2026-03-23', permissions: 'rwx------' },
-    { name: 'Downloads', type: 'directory', size: 0, modified: '2026-03-21', permissions: 'rwxr-xr-x' },
-    { name: 'docker-compose.yml', type: 'file', size: 2048, modified: '2026-03-15', permissions: 'rw-r--r--' },
-    { name: 'notes.txt', type: 'file', size: 512, modified: '2026-03-23', permissions: 'rw-r--r--' },
-  ],
-  '/Documents': [
-    { name: 'reports', type: 'directory', size: 0, modified: '2026-03-18', permissions: 'rwxr-xr-x' },
-    { name: 'budget-2026.xlsx', type: 'file', size: 45000, modified: '2026-03-10', permissions: 'rw-r--r--' },
-    { name: 'readme.md', type: 'file', size: 1200, modified: '2026-03-22', permissions: 'rw-r--r--' },
-  ],
-  '/Media': [
-    { name: 'Photos', type: 'directory', size: 0, modified: '2026-03-19', permissions: 'rwxr-xr-x' },
-    { name: 'Movies', type: 'directory', size: 0, modified: '2026-02-28', permissions: 'rwxr-xr-x' },
-    { name: 'Music', type: 'directory', size: 0, modified: '2026-03-01', permissions: 'rwxr-xr-x' },
-    { name: 'vacation.mp4', type: 'file', size: 2500000000, modified: '2026-03-15', permissions: 'rw-r--r--' },
-  ],
-};
+const API = import.meta.env.VITE_API_URL || '/api';
 
 export default function FilesPage() {
   const [currentPath, setCurrentPath] = useState('/');
+  const [entries, setEntries] = useState<FileEntry[]>([]);
+  const [loading, setLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [mkdirOpen, setMkdirOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const entries = MOCK_FS[currentPath] ?? [];
+  const fetchFiles = useCallback(async (path: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/files/list?path=${encodeURIComponent(path)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEntries(data);
+      }
+    } catch { /* fallback to empty */ }
+    setLoading(false);
+  }, []);
 
+  // Load files on path change
   const navigateTo = useCallback((entry: FileEntry) => {
     if (entry.type === 'directory') {
       const newPath = currentPath === '/' ? `/${entry.name}` : `${currentPath}/${entry.name}`;
       setCurrentPath(newPath);
+      fetchFiles(newPath);
       setSelectedFiles(new Set());
     }
-  }, [currentPath]);
+  }, [currentPath, fetchFiles]);
 
   const navigateUp = useCallback(() => {
     const parts = currentPath.split('/').filter(Boolean);
     parts.pop();
-    setCurrentPath(parts.length === 0 ? '/' : `/${parts.join('/')}`);
+    const newPath = parts.length === 0 ? '/' : `/${parts.join('/')}`;
+    setCurrentPath(newPath);
+    fetchFiles(newPath);
     setSelectedFiles(new Set());
-  }, [currentPath]);
+  }, [currentPath, fetchFiles]);
 
   const toggleSelect = useCallback((name: string) => {
     setSelectedFiles(prev => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(name)) next.delete(name); else next.add(name);
       return next;
     });
   }, []);
+
+  // Create folder
+  const handleMkdir = useCallback(async () => {
+    if (!newFolderName.trim()) return;
+    await fetch(`${API}/files/mkdir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dirPath: currentPath, name: newFolderName.trim() }),
+    });
+    setMkdirOpen(false);
+    setNewFolderName('');
+    fetchFiles(currentPath);
+  }, [currentPath, newFolderName, fetchFiles]);
+
+  // Upload
+  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files?.length) return;
+    const formData = new FormData();
+    for (const file of files) formData.append('files', file);
+    formData.append('path', currentPath);
+    await fetch(`${API}/files/upload`, { method: 'POST', body: formData });
+    fetchFiles(currentPath);
+    e.target.value = '';
+  }, [currentPath, fetchFiles]);
+
+  // Initial load
+  useState(() => { fetchFiles('/'); });
 
   const breadcrumbs = ['Home', ...currentPath.split('/').filter(Boolean)];
 
@@ -101,27 +120,23 @@ export default function FilesPage() {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-1 text-sm">
           {breadcrumbs.map((crumb, i) => (
             <span key={i} className="flex items-center gap-1">
               {i > 0 && <span className="text-[var(--text-disabled)]">/</span>}
               <button
                 onClick={() => {
-                  if (i === 0) setCurrentPath('/');
-                  else setCurrentPath('/' + breadcrumbs.slice(1, i + 1).join('/'));
+                  const newPath = i === 0 ? '/' : '/' + breadcrumbs.slice(1, i + 1).join('/');
+                  setCurrentPath(newPath);
+                  fetchFiles(newPath);
                 }}
                 className={`hover:text-teal transition-colors ${
                   i === breadcrumbs.length - 1 ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'
                 }`}
-              >
-                {crumb}
-              </button>
+              >{crumb}</button>
             </span>
           ))}
         </div>
-
-        {/* Actions */}
         <div className="flex items-center gap-2">
           {selectedFiles.size > 0 && (
             <span className="text-xs text-teal font-mono">{selectedFiles.size} {t('files.selected')}</span>
@@ -129,14 +144,21 @@ export default function FilesPage() {
           <StitchButton size="sm" variant="ghost" onClick={() => setViewMode(v => v === 'list' ? 'grid' : 'list')}>
             {viewMode === 'list' ? '⊞' : '☰'}
           </StitchButton>
-          <StitchButton size="sm" variant="ghost">{t('files.upload')}</StitchButton>
-          <StitchButton size="sm" variant="ghost">{t('files.newFolder')}</StitchButton>
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleUpload} />
+          <StitchButton size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()}>
+            {t('files.upload')}
+          </StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={() => setMkdirOpen(true)}>
+            {t('files.newFolder')}
+          </StitchButton>
         </div>
       </div>
 
-      {/* File list/grid */}
+      {/* File list */}
       <GlassCard elevation="low" className="!p-0 overflow-hidden">
-        {viewMode === 'list' ? (
+        {loading ? (
+          <div className="p-8 text-center text-[var(--text-disabled)]">⏳</div>
+        ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--outline-variant)] text-left text-xs uppercase tracking-wider text-[var(--text-secondary)]">
@@ -144,91 +166,61 @@ export default function FilesPage() {
                 <th className="py-2.5 px-2">{t('files.name')}</th>
                 <th className="py-2.5 px-2 hidden sm:table-cell">{t('files.size')}</th>
                 <th className="py-2.5 px-2 hidden md:table-cell">{t('files.modified')}</th>
-                <th className="py-2.5 px-2 hidden lg:table-cell">{t('files.permissions')}</th>
               </tr>
             </thead>
             <tbody>
               {currentPath !== '/' && (
-                <tr
-                  onClick={navigateUp}
-                  className="border-b border-[var(--outline-variant)] cursor-pointer hover:bg-surface-void transition-colors"
-                >
-                  <td className="py-2 px-4">
-                    <input type="checkbox" disabled className="opacity-0" />
-                  </td>
+                <tr onClick={navigateUp} className="border-b border-[var(--outline-variant)] cursor-pointer hover:bg-surface-void transition-colors">
+                  <td className="py-2 px-4"></td>
                   <td className="py-2 px-2 text-[var(--text-secondary)]">📁 ..</td>
                   <td className="py-2 px-2 hidden sm:table-cell"></td>
                   <td className="py-2 px-2 hidden md:table-cell"></td>
-                  <td className="py-2 px-2 hidden lg:table-cell"></td>
                 </tr>
               )}
               {entries.map(entry => (
-                <tr
-                  key={entry.name}
+                <tr key={entry.name}
                   className={`border-b border-[var(--outline-variant)] cursor-pointer transition-colors ${
                     selectedFiles.has(entry.name) ? 'bg-teal/5' : 'hover:bg-surface-void'
                   }`}
                   onDoubleClick={() => navigateTo(entry)}
-                  onClick={() => toggleSelect(entry.name)}
-                >
+                  onClick={() => toggleSelect(entry.name)}>
                   <td className="py-2 px-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedFiles.has(entry.name)}
-                      onChange={() => toggleSelect(entry.name)}
-                      className="accent-teal"
-                      onClick={e => e.stopPropagation()}
-                    />
+                    <input type="checkbox" checked={selectedFiles.has(entry.name)} readOnly className="accent-teal" />
                   </td>
                   <td className="py-2 px-2">
                     <span className="mr-2">{getFileIcon(entry)}</span>
-                    <span className={entry.type === 'directory' ? 'text-teal font-medium' : 'text-[var(--text-primary)]'}>
-                      {entry.name}
-                    </span>
+                    <span className={entry.type === 'directory' ? 'text-teal font-medium' : 'text-[var(--text-primary)]'}>{entry.name}</span>
                   </td>
                   <td className="py-2 px-2 font-mono text-xs text-[var(--text-secondary)] hidden sm:table-cell">
                     {entry.type === 'file' ? formatSize(entry.size) : '—'}
                   </td>
-                  <td className="py-2 px-2 font-mono text-xs text-[var(--text-secondary)] hidden md:table-cell">
-                    {entry.modified}
-                  </td>
-                  <td className="py-2 px-2 font-mono text-xs text-[var(--text-disabled)] hidden lg:table-cell">
-                    {entry.permissions}
-                  </td>
+                  <td className="py-2 px-2 font-mono text-xs text-[var(--text-secondary)] hidden md:table-cell">{entry.modified}</td>
                 </tr>
               ))}
+              {entries.length === 0 && !loading && (
+                <tr><td colSpan={4} className="py-8 text-center text-[var(--text-disabled)]">📂 {t('files.items')}: 0</td></tr>
+              )}
             </tbody>
           </table>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 p-4">
-            {currentPath !== '/' && (
-              <button onClick={navigateUp} className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-surface-void">
-                <span className="text-3xl">📁</span>
-                <span className="text-xs text-[var(--text-secondary)]">..</span>
-              </button>
-            )}
-            {entries.map(entry => (
-              <button
-                key={entry.name}
-                onDoubleClick={() => navigateTo(entry)}
-                onClick={() => toggleSelect(entry.name)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-colors ${
-                  selectedFiles.has(entry.name) ? 'bg-teal/10 ring-1 ring-teal/30' : 'hover:bg-surface-void'
-                }`}
-              >
-                <span className="text-3xl">{getFileIcon(entry)}</span>
-                <span className="text-xs text-[var(--text-primary)] truncate max-w-full">{entry.name}</span>
-              </button>
-            ))}
-          </div>
         )}
       </GlassCard>
 
-      {/* Status bar */}
       <div className="flex items-center justify-between text-xs text-[var(--text-disabled)]">
         <span>{entries.length} {t('files.items')}</span>
         <span>{currentPath}</span>
       </div>
+
+      {/* New Folder Modal */}
+      <Modal open={mkdirOpen} onClose={() => setMkdirOpen(false)} title={t('files.newFolder')}
+        actions={<>
+          <StitchButton size="sm" variant="ghost" onClick={() => setMkdirOpen(false)}>{t('common.cancel')}</StitchButton>
+          <StitchButton size="sm" onClick={handleMkdir}>{t('common.save')}</StitchButton>
+        </>}>
+        <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+          placeholder={t('files.name')} autoFocus
+          className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]"
+          onKeyDown={e => e.key === 'Enter' && handleMkdir()} />
+      </Modal>
     </div>
   );
 }

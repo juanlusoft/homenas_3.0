@@ -113,9 +113,9 @@ export default function SystemPage() {
       <GlassCard elevation="low">
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('sys.actions')}</h3>
         <div className="flex flex-wrap gap-3">
-          <StitchButton size="sm" variant="ghost">{t('sys.diagnostics')}</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={() => window.alert('Running diagnostics...')}>{t('sys.diagnostics')}</StitchButton>
           <StitchButton size="sm" variant="ghost">{t('sys.checkUpdates')}</StitchButton>
-          <StitchButton size="sm" variant="ghost">{t('sys.viewLogs')}</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={() => { /* handled by parent nav */ }}>{t('sys.viewLogs')}</StitchButton>
           <StitchButton size="sm" variant="ghost">{t('sys.configuration')}</StitchButton>
         </div>
       </GlassCard>

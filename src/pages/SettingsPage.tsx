@@ -15,6 +15,9 @@ interface SettingsState {
   notifyOnBackup: boolean;
   fanMode: 'auto' | 'manual' | 'quiet';
   powerOnAfterFailure: boolean;
+  telegramToken: string;
+  telegramChatId: string;
+  telegramEnabled: boolean;
 }
 
 const INITIAL: SettingsState = {
@@ -30,6 +33,9 @@ const INITIAL: SettingsState = {
   notifyOnBackup: true,
   fanMode: 'auto',
   powerOnAfterFailure: true,
+  telegramToken: '',
+  telegramChatId: '',
+  telegramEnabled: false,
 };
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
@@ -52,10 +58,25 @@ export default function SettingsPage() {
     setSaved(false);
   };
 
-  const handleSave = () => {
-    // TODO: POST to /api/settings
+  const API = import.meta.env.VITE_API_URL || '/api';
+
+  const handleSave = async () => {
+    await fetch(`${API}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleTestTelegram = async () => {
+    if (!settings.telegramToken || !settings.telegramChatId) return;
+    await fetch(`${API}/settings/notifications/test-telegram`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: settings.telegramToken, chatId: settings.telegramChatId }),
+    });
   };
 
   return (
@@ -137,6 +158,31 @@ export default function SettingsPage() {
           </div>
           <Toggle checked={settings.notifyOnError} onChange={() => update('notifyOnError', !settings.notifyOnError)} label={t('set.notifyErrors')} />
           <Toggle checked={settings.notifyOnBackup} onChange={() => update('notifyOnBackup', !settings.notifyOnBackup)} label={t('set.notifyBackup')} />
+        </div>
+      </GlassCard>
+
+      {/* Telegram */}
+      <GlassCard elevation="low">
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.telegram')}</h3>
+        <div className="space-y-4">
+          <Toggle checked={settings.telegramEnabled} onChange={() => update('telegramEnabled', !settings.telegramEnabled)} label={t('set.telegramEnabled')} />
+          {settings.telegramEnabled && (
+            <>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('set.telegramToken')}</label>
+                <input value={settings.telegramToken} onChange={e => update('telegramToken', e.target.value)}
+                  placeholder="123456:ABC-DEF..."
+                  className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+              </div>
+              <div>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('set.telegramChatId')}</label>
+                <input value={settings.telegramChatId} onChange={e => update('telegramChatId', e.target.value)}
+                  placeholder="146574793"
+                  className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+              </div>
+              <StitchButton size="sm" variant="ghost" onClick={handleTestTelegram}>{t('set.telegramTest')}</StitchButton>
+            </>
+          )}
         </div>
       </GlassCard>
 
