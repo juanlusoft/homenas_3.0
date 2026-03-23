@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
 import DashboardPage from '@/pages/DashboardPage';
 import StoragePage from '@/pages/StoragePage';
@@ -6,8 +6,9 @@ import ServicesPage from '@/pages/ServicesPage';
 import NetworkPage from '@/pages/NetworkPage';
 import SystemPage from '@/pages/SystemPage';
 import BackupPage from '@/pages/BackupPage';
+import UsersPage from '@/pages/UsersPage';
 
-type View = 'dashboard' | 'storage' | 'services' | 'network' | 'system' | 'backup';
+type View = 'dashboard' | 'storage' | 'backup' | 'services' | 'network' | 'system' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -16,7 +17,18 @@ const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'services', label: 'Services', icon: '🐳' },
   { id: 'network', label: 'Network', icon: '🌐' },
   { id: 'system', label: 'System', icon: '⚙️' },
+  { id: 'users', label: 'Users', icon: '👤' },
 ];
+
+const viewSubtitles: Record<View, string> = {
+  dashboard: 'System overview & metrics',
+  storage: 'Disk health & capacity',
+  backup: 'Backup jobs & restore points',
+  services: 'Docker & systemd management',
+  network: 'Network interfaces & traffic',
+  system: 'Hardware, OS & system settings',
+  users: 'User accounts & access control',
+};
 
 const viewComponents: Record<View, React.FC> = {
   dashboard: DashboardPage,
@@ -25,18 +37,38 @@ const viewComponents: Record<View, React.FC> = {
   services: ServicesPage,
   network: NetworkPage,
   system: SystemPage,
+  users: UsersPage,
 };
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const ViewComponent = viewComponents[currentView];
+
+  const navigate = useCallback((view: View) => {
+    setCurrentView(view);
+    setSidebarOpen(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-surface flex">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 h-screen w-60 bg-surface-raised flex flex-col">
+      <aside className={`
+        fixed left-0 top-0 z-40 h-screen w-60 bg-surface-low flex flex-col
+        transition-transform duration-200
+        lg:translate-x-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         {/* Logo */}
-        <div className="p-stitch-6 mb-stitch-4">
+        <div className="p-6 mb-2">
           <h1 className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]">
             HomePiNAS
           </h1>
@@ -44,11 +76,11 @@ export default function App() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3">
+        <nav className="flex-1 px-3 overflow-y-auto">
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setCurrentView(item.id)}
+              onClick={() => navigate(item.id)}
               className={`w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors mb-1 ${
                 currentView === item.id
                   ? 'bg-teal/10 text-teal'
@@ -62,43 +94,54 @@ export default function App() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4">
+        <div className="p-4 border-t border-[var(--outline-variant)]">
           <div className="flex items-center gap-2 text-xs text-[var(--text-disabled)]">
             <GlowPill status="healthy" label="Online" />
           </div>
-          <p className="mt-2 text-xs text-[var(--text-disabled)]">v3.3.0 · Stitch</p>
+          <p className="mt-2 text-xs text-[var(--text-disabled)]">v3.4.0 · Stitch</p>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="ml-60 flex-1 p-stitch-6 lg:p-stitch-10">
+      <main className="lg:ml-60 flex-1 min-h-screen flex flex-col">
         {/* Header */}
-        <header className="mb-stitch-8 flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)] capitalize">
-              {currentView}
-            </h2>
-            <p className="text-sm text-[var(--text-secondary)]">
-              {currentView === 'dashboard' && 'System overview & metrics'}
-              {currentView === 'storage' && 'Disk health & capacity'}
-              {currentView === 'services' && 'Docker & systemd management'}
-              {currentView === 'network' && 'Network interfaces & traffic'}
-              {currentView === 'system' && 'Hardware, OS & system settings'}
-              {currentView === 'backup' && 'Backup jobs & restore points'}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <GlowPill status="healthy" label="All Systems" />
-            <StitchButton size="sm">Settings</StitchButton>
+        <header className="sticky top-0 z-20 bg-surface/80 backdrop-blur-lg border-b border-[var(--outline-variant)] px-4 py-3 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Mobile hamburger */}
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg text-[var(--text-secondary)] hover:bg-surface-void"
+                aria-label="Open menu"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                </svg>
+              </button>
+              <div>
+                <h2 className="font-display text-xl lg:text-2xl font-bold tracking-tight text-[var(--text-primary)] capitalize">
+                  {currentView}
+                </h2>
+                <p className="text-xs lg:text-sm text-[var(--text-secondary)]">
+                  {viewSubtitles[currentView]}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 lg:gap-3">
+              <GlowPill status="healthy" label="All Systems" />
+              <StitchButton size="sm" className="hidden sm:inline-flex">Settings</StitchButton>
+            </div>
           </div>
         </header>
 
         {/* View content */}
-        <ViewComponent />
+        <div className="flex-1 p-4 lg:p-8">
+          <ViewComponent />
+        </div>
 
         {/* Footer */}
-        <footer className="mt-stitch-10 text-center text-xs text-[var(--text-disabled)]">
-          HomePiNAS v3.3.0 · Luminous Obsidian · Built with Stitch Design System
+        <footer className="py-4 text-center text-xs text-[var(--text-disabled)]">
+          HomePiNAS v3.4.0 · Luminous Obsidian · Stitch Design System
         </footer>
       </main>
     </div>
