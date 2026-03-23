@@ -83,7 +83,7 @@ export default function ActiveBackupPage() {
         </GlassCard>
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('ab.agent')}</p>
-          <StitchButton size="sm" className="mt-1"onClick={() => window.open('https://github.com/juanlusoft/homenas_3.0/releases/download/v5.0.0/homepinas-backup-agent-v1.2.0.tar.gz', '_blank')}>{t('ab.downloadAgent')}</StitchButton>
+          <StitchButton size="sm" className="mt-1"onClick={() => window.open('https://github.com/juanlusoft/homenas_3.0/releases/latest', '_blank')}>{t('ab.downloadAgent')}</StitchButton>
         </GlassCard>
       </div>
 
