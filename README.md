@@ -1,63 +1,66 @@
-# Homenas 3.0
+# HomePiNAS v3
 
 **NAS Dashboard de nueva generación con diseño Stitch "Luminous Obsidian"**
 
-## 🚀 Historial de Desarrollo
+## Stack
 
-### **21 Marzo 2026 - Día 1: Fundación**
-- ✅ **Stack inicial**: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
-- ✅ **Diseño Stitch integrado**: "Luminous Obsidian" theme completo
-  - Sistema de colores: Deep Slate (#10141a) + Teal accents (#44e5c2)
-  - Typography: Space Grotesk (display) + Manrope (body) + JetBrains Mono (code)
-  - Glassmorphism: Backdrop-blur effects + ambient shadows
-  - No-Line Rule: Separación por tonos de superficie (sin borders 1px)
-- ✅ **Componentes custom**: GlassCard, GlowPill, StitchButton
-- ✅ **Design tokens**: Sistema TypeScript para charts/JS dinámico
-- ✅ **Dashboard demo**: Métricas sistema + disk array + services grid
-- ✅ **Build pipeline**: Clean tsc + vite build sin errores
+- **Frontend**: React 19 + TypeScript + Vite 8 + Tailwind CSS 4
+- **UI**: shadcn/ui (40+ components) + Stitch design system
+- **Database**: better-sqlite3 (WAL mode)
+- **Testing**: Vitest + Storybook 10
+- **Linting**: ESLint 10 (flat config)
 
-### **Stack Tecnológico**
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
-- **UI Components**: shadcn/ui (40+ componentes)
-- **Styling**: Glassmorphism + Stitch design system
-- **State**: Zustand (planificado)
-- **Data Fetching**: React Query (planificado)
+## Quick Start
 
-### **Próximos Pasos**
-- **Día 2**: Storybook + Socket.io real-time + Framer Motion
-- **Día 3**: System monitoring charts + complete integration
-- **Semana 2+**: Advanced features según roadmap
+```bash
+pnpm install
+cp .env.example .env.local  # adjust API URL
+pnpm dev                    # http://localhost:5173
+pnpm build                  # production build
+pnpm lint                   # ESLint
+```
+
+## Design System — Stitch "Luminous Obsidian"
+
+- Deep Slate surfaces (`#10141a` base) with teal accents (`#44e5c2`)
+- Space Grotesk (display) + Manrope (body) + JetBrains Mono (metrics)
+- Glassmorphism: backdrop-blur + ambient shadows
+- No-Line Rule: tonal surface shifts instead of borders
+- Glow-Pill status indicators (healthy/warning/error)
 
 ## 📋 Changelog
 
+### v3.1.0 (23 Marzo 2026)
+- Tailwind CSS 3.4 → **4.2.2** (CSS-first @theme, @tailwindcss/vite)
+- ESLint 9 → **10.1.0** (strict flat config)
+- Added **better-sqlite3** + DB layer (config, metrics, notifications)
+- Fixed hardcoded API URL → env variable (`VITE_API_URL`)
+- Fixed storybook imports, useSocket render safety
+- Removed `tailwind.config.js`, `postcss.config.js`
+
 ### v3.0.0 (21 Marzo 2026) - Initial Release
-- ✅ **Foundation**: React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
-- ✅ **Stitch Design**: "Luminous Obsidian" theme completamente integrado
-- ✅ **Components**: GlassCard, GlowPill, StitchButton custom components
-- ✅ **Design Tokens**: Sistema TypeScript para dynamic theming
-- ✅ **Demo Dashboard**: System metrics + disk array + services grid
-- ✅ **Build Pipeline**: Clean tsc + vite build, zero errors
-
-## 📐 Development Guidelines
-
-- **Commits**: Conventional commits (feat:, fix:, docs:, refactor:)
-- **Versioning**: Semantic versioning (MAJOR.MINOR.PATCH)
-  - PATCH: Bug fixes, small improvements
-  - MINOR: New features, backwards compatible
-  - MAJOR: Breaking changes, architecture changes
-- **README**: Update con cada feature/fix significativo
-- **Release**: Cada deploy a NAS = nueva versión
-- **Script**: `./scripts/update-version.sh [patch|minor|major] "Description"`
+- React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
+- Stitch "Luminous Obsidian" design system
+- GlassCard, GlowPill, StitchButton components
+- Dashboard with system metrics + disk array + services
 
 ## 🗺️ Roadmap
 
-- v3.7.0: Storybook component documentation
-- v3.8.0: Socket.io real-time monitoring
-- v3.9.0: Framer Motion animations
-- v4.0.0: Advanced NAS management + multi-device
+- v3.2.0: Socket.io real-time metrics + chart components
+- v3.3.0: Full NAS API integration (backend Express proxy)
+- v3.4.0: Storybook component documentation
+- v3.5.0: Framer Motion page transitions
+- v4.0.0: Multi-device management + mobile
+
+## Development
+
+```bash
+pnpm run storybook          # component docs on :6006
+pnpm run build-storybook    # static storybook
+./scripts/update-version.sh patch "description"
+```
 
 ---
 
-**Development Team**: Vision 👁️ (HomeLabs Avengers)
-**Deployment Target**: HomePiNAS production environment
-**Version Control**: Automatic via `scripts/update-version.sh`
+**Team**: Vision 👁️ (HomeLabs Avengers)
+**Target**: HomePiNAS production NAS

@@ -2,7 +2,7 @@
  * API client for HomePiNAS Mock API
  */
 
-const API_BASE = 'http://192.168.1.95:3001/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function fetchAPI<T>(endpoint: string): Promise<T> {
   const res = await fetch(`${API_BASE}${endpoint}`);
