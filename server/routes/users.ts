@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { alerts } from '../utils/notify.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -73,6 +74,7 @@ usersRouter.post('/', (req, res) => {
     role: role || 'user', twoFactor: false, lastLogin: '-', status: 'active',
   };
   users.push(user);
+  alerts.userCreated(username);
   saveUsers(users);
   res.json(sanitize(user));
 });
@@ -196,7 +198,8 @@ usersRouter.post('/login', (req, res) => {
   const { username, password } = req.body;
   const users = loadUsers();
   const user = users.find(u => u.username === username && u.passwordHash === hashPassword(password));
-  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user) alerts.loginFailed(username, req.ip || 'unknown');
+  return res.status(401).json({ error: 'Invalid credentials' });
   if (user.status === 'locked') return res.status(403).json({ error: 'Account locked' });
 
   user.lastLogin = new Date().toISOString().slice(0, 16).replace('T', ' ');

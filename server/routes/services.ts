@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { alerts } from '../utils/notify.js';
 import si from 'systeminformation';
 
 export const servicesRouter = Router();

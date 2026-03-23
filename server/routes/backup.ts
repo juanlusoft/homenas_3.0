@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { alerts } from '../utils/notify.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -83,13 +84,15 @@ backupRouter.post('/run/:id', async (req, res) => {
     const j = updated.find(x => x.id === job.id);
     if (j) {
       j.status = 'success';
+      alerts.backupComplete(j.name, j.size);
       j.lastRun = new Date().toISOString().slice(0, 16).replace('T', ' ');
       saveJobs(updated);
     }
   }).catch(() => {
     const updated = loadJobs();
     const j = updated.find(x => x.id === job.id);
-    if (j) { j.status = 'failed'; saveJobs(updated); }
+    if (j) { j.status = 'failed'; saveJobs(updated);
+    alerts.backupFailed(job.name, 'Execution error'); }
   });
 
   res.json({ success: true, message: 'Backup started' });

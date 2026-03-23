@@ -25,6 +25,7 @@ import { vpnRouter } from './routes/vpn.js';
 import { schedulerRouter } from './routes/scheduler.js';
 import { storeRouter } from './routes/store.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
+import { startHealthMonitor } from './realtime/health-monitor.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '127.0.0.1';  // Only listen on localhost — nginx handles external
@@ -85,6 +86,9 @@ io.on('connection', (socket) => {
 
 // Start real-time metrics emitter
 startMetricsEmitter(io);
+
+// Start health monitor (disk/temp alerts)
+startHealthMonitor();
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`[server] HomePiNAS API running on http://${HOST}:${PORT}`);
