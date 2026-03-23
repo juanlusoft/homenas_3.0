@@ -32,7 +32,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
     if (step === 2 && !data.hostname) return false;
     if (step === 3 && data.networkMode === 'static' && !data.staticIp) return false;
-    if (step === 4 && (data.parityDisks.length === 0 || data.dataDisks.length === 0)) return false;
+    if (step === 4) {
+      if (data.poolMode === 'snapraid' && (data.parityDisks.length === 0 || data.dataDisks.length === 0)) return false;
+      if (data.poolMode === 'mirror' && data.selectedDisks.length < 2) return false;
+      if (data.poolMode === 'basic' && data.selectedDisks.length < 1) return false;
+    }
     return true;
   };
 

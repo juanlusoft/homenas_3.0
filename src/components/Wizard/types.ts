@@ -8,7 +8,7 @@ export interface SetupData {
   staticIp: string;
   gateway: string;
   dns: string;
-  poolMode: 'snapraid';
+  poolMode: 'snapraid' | 'mirror' | 'basic';
   poolFs: 'ext4' | 'btrfs' | 'xfs';
   selectedDisks: string[];
   parityDisks: string[];
