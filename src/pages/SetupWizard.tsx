@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t, setLanguage } from '@/i18n';
 import { GlassCard, StitchButton } from '@/components/UI';
 import { StepStorage } from "@/components/Wizard/StepStorage";
 import type { SetupData, StepProps } from "@/components/Wizard/types";
@@ -8,7 +9,9 @@ interface SetupWizardProps {
   onComplete: (data: SetupData) => void;
 }
 
-const STEPS = ['Language', 'Admin Account', 'NAS Name', 'Network', 'Storage Pool', 'Ready'];
+function getSteps() {
+  return [t('wiz.language'), t('wiz.adminAccount'), t('wiz.nasName'), t('wiz.network'), t('wiz.storagePool'), t('wiz.ready')];
+}
 
 export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [step, setStep] = useState(0);
@@ -19,6 +22,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     poolMode: 'snapraid', poolFs: 'ext4', selectedDisks: [], parityDisks: [], dataDisks: [], cacheDisks: [],
   });
   const [error, setError] = useState('');
+  const [, setLangTick] = useState(0); // force re-render on language change
+  const STEPS = getSteps();
 
   const update = <K extends keyof SetupData>(key: K, value: SetupData[K]) => {
     setData(prev => ({ ...prev, [key]: value }));
@@ -42,11 +47,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
   const next = () => {
     if (step === 1 && data.password !== data.passwordConfirm) {
-      setError('Passwords do not match');
+      setError(t('wiz.passwordsNoMatch'));
       return;
     }
     if (step === 1 && data.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('wiz.passwordTooShort'));
       return;
     }
     if (step < STEPS.length - 1) setStep(s => s + 1);
@@ -60,7 +65,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl font-bold tracking-tight text-teal">HomePiNAS</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">Initial Setup</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">{t('wiz.initialSetup')}</p>
         </div>
 
         {/* Progress */}
@@ -81,12 +86,12 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           ))}
         </div>
         <p className="text-center text-xs text-[var(--text-secondary)] mb-6">
-          Step {step + 1} of {STEPS.length}: {STEPS[step]}
+          {t('wiz.step')} {step + 1} {t('wiz.of')} {STEPS.length}: {STEPS[step]}
         </p>
 
         {/* Steps */}
         <GlassCard elevation="mid">
-          {step === 0 && <StepLanguage data={data} update={update} />}
+          {step === 0 && <StepLanguage data={data} update={update} onLangChange={() => setLangTick(n => n + 1)} />}
           {step === 1 && <StepAccount data={data} update={update} error={error} />}
           {step === 2 && <StepHostname data={data} update={update} />}
           {step === 3 && <StepNetwork data={data} update={update} />}
@@ -116,7 +121,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
 
 /* ── Step Components ────────────────────────────────────── */
 
-function StepLanguage({ data, update }: StepProps) {
+function StepLanguage({ data, update, onLangChange }: StepProps & { onLangChange: () => void }) {
   const langs = [
     { id: 'es', label: 'Español', flag: '🇪🇸' },
     { id: 'en', label: 'English', flag: '🇬🇧' },
@@ -129,13 +134,13 @@ function StepLanguage({ data, update }: StepProps) {
   return (
     <div>
       <h2 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">
-        🌍 Select Language
+        {t('wiz.selectLanguage')}
       </h2>
       <div className="grid grid-cols-2 gap-2">
         {langs.map(l => (
           <button
             key={l.id}
-            onClick={() => update('language', l.id)}
+            onClick={() => { update('language', l.id); setLanguage(l.id); onLangChange(); }}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
               data.language === l.id ? 'bg-teal/10 text-teal ring-1 ring-teal/30' : 'text-[var(--text-secondary)] hover:bg-surface-void'
             }`}
@@ -153,21 +158,21 @@ function StepAccount({ data, update, error }: StepProps & { error: string }) {
   return (
     <div>
       <h2 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">
-        👤 Create Admin Account
+        {t('wiz.createAdmin')}
       </h2>
       <div className="space-y-4">
         <div>
-          <label className="block text-xs text-[var(--text-secondary)] mb-1">Username</label>
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('wiz.username')}</label>
           <input value={data.username} onChange={e => update('username', e.target.value)}
             className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
         </div>
         <div>
-          <label className="block text-xs text-[var(--text-secondary)] mb-1">Password (min. 6 chars)</label>
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('wiz.password')}</label>
           <input type="password" value={data.password} onChange={e => update('password', e.target.value)}
             className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
         </div>
         <div>
-          <label className="block text-xs text-[var(--text-secondary)] mb-1">Confirm Password</label>
+          <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('wiz.confirmPassword')}</label>
           <input type="password" value={data.passwordConfirm} onChange={e => update('passwordConfirm', e.target.value)}
             className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
         </div>
@@ -181,10 +186,10 @@ function StepHostname({ data, update }: StepProps) {
   return (
     <div>
       <h2 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">
-        🏠 Name Your NAS
+        {t('wiz.nameYourNas')}
       </h2>
       <div>
-        <label className="block text-xs text-[var(--text-secondary)] mb-1">Device Name</label>
+        <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('wiz.deviceName')}</label>
         <input value={data.hostname} onChange={e => update('hostname', e.target.value)}
           placeholder="homepinas"
           className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
@@ -200,7 +205,7 @@ function StepNetwork({ data, update }: StepProps) {
   return (
     <div>
       <h2 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">
-        🌐 Network Configuration
+        {t('wiz.networkConfig')}
       </h2>
       <div className="space-y-4">
         <div className="flex gap-2">
@@ -218,17 +223,17 @@ function StepNetwork({ data, update }: StepProps) {
         {data.networkMode === 'static' && (
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1">IP Address</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('wiz.ipAddress')}</label>
               <input value={data.staticIp} onChange={e => update('staticIp', e.target.value)}
                 placeholder="192.168.1.81" className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
             </div>
             <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1">Gateway</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('wiz.gateway')}</label>
               <input value={data.gateway} onChange={e => update('gateway', e.target.value)}
                 placeholder="192.168.1.1" className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
             </div>
             <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1">DNS</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('wiz.dns')}</label>
               <input value={data.dns} onChange={e => update('dns', e.target.value)}
                 placeholder="8.8.8.8" className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
             </div>
@@ -243,23 +248,23 @@ function StepReady({ data }: { data: SetupData }) {
   return (
     <div>
       <h2 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">
-        🚀 Ready to Go!
+        {t('wiz.readyToGo')}
       </h2>
       <div className="space-y-3 text-sm">
         <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
-          <span className="text-[var(--text-secondary)]">Language</span>
+          <span className="text-[var(--text-secondary)]">{t('wiz.language')}</span>
           <span className="text-[var(--text-primary)]">{data.language === 'es' ? 'Español' : data.language}</span>
         </div>
         <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
-          <span className="text-[var(--text-secondary)]">Admin user</span>
+          <span className="text-[var(--text-secondary)]">{t('wiz.adminUser')}</span>
           <span className="font-mono text-teal">{data.username}</span>
         </div>
         <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
-          <span className="text-[var(--text-secondary)]">NAS name</span>
+          <span className="text-[var(--text-secondary)]">{t('wiz.nasName')}</span>
           <span className="font-mono text-[var(--text-primary)]">{data.hostname}</span>
         </div>
         <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
-          <span className="text-[var(--text-secondary)]">Network</span>
+          <span className="text-[var(--text-secondary)]">{t('wiz.network')}</span>
           <span className="font-mono text-[var(--text-primary)]">
             {data.networkMode === 'dhcp' ? 'DHCP (auto)' : data.staticIp}
           </span>
@@ -269,15 +274,15 @@ function StepReady({ data }: { data: SetupData }) {
           <span className="font-mono text-[var(--text-primary)]">SnapRAID + MergerFS · {data.poolFs}</span>
         </div>
         <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
-          <span className="text-[var(--text-secondary)]">🛡️ Parity</span>
+          <span className="text-[var(--text-secondary)]">{t('wiz.parity')}</span>
           <span className="font-mono text-xs text-orange">{data.parityDisks.join(', ') || 'None'}</span>
         </div>
         <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
-          <span className="text-[var(--text-secondary)]">💾 Data</span>
+          <span className="text-[var(--text-secondary)]">{t('wiz.data')}</span>
           <span className="font-mono text-xs text-teal">{data.dataDisks.join(', ') || 'None'}</span>
         </div>
         <div className="flex justify-between py-2">
-          <span className="text-[var(--text-secondary)]">⚡ Cache</span>
+          <span className="text-[var(--text-secondary)]">{t('wiz.cache')}</span>
           <span className="font-mono text-xs text-purple-400">{data.cacheDisks.join(', ') || 'None'}</span>
         </div>
       </div>
