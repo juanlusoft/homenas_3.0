@@ -101,11 +101,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           {/* Navigation */}
           <div className="flex justify-between mt-6 pt-4 border-t border-[var(--outline-variant)]">
             <StitchButton size="sm" variant="ghost" onClick={prev} disabled={step === 0}>
-              ← Back
+              {t('wiz.back')}
             </StitchButton>
             {step < STEPS.length - 1 ? (
               <StitchButton size="sm" onClick={next} disabled={!canNext()}>
-                Next →
+                {t('wiz.next')}
               </StitchButton>
             ) : (
               <StitchButton onClick={() => onComplete(data)}>

@@ -35,11 +35,13 @@ const ROLE_LABELS: Record<DiskRole, string> = {
   none: 'Not assigned',
 };
 
-const POOL_MODES = [
-  { id: 'snapraid' as const, label: t('pool.snapraid'), desc: t('pool.snapraidDesc'), icon: '🛡️', minDisks: 2 },
-  { id: 'mirror' as const, label: t('pool.mirror'), desc: t('pool.mirrorDesc'), icon: '🪞', minDisks: 2 },
-  { id: 'basic' as const, label: t('pool.basic'), desc: t('pool.basicDesc'), icon: '💾', minDisks: 1 },
-];
+function getPoolModes() {
+  return [
+    { id: 'snapraid' as const, label: t('pool.snapraid'), desc: t('pool.snapraidDesc'), icon: '🛡️', minDisks: 2 },
+    { id: 'mirror' as const, label: t('pool.mirror'), desc: t('pool.mirrorDesc'), icon: '🪞', minDisks: 2 },
+    { id: 'basic' as const, label: t('pool.basic'), desc: t('pool.basicDesc'), icon: '💾', minDisks: 1 },
+  ];
+}
 
 async function detectDisks(): Promise<DetectedDisk[]> {
   try {
@@ -107,7 +109,7 @@ export function StepStorage({ data, update }: StepProps) {
   return (
     <div className="space-y-5">
       <h2 className="font-display text-lg font-semibold text-[var(--text-primary)]">
-        💾 Storage Configuration
+        {t('pool.storageConfig')}
       </h2>
 
       {loading ? (
@@ -121,7 +123,7 @@ export function StepStorage({ data, update }: StepProps) {
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2">{t('pool.poolType')}</p>
             <div className="space-y-2">
-              {POOL_MODES.filter(m => disks.length >= m.minDisks).map(mode => (
+              {getPoolModes().filter(m => disks.length >= m.minDisks).map(mode => (
                 <button key={mode.id} onClick={() => update('poolMode', mode.id)}
                   className={`w-full px-4 py-3.5 rounded-lg text-left transition-all border ${
                     data.poolMode === mode.id ? 'bg-teal/10 text-teal border-teal/30' : 'border-[var(--outline-variant)] text-[var(--text-secondary)] hover:bg-surface-void'
