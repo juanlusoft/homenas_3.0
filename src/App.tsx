@@ -12,11 +12,13 @@ import FilesPage from '@/pages/FilesPage';
 import SharesPage from '@/pages/SharesPage';
 import LogsPage from '@/pages/LogsPage';
 import TerminalPage from '@/pages/TerminalPage';
+import DockerComposePage from '@/pages/DockerComposePage';
+import SettingsPage from '@/pages/SettingsPage';
 import LoginPage from '@/pages/LoginPage';
 import { NotificationBell } from '@/components/Notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 
-type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'network' | 'logs' | 'terminal' | 'system' | 'users';
+type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'network' | 'logs' | 'terminal' | 'system' | 'settings' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -26,10 +28,12 @@ const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'backup', label: 'Backup', icon: '📦' },
   { id: 'active-backup', label: 'Active Backup', icon: '🖥️' },
   { id: 'services', label: 'Services', icon: '🐳' },
+  { id: 'stacks', label: 'Stacks', icon: '🏗️' },
   { id: 'network', label: 'Network', icon: '🌐' },
   { id: 'logs', label: 'Logs', icon: '📋' },
   { id: 'terminal', label: 'Terminal', icon: '🖥️' },
   { id: 'system', label: 'System', icon: '⚙️' },
+  { id: 'settings', label: 'Settings', icon: '🔧' },
   { id: 'users', label: 'Users', icon: '👤' },
 ];
 
@@ -42,9 +46,11 @@ const viewSubtitles: Record<View, string> = {
   'active-backup': 'Remote PC backup & restore',
   services: 'Docker & systemd management',
   network: 'Network interfaces & traffic',
+  stacks: 'Docker Compose stacks',
   logs: 'System & service log viewer',
   terminal: 'Web terminal access',
   system: 'Hardware, OS & system settings',
+  settings: 'NAS configuration',
   users: 'User accounts & access control',
 };
 
@@ -57,9 +63,11 @@ const viewComponents: Record<View, React.FC> = {
   'active-backup': ActiveBackupPage,
   services: ServicesPage,
   network: NetworkPage,
+  stacks: DockerComposePage,
   logs: LogsPage,
   terminal: TerminalPage,
   system: SystemPage,
+  settings: SettingsPage,
   users: UsersPage,
 };
 
@@ -169,7 +177,7 @@ export default function App() {
             <div className="flex items-center gap-2 lg:gap-3">
               <NotificationBell notifications={notifications} onMarkRead={markRead} onClearAll={clearAll} />
               <GlowPill status="healthy" label="All Systems" />
-              <StitchButton size="sm" className="hidden sm:inline-flex" onClick={() => navigate('system')}>
+              <StitchButton size="sm" className="hidden sm:inline-flex" onClick={() => navigate('settings')}>
                 Settings
               </StitchButton>
             </div>
