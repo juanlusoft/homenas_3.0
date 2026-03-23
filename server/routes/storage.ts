@@ -49,6 +49,38 @@ storageRouter.get('/disks', async (_req, res) => {
   }
 });
 
+/** GET /api/storage/detect-disks — Raw disk detection for wizard */
+storageRouter.get('/detect-disks', async (_req, res) => {
+  try {
+    const layout = await si.diskLayout();
+
+    const result = layout
+      .filter(d => d.size > 1e9) // Filter empty ports (0 bytes or tiny)
+      .map((d, i) => {
+        const isNvme = d.interfaceType === 'NVMe' || d.name?.includes('nvme');
+        const isSsd = d.type === 'SSD' || (d.interfaceType === 'SATA' && !d.type?.includes('HD'));
+
+        return {
+          device: d.device || `/dev/sd${String.fromCharCode(97 + i)}`,
+          name: d.name || d.device || '',
+          size: d.size,
+          sizeHuman: formatBytes(d.size),
+          vendor: d.vendor?.trim() || 'Unknown',
+          model: (d.name || d.model || 'Unknown').trim(),
+          type: isNvme ? 'nvme' : isSsd ? 'ssd' : 'hdd',
+          bay: isNvme ? `NVMe ${i + 1}` : `Bay ${i + 1}`,
+          serial: d.serialNum || '',
+          temperature: d.temperature ?? 0,
+          connected: true,
+        };
+      });
+
+    res.json(result);
+  } catch {
+    res.json([]);
+  }
+});
+
 function formatBytes(bytes: number): string {
   if (bytes >= 1e12) return `${(bytes / 1e12).toFixed(1)} TB`;
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
