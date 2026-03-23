@@ -8,12 +8,14 @@ import type { StoreApp } from './types';
 
 interface AppCardProps {
   app: StoreApp;
+  busy?: 'installing' | 'uninstalling';
   onInstall: (id: string) => void;
   onUninstall: (id: string) => void;
   onOpen: (id: string) => void;
+  onConfigure: (id: string) => void;
 }
 
-export function AppCard({ app, onInstall, onUninstall, onOpen }: AppCardProps) {
+export function AppCard({ app, busy, onInstall, onUninstall, onOpen, onConfigure }: AppCardProps) {
   return (
     <GlassCard elevation="mid" className="flex flex-col">
       <div className="flex items-start gap-3 mb-3">
@@ -32,7 +34,9 @@ export function AppCard({ app, onInstall, onUninstall, onOpen }: AppCardProps) {
           </div>
           <p className="text-xs text-[var(--text-secondary)]">{app.author}</p>
         </div>
-        {app.installed && (
+        {busy === 'installing' ? (
+          <GlowPill status="warning" label={t('store.installing')} />
+        ) : app.installed && (
           <GlowPill status={app.running ? 'healthy' : 'error'} label={app.running ? ts('running') : ts('stopped')} />
         )}
       </div>
@@ -46,15 +50,23 @@ export function AppCard({ app, onInstall, onUninstall, onOpen }: AppCardProps) {
       </div>
 
       <div className="flex gap-2">
-        {app.installed ? (
+        {busy ? (
+          <StitchButton size="sm" disabled>
+            <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+            {busy === 'installing' ? t('store.installing') : t('store.uninstalling')}
+          </StitchButton>
+        ) : app.installed ? (
           <>
             {app.port && (
               <StitchButton size="sm" onClick={() => onOpen(app.id)}>{t('store.open')}</StitchButton>
             )}
+            <StitchButton size="sm" variant="ghost" onClick={() => onConfigure(app.id)}>{t('store.edit')}</StitchButton>
             <StitchButton size="sm" variant="ghost" onClick={() => onUninstall(app.id)}>{t('store.uninstall')}</StitchButton>
           </>
         ) : (
-          <StitchButton size="sm" onClick={() => onInstall(app.id)}>{t('store.install')}</StitchButton>
+          <>
+            <StitchButton size="sm" onClick={() => onConfigure(app.id)}>{t('store.install')}</StitchButton>
+          </>
         )}
       </div>
     </GlassCard>

@@ -405,6 +405,14 @@ export const es: Record<string, string> = {
   'store.running': 'en ejecución',
   'store.stopped': 'detenido',
   'store.searchLabel': 'Buscar',
+  'store.installing': 'Instalando...',
+  'store.uninstalling': 'Desinstalando...',
+  'store.edit': 'Editar',
+  'store.dockerImage': 'Imagen Docker',
+  'store.port': 'Puerto',
+  'store.envVars': 'Variables de entorno (una por línea)',
+  'store.volumes': 'Volúmenes (una por línea, host:container)',
+  'store.configHint': 'Personaliza la configuración antes de instalar. Los volúmenes y variables se pasan a docker run.',
 
   // Services extra
   'svc.start': '▶ Iniciar',

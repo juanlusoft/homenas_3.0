@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { t } from '@/i18n';
-import { GlassCard } from '@/components/UI';
+import { GlassCard, StitchButton, Modal } from '@/components/UI';
 import { AppCard } from '@/components/HomeStore';
 import type { StoreApp, AppCategory } from '@/components/HomeStore';
 
@@ -91,6 +91,7 @@ export default function HomeStorePage() {
   const [category, setCategory] = useState<AppCategory | 'all'>('all');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'installed' | 'available'>('all');
+  const [busy, setBusy] = useState<Record<string, 'installing' | 'uninstalling'>>({});
 
   const filtered = useMemo(() => {
     return apps.filter(app => {
@@ -105,39 +106,128 @@ export default function HomeStorePage() {
 
   const handleInstall = useCallback(async (id: string) => {
     const app = apps.find(a => a.id === id);
-    if (!app) return;
-    setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
+    if (!app || busy[id]) return;
+    setBusy(prev => ({ ...prev, [id]: 'installing' }));
     const API = import.meta.env.VITE_API_URL || '/api';
     try {
-      await fetch(`${API}/store/install/${id}`, {
+      const res = await fetch(`${API}/store/install/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: app.image, port: app.port, name: app.id }),
       });
+      if (res.ok) {
+        setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Error' }));
+        alert(`${t('store.install')} error: ${err.error}`);
+      }
     } catch {
-      setApps(prev => prev.map(a => a.id === id ? { ...a, installed: false, running: false } : a));
+      alert(`${t('store.install')} error: no se pudo conectar con el servidor`);
+    } finally {
+      setBusy(prev => { const n = { ...prev }; delete n[id]; return n; });
     }
-  }, [apps]);
+  }, [apps, busy]);
 
   const handleUninstall = useCallback(async (id: string) => {
-    if (!confirm(t('store.uninstall') + '?')) return;
-    setApps(prev => prev.map(a => a.id === id ? { ...a, installed: false, running: false } : a));
+    if (!confirm(t('store.uninstall') + '?') || busy[id]) return;
+    setBusy(prev => ({ ...prev, [id]: 'uninstalling' }));
     const API = import.meta.env.VITE_API_URL || '/api';
     try {
-      await fetch(`${API}/store/uninstall/${id}`, {
+      const res = await fetch(`${API}/store/uninstall/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: id }),
       });
+      if (res.ok) {
+        setApps(prev => prev.map(a => a.id === id ? { ...a, installed: false, running: false } : a));
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Error' }));
+        alert(`${t('store.uninstall')} error: ${err.error}`);
+      }
     } catch {
-      setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
+      alert(`${t('store.uninstall')} error: no se pudo conectar con el servidor`);
+    } finally {
+      setBusy(prev => { const n = { ...prev }; delete n[id]; return n; });
     }
-  }, []);
+  }, [busy]);
 
   const handleOpen = useCallback((id: string) => {
     const app = apps.find(a => a.id === id);
     if (app?.port) window.open(`http://${window.location.hostname}:${app.port}`, '_blank');
   }, [apps]);
+
+  // Configure modal state
+  const [configApp, setConfigApp] = useState<StoreApp | null>(null);
+  const [configForm, setConfigForm] = useState({ image: '', port: '', env: '', volumes: '' });
+
+  const handleConfigure = useCallback((id: string) => {
+    const app = apps.find(a => a.id === id);
+    if (!app) return;
+    setConfigForm({
+      image: app.image,
+      port: app.port ? String(app.port) : '',
+      env: '',
+      volumes: '',
+    });
+    setConfigApp(app);
+  }, [apps]);
+
+  const handleConfigSave = useCallback(async () => {
+    if (!configApp) return;
+    const id = configApp.id;
+    const port = parseInt(configForm.port) || configApp.port;
+
+    // Update app data with custom config
+    setApps(prev => prev.map(a => a.id === id ? { ...a, image: configForm.image, port } : a));
+
+    if (!configApp.installed) {
+      // New install — close modal and trigger install
+      setConfigApp(null);
+      setBusy(prev => ({ ...prev, [id]: 'installing' }));
+      const API = import.meta.env.VITE_API_URL || '/api';
+      try {
+        const envPairs = configForm.env.split('\n').filter(Boolean);
+        const volumePairs = configForm.volumes.split('\n').filter(Boolean);
+        const res = await fetch(`${API}/store/install/${id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: configForm.image,
+            port,
+            name: id,
+            env: envPairs,
+            volumes: volumePairs,
+          }),
+        });
+        if (res.ok) {
+          setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
+        } else {
+          const err = await res.json().catch(() => ({ error: 'Error' }));
+          alert(`${t('store.install')} error: ${err.error}`);
+        }
+      } catch {
+        alert(`${t('store.install')} error: no se pudo conectar`);
+      } finally {
+        setBusy(prev => { const n = { ...prev }; delete n[id]; return n; });
+      }
+    } else {
+      // Edit existing — just update config on server
+      const API = import.meta.env.VITE_API_URL || '/api';
+      try {
+        await fetch(`${API}/store/update/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: configForm.image,
+            port,
+            env: configForm.env.split('\n').filter(Boolean),
+            volumes: configForm.volumes.split('\n').filter(Boolean),
+          }),
+        });
+      } catch { /* ignore */ }
+      setConfigApp(null);
+    }
+  }, [configApp, configForm]);
 
   const installedCount = apps.filter(a => a.installed).length;
   const runningCount = apps.filter(a => a.running).length;
@@ -205,9 +295,11 @@ export default function HomeStorePage() {
           <AppCard
             key={app.id}
             app={app}
+            busy={busy[app.id]}
             onInstall={handleInstall}
             onUninstall={handleUninstall}
             onOpen={handleOpen}
+            onConfigure={handleConfigure}
           />
         ))}
       </div>
@@ -218,6 +310,48 @@ export default function HomeStorePage() {
           <p>{t('store.noResults')}</p>
         </div>
       )}
+
+      {/* Configure / Install modal */}
+      <Modal
+        open={!!configApp}
+        onClose={() => setConfigApp(null)}
+        title={configApp ? `${configApp.installed ? t('store.edit') : t('store.install')}: ${configApp.name}` : ''}
+        actions={<>
+          <StitchButton size="sm" variant="ghost" onClick={() => setConfigApp(null)}>{t('common.cancel')}</StitchButton>
+          <StitchButton size="sm" onClick={handleConfigSave}>
+            {configApp?.installed ? t('common.save') : t('store.install')}
+          </StitchButton>
+        </>}
+      >
+        {configApp && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('store.dockerImage')}</label>
+              <input value={configForm.image} onChange={e => setConfigForm(f => ({ ...f, image: e.target.value }))}
+                className="stitch-input w-full rounded-lg px-3 py-2 text-sm font-mono text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('store.port')}</label>
+              <input value={configForm.port} onChange={e => setConfigForm(f => ({ ...f, port: e.target.value }))}
+                placeholder="8080" type="number"
+                className="stitch-input w-full rounded-lg px-3 py-2 text-sm font-mono text-[var(--text-primary)]" />
+            </div>
+            <div>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('store.envVars')}</label>
+              <textarea value={configForm.env} onChange={e => setConfigForm(f => ({ ...f, env: e.target.value }))}
+                placeholder="PUID=1000&#10;PGID=1000&#10;TZ=Europe/Madrid" rows={3}
+                className="stitch-input w-full rounded-lg px-3 py-2 text-sm font-mono text-[var(--text-primary)] resize-none" />
+            </div>
+            <div>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('store.volumes')}</label>
+              <textarea value={configForm.volumes} onChange={e => setConfigForm(f => ({ ...f, volumes: e.target.value }))}
+                placeholder="/mnt/storage/media:/data&#10;/opt/config:/config" rows={3}
+                className="stitch-input w-full rounded-lg px-3 py-2 text-sm font-mono text-[var(--text-primary)] resize-none" />
+            </div>
+            <p className="text-xs text-[var(--text-disabled)]">{t('store.configHint')}</p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
