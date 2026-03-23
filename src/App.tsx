@@ -16,6 +16,7 @@ import DockerComposePage from '@/pages/DockerComposePage';
 import HomeStorePage from '@/pages/HomeStorePage';
 import SettingsPage from '@/pages/SettingsPage';
 import LoginPage from '@/pages/LoginPage';
+import SetupWizard from '@/pages/SetupWizard';
 import { NotificationBell } from '@/components/Notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 
@@ -78,6 +79,7 @@ const viewComponents: Record<View, React.FC> = {
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [setupDone, setSetupDone] = useState(() => localStorage.getItem('homepinas-setup') === 'done');
   const [user, setUser] = useState<string | null>(null);
   const { notifications, markRead, clearAll } = useNotifications();
   const ViewComponent = viewComponents[currentView];
@@ -91,6 +93,17 @@ export default function App() {
     setUser(null);
     setCurrentView('dashboard');
   }, []);
+
+  // Show setup wizard on first run
+  if (!setupDone) {
+    return <SetupWizard onComplete={(data) => {
+      localStorage.setItem('homepinas-setup', 'done');
+      localStorage.setItem('homepinas-hostname', data.hostname);
+      localStorage.setItem('homepinas-language', data.language);
+      setSetupDone(true);
+      setUser(data.username);
+    }} />;
+  }
 
   // Show login if not authenticated
   if (!user) {
