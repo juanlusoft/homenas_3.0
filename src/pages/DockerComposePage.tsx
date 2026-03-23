@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState, useCallback } from 'react';
 import { GlassCard, StitchButton } from '@/components/UI';
 
@@ -49,11 +50,11 @@ export default function DockerComposePage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold text-[var(--text-primary)]">
-            Editing: {stack?.name}
+            {t('stacks.editing')}: {stack?.name}
           </h2>
           <div className="flex gap-2">
-            <StitchButton size="sm" onClick={saveEdit}>💾 Save</StitchButton>
-            <StitchButton size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</StitchButton>
+            <StitchButton size="sm" onClick={saveEdit}>{t('stacks.save')}</StitchButton>
+            <StitchButton size="sm" variant="ghost" onClick={() => setEditing(null)}>{t('stacks.cancel')}</StitchButton>
           </div>
         </div>
         <GlassCard elevation="low" className="!p-0">
@@ -79,19 +80,19 @@ export default function DockerComposePage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Stacks</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('stacks.stacks')}</p>
           <p className="font-display text-2xl font-bold text-teal">{stacks.length}</p>
           <p className="text-xs text-[var(--text-secondary)]">{runningCount} running</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Services</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('stacks.services')}</p>
           <p className="font-display text-2xl font-bold text-teal">
             {stacks.reduce((a, s) => a + s.runningServices, 0)}/{stacks.reduce((a, s) => a + s.services, 0)}
           </p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Actions</p>
-          <StitchButton size="sm" className="mt-1">+ New Stack</StitchButton>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('stacks.actions')}</p>
+          <StitchButton size="sm" className="mt-1">{t('stacks.newStack')}</StitchButton>
         </GlassCard>
       </div>
 
@@ -109,7 +110,7 @@ export default function DockerComposePage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <StitchButton size="sm" variant="ghost" onClick={() => startEdit(stack)}>✏️ Edit</StitchButton>
+              <StitchButton size="sm" variant="ghost" onClick={() => startEdit(stack)}>{t('stacks.edit')}</StitchButton>
               <StitchButton size="sm" variant="ghost" onClick={() => toggleStack(stack.id)}>
                 {stack.status === 'running' ? '⏹ Stop' : '▶ Start'}
               </StitchButton>

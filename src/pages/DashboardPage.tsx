@@ -129,13 +129,13 @@ export default function DashboardPage() {
         <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface-void" />}>
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <GlassCard elevation="low">
-              <MetricsChart data={history} dataKey="cpu" label="CPU History" />
+              <MetricsChart data={history} dataKey="cpu" label={t("dash.cpuHistory")} />
             </GlassCard>
             <GlassCard elevation="low">
-              <MetricsChart data={history} dataKey="memory" label="Memory History" color="#64b5f6" />
+              <MetricsChart data={history} dataKey="memory" label={t("dash.memHistory")} color="#64b5f6" />
             </GlassCard>
             <GlassCard elevation="low">
-              <MetricsChart data={history} dataKey="temperature" label="Temperature" maxY={90} unit="°C" />
+              <MetricsChart data={history} dataKey="temperature" label={t("dash.tempHistory")} maxY={90} unit="°C" />
             </GlassCard>
             <GlassCard elevation="low">
               <NetworkChart data={history} />

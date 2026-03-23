@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState, useCallback } from 'react';
 import { GlassCard, StitchButton } from '@/components/UI';
 import { DeviceCard, DeviceDetail } from '@/components/ActiveBackup';
@@ -67,22 +68,22 @@ export default function ActiveBackupPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Devices</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('ab.devices')}</p>
           <p className="font-display text-2xl font-bold text-teal">{devices?.length ?? 0}</p>
-          <p className="text-xs text-[var(--text-secondary)]">{onlineCount} online</p>
+          <p className="text-xs text-[var(--text-secondary)]">{onlineCount} {t('ab.online')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Total Backup</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('ab.totalBackup')}</p>
           <p className="font-display text-2xl font-bold text-teal">{formatBytes(totalSize)}</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Active</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('ab.active')}</p>
           <p className="font-display text-2xl font-bold text-orange">{backingUpCount}</p>
-          <p className="text-xs text-[var(--text-secondary)]">running now</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('ab.runningNow')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Agent</p>
-          <StitchButton size="sm" className="mt-1">⬇️ Download Agent</StitchButton>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('ab.agent')}</p>
+          <StitchButton size="sm" className="mt-1">{t('ab.downloadAgent')}</StitchButton>
         </GlassCard>
       </div>
 
@@ -100,8 +101,8 @@ export default function ActiveBackupPage() {
                   <p className="text-xs text-[var(--text-secondary)]">{agent.os} · {agent.ip}</p>
                 </div>
                 <div className="flex gap-2">
-                  <StitchButton size="sm" onClick={() => handleApprove(agent.id)}>✓ Approve</StitchButton>
-                  <StitchButton size="sm" variant="ghost" onClick={() => handleReject(agent.id)}>✕ Reject</StitchButton>
+                  <StitchButton size="sm" onClick={() => handleApprove(agent.id)}>{t('ab.approve')}</StitchButton>
+                  <StitchButton size="sm" variant="ghost" onClick={() => handleReject(agent.id)}>{t('ab.reject')}</StitchButton>
                 </div>
               </div>
             ))}
@@ -129,22 +130,22 @@ export default function ActiveBackupPage() {
 
       {/* How it works */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">How Active Backup Works</h3>
+        <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">{t('ab.howItWorks')}</h3>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 text-center text-sm">
           <div>
             <p className="text-2xl mb-2">📥</p>
-            <p className="font-medium text-[var(--text-primary)]">1. Install Agent</p>
-            <p className="text-xs text-[var(--text-secondary)]">Download and install on any PC</p>
+            <p className="font-medium text-[var(--text-primary)]">{t('ab.step1')}</p>
+            <p className="text-xs text-[var(--text-secondary)]">{t('ab.step1desc')}</p>
           </div>
           <div>
             <p className="text-2xl mb-2">🔍</p>
-            <p className="font-medium text-[var(--text-primary)]">2. Auto-Discover</p>
-            <p className="text-xs text-[var(--text-secondary)]">Agent finds your NAS on the network</p>
+            <p className="font-medium text-[var(--text-primary)]">{t('ab.step2')}</p>
+            <p className="text-xs text-[var(--text-secondary)]">{t('ab.step2desc')}</p>
           </div>
           <div>
             <p className="text-2xl mb-2">🔄</p>
-            <p className="font-medium text-[var(--text-primary)]">3. Automatic Backup</p>
-            <p className="text-xs text-[var(--text-secondary)]">Incremental backups run on schedule</p>
+            <p className="font-medium text-[var(--text-primary)]">{t('ab.step3')}</p>
+            <p className="text-xs text-[var(--text-secondary)]">{t('ab.step3desc')}</p>
           </div>
         </div>
       </GlassCard>

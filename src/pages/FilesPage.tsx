@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState, useCallback } from 'react';
 import { GlassCard, StitchButton } from '@/components/UI';
 
@@ -123,13 +124,13 @@ export default function FilesPage() {
         {/* Actions */}
         <div className="flex items-center gap-2">
           {selectedFiles.size > 0 && (
-            <span className="text-xs text-teal font-mono">{selectedFiles.size} selected</span>
+            <span className="text-xs text-teal font-mono">{selectedFiles.size} {t('files.selected')}</span>
           )}
           <StitchButton size="sm" variant="ghost" onClick={() => setViewMode(v => v === 'list' ? 'grid' : 'list')}>
             {viewMode === 'list' ? '⊞' : '☰'}
           </StitchButton>
-          <StitchButton size="sm" variant="ghost">⬆️ Upload</StitchButton>
-          <StitchButton size="sm" variant="ghost">📁 New Folder</StitchButton>
+          <StitchButton size="sm" variant="ghost">{t('files.upload')}</StitchButton>
+          <StitchButton size="sm" variant="ghost">{t('files.newFolder')}</StitchButton>
         </div>
       </div>
 
@@ -140,10 +141,10 @@ export default function FilesPage() {
             <thead>
               <tr className="border-b border-[var(--outline-variant)] text-left text-xs uppercase tracking-wider text-[var(--text-secondary)]">
                 <th className="py-2.5 px-4 w-8"></th>
-                <th className="py-2.5 px-2">Name</th>
-                <th className="py-2.5 px-2 hidden sm:table-cell">Size</th>
-                <th className="py-2.5 px-2 hidden md:table-cell">Modified</th>
-                <th className="py-2.5 px-2 hidden lg:table-cell">Permissions</th>
+                <th className="py-2.5 px-2">{t('files.name')}</th>
+                <th className="py-2.5 px-2 hidden sm:table-cell">{t('files.size')}</th>
+                <th className="py-2.5 px-2 hidden md:table-cell">{t('files.modified')}</th>
+                <th className="py-2.5 px-2 hidden lg:table-cell">{t('files.permissions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -225,7 +226,7 @@ export default function FilesPage() {
 
       {/* Status bar */}
       <div className="flex items-center justify-between text-xs text-[var(--text-disabled)]">
-        <span>{entries.length} items</span>
+        <span>{entries.length} {t('files.items')}</span>
         <span>{currentPath}</span>
       </div>
     </div>

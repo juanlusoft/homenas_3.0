@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useCallback } from 'react';
 import { GlassCard, GlowPill } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -20,15 +21,15 @@ function ContainerCard({ container }: { container: DockerContainer }) {
       <div className="grid grid-cols-3 gap-3 text-center mb-3">
         <div>
           <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{container.cpu}%</p>
-          <p className="text-xs text-[var(--text-secondary)]">CPU</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('svc.cpu')}</p>
         </div>
         <div>
           <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{container.memory > 0 ? `${container.memory}MB` : '—'}</p>
-          <p className="text-xs text-[var(--text-secondary)]">Memory</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('svc.memory')}</p>
         </div>
         <div>
           <p className="font-mono text-sm font-bold text-[var(--text-primary)]">{container.uptime || '—'}</p>
-          <p className="text-xs text-[var(--text-secondary)]">Uptime</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('svc.uptime')}</p>
         </div>
       </div>
 
@@ -80,12 +81,12 @@ export default function ServicesPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Docker Containers</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('svc.containers')}</p>
           <p className="font-display text-2xl font-bold text-teal">{runningContainers}/{containers?.length || 0}</p>
           <p className="text-xs text-[var(--text-secondary)]">running</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">System Services</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('svc.systemServices')}</p>
           <p className="font-display text-2xl font-bold text-teal">{activeServices}/{services?.length || 0}</p>
           <p className="text-xs text-[var(--text-secondary)]">active</p>
         </GlassCard>
@@ -93,7 +94,7 @@ export default function ServicesPage() {
 
       {/* Docker containers */}
       <div>
-        <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">Docker Containers</h2>
+        <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">{t('svc.containers')}</h2>
         {dockerLoading ? (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {[1, 2, 3].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-surface-void" />)}
@@ -107,7 +108,7 @@ export default function ServicesPage() {
 
       {/* Systemd services */}
       <GlassCard elevation="low">
-        <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">System Services</h2>
+        <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">{t('svc.systemServices')}</h2>
         {systemdLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => <div key={i} className="h-10 animate-pulse rounded bg-surface-void" />)}

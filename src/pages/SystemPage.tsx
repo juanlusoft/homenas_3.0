@@ -67,7 +67,7 @@ export default function SystemPage() {
           </p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Status</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('sys.status')}</p>
           <div className="flex items-center gap-2 mt-2">
             <GlowPill status={isConnected ? 'healthy' : 'error'} label={isConnected ? 'Online' : 'Offline'} />
           </div>
@@ -84,11 +84,11 @@ export default function SystemPage() {
             </div>
           ) : info ? (
             <div className="divide-y divide-[var(--outline-variant)]">
-              <InfoRow label="Hostname" value={info.hostname} />
+              <InfoRow label={t('sys.hostname')} value={info.hostname} />
               <InfoRow label="OS" value={`${info.distro} ${info.release}`} />
-              <InfoRow label="Kernel" value={info.kernel} />
-              <InfoRow label="Architecture" value={info.arch} />
-              <InfoRow label="Model" value={info.model || 'Unknown'} />
+              <InfoRow label={t('sys.kernel')} value={info.kernel} />
+              <InfoRow label={t('sys.arch')} value={info.arch} />
+              <InfoRow label={t('sys.model')} value={info.model || 'Unknown'} />
             </div>
           ) : null}
         </GlassCard>
@@ -101,9 +101,9 @@ export default function SystemPage() {
             </div>
           ) : info ? (
             <div className="divide-y divide-[var(--outline-variant)]">
-              <InfoRow label="CPU" value={info.cpu} />
-              <InfoRow label="Cores" value={info.cores} />
-              <InfoRow label="Uptime" value={metrics ? formatUptime(0) : '—'} />
+              <InfoRow label={t('sys.cpu')} value={info.cpu} />
+              <InfoRow label={t('sys.cores')} value={info.cores} />
+              <InfoRow label={t('sys.uptime')} value={metrics ? formatUptime(0) : '—'} />
             </div>
           ) : null}
         </GlassCard>
@@ -113,10 +113,10 @@ export default function SystemPage() {
       <GlassCard elevation="low">
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('sys.actions')}</h3>
         <div className="flex flex-wrap gap-3">
-          <StitchButton size="sm" variant="ghost">📊 Full Diagnostics</StitchButton>
-          <StitchButton size="sm" variant="ghost">🔄 Check Updates</StitchButton>
-          <StitchButton size="sm" variant="ghost">📝 View Logs</StitchButton>
-          <StitchButton size="sm" variant="ghost">⚙️ Configuration</StitchButton>
+          <StitchButton size="sm" variant="ghost">{t('sys.diagnostics')}</StitchButton>
+          <StitchButton size="sm" variant="ghost">{t('sys.checkUpdates')}</StitchButton>
+          <StitchButton size="sm" variant="ghost">{t('sys.viewLogs')}</StitchButton>
+          <StitchButton size="sm" variant="ghost">{t('sys.configuration')}</StitchButton>
         </div>
       </GlassCard>
     </div>

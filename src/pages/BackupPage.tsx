@@ -63,7 +63,7 @@ function BackupJobCard({ job }: { job: BackupJob }) {
           <span className="font-mono text-[var(--text-primary)]">{job.nextRun}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Size</span>
+          <span className="text-[var(--text-secondary)]">{t('backup.size')}</span>
           <span className="font-mono text-teal">{job.size}</span>
         </div>
         <div className="flex justify-between">

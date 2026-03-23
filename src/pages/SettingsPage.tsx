@@ -65,7 +65,7 @@ export default function SettingsPage() {
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.general')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-[var(--text-secondary)] mb-1">Hostname</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('set.hostname')}</label>
             <input
               value={settings.hostname}
               onChange={e => update('hostname', e.target.value)}
@@ -74,7 +74,7 @@ export default function SettingsPage() {
           </div>
           <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1">Timezone</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('set.timezone')}</label>
               <select
                 value={settings.timezone}
                 onChange={e => update('timezone', e.target.value)}
@@ -88,7 +88,7 @@ export default function SettingsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-[var(--text-secondary)] mb-1">Language</label>
+              <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('set.language')}</label>
               <select
                 value={settings.language}
                 onChange={e => update('language', e.target.value)}
@@ -99,7 +99,7 @@ export default function SettingsPage() {
               </select>
             </div>
           </div>
-          <Toggle checked={settings.autoUpdate} onChange={() => update('autoUpdate', !settings.autoUpdate)} label="Auto-update system packages" />
+          <Toggle checked={settings.autoUpdate} onChange={() => update('autoUpdate', !settings.autoUpdate)} label={t('set.autoUpdate')} />
         </div>
       </GlassCard>
 
@@ -108,7 +108,7 @@ export default function SettingsPage() {
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.networkSecurity')}</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Toggle checked={settings.sshEnabled} onChange={() => update('sshEnabled', !settings.sshEnabled)} label="SSH Access" />
+            <Toggle checked={settings.sshEnabled} onChange={() => update('sshEnabled', !settings.sshEnabled)} label={t('set.sshAccess')} />
             <input
               type="number"
               value={settings.sshPort}
@@ -126,7 +126,7 @@ export default function SettingsPage() {
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.notifications')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-[var(--text-secondary)] mb-1">Email for alerts</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('set.emailAlerts')}</label>
             <input
               type="email"
               value={settings.notifyEmail}
@@ -135,8 +135,8 @@ export default function SettingsPage() {
               className="stitch-input rounded-lg px-3 py-2 text-sm w-full text-[var(--text-primary)]"
             />
           </div>
-          <Toggle checked={settings.notifyOnError} onChange={() => update('notifyOnError', !settings.notifyOnError)} label="Notify on errors" />
-          <Toggle checked={settings.notifyOnBackup} onChange={() => update('notifyOnBackup', !settings.notifyOnBackup)} label="Notify on backup completion" />
+          <Toggle checked={settings.notifyOnError} onChange={() => update('notifyOnError', !settings.notifyOnError)} label={t('set.notifyErrors')} />
+          <Toggle checked={settings.notifyOnBackup} onChange={() => update('notifyOnBackup', !settings.notifyOnBackup)} label={t('set.notifyBackup')} />
         </div>
       </GlassCard>
 
@@ -145,7 +145,7 @@ export default function SettingsPage() {
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('set.hardware')}</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-[var(--text-secondary)] mb-1">Fan control mode</label>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('set.fanMode')}</label>
             <div className="flex gap-2">
               {(['auto', 'manual', 'quiet'] as const).map(mode => (
                 <button
@@ -163,7 +163,7 @@ export default function SettingsPage() {
           <Toggle
             checked={settings.powerOnAfterFailure}
             onChange={() => update('powerOnAfterFailure', !settings.powerOnAfterFailure)}
-            label="Power on after power failure"
+            label={t('set.powerRecovery')}
           />
         </div>
       </GlassCard>

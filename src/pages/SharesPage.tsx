@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
@@ -57,17 +58,17 @@ function ShareCard({ share }: { share: Share }) {
 
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Access</span>
+          <span className="text-[var(--text-secondary)]">{t('shares.access')}</span>
           <span className={`font-mono ${share.accessMode === 'read-write' ? 'text-teal' : 'text-[var(--text-primary)]'}`}>
             {share.accessMode}
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Users</span>
+          <span className="text-[var(--text-secondary)]">{t('shares.users')}</span>
           <span className="font-mono text-xs text-[var(--text-primary)]">{share.allowedUsers.join(', ')}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Connected</span>
+          <span className="text-[var(--text-secondary)]">{t('shares.connected')}</span>
           <span className={`font-mono ${share.connectedClients > 0 ? 'text-teal' : 'text-[var(--text-disabled)]'}`}>
             {share.connectedClients} clients
           </span>
@@ -75,7 +76,7 @@ function ShareCard({ share }: { share: Share }) {
       </div>
 
       <div className="flex gap-2 mt-4">
-        <StitchButton size="sm" variant="ghost">Edit</StitchButton>
+        <StitchButton size="sm" variant="ghost">{t('shares.edit')}</StitchButton>
         <StitchButton size="sm" variant="ghost">
           {share.status === 'active' ? 'Disable' : 'Enable'}
         </StitchButton>
@@ -97,26 +98,26 @@ export default function SharesPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Shares</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('shares.shares')}</p>
           <p className="font-display text-2xl font-bold text-teal">{activeCount}/{shares.length}</p>
           <p className="text-xs text-[var(--text-secondary)]">active</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Connected</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('shares.connected')}</p>
           <p className="font-display text-2xl font-bold text-teal">{totalClients}</p>
-          <p className="text-xs text-[var(--text-secondary)]">clients</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('shares.clients')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Protocols</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('shares.protocols')}</p>
           <div className="flex gap-2 mt-1">
             <span className="text-xs font-mono bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">SMB {smbCount}</span>
             <span className="text-xs font-mono bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full">NFS {nfsCount}</span>
           </div>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Actions</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('shares.actions')}</p>
           <div className="flex gap-2 mt-2">
-            <StitchButton size="sm">+ New Share</StitchButton>
+            <StitchButton size="sm">{t('shares.newShare')}</StitchButton>
           </div>
         </GlassCard>
       </div>

@@ -33,11 +33,11 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
           <span className="font-mono text-sm text-[var(--text-primary)]">{iface.speed}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-sm text-[var(--text-secondary)]">Netmask</span>
+          <span className="text-sm text-[var(--text-secondary)]">{t('net.netmask')}</span>
           <span className="font-mono text-sm text-[var(--text-primary)]">{iface.netmask}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-sm text-[var(--text-secondary)]">Gateway</span>
+          <span className="text-sm text-[var(--text-secondary)]">{t('net.gateway')}</span>
           <span className="font-mono text-sm text-[var(--text-primary)]">{iface.gateway}</span>
         </div>
 

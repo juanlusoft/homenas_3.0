@@ -47,6 +47,7 @@ export const es: Record<string, string> = {
   'dash.connecting': 'Conectando...',
   'dash.cpuHistory': 'Historial CPU',
   'dash.memHistory': 'Historial Memoria',
+  'dash.tempHistory': 'Temperatura',
   'dash.netThroughput': 'Rendimiento de Red',
 
   // Storage
@@ -64,8 +65,8 @@ export const es: Record<string, string> = {
   'storage.badSectors': 'Sectores malos',
 
   // Files
-  'files.upload': 'Subir',
-  'files.newFolder': 'Nueva Carpeta',
+  'files.upload': '⬆️ Subir',
+  'files.newFolder': '📁 Nueva Carpeta',
   'files.name': 'Nombre',
   'files.size': 'Tamaño',
   'files.modified': 'Modificado',
@@ -87,6 +88,7 @@ export const es: Record<string, string> = {
   'shares.disable': 'Desactivar',
   'shares.readWrite': 'lectura-escritura',
   'shares.readOnly': 'solo lectura',
+  'shares.actions': 'Acciones',
 
   // Backup
   'backup.jobs': 'Tareas',
@@ -100,6 +102,7 @@ export const es: Record<string, string> = {
   'backup.nextRun': 'Próxima ejecución',
   'backup.destination': 'Destino',
   'backup.schedule': 'Programación',
+  'backup.size': 'Tamaño',
 
   // Active Backup
   'ab.devices': 'Dispositivos',
@@ -120,7 +123,7 @@ export const es: Record<string, string> = {
   'ab.lastBackup': 'Último backup',
   'ab.totalSize': 'Tamaño total',
   'ab.versions': 'Versiones',
-  'ab.howItWorks': 'Cómo Funciona',
+  'ab.howItWorks': 'Cómo Funciona Active Backup',
   'ab.step1': '1. Instalar Agente',
   'ab.step1desc': 'Descarga e instala en cualquier PC',
   'ab.step2': '2. Auto-descubrir',
@@ -129,9 +132,12 @@ export const es: Record<string, string> = {
   'ab.step3desc': 'Copias incrementales programadas',
 
   // Services
-  'services.containers': 'Contenedores',
-  'services.running': 'ejecutándose',
-  'services.systemServices': 'Servicios del Sistema',
+  'svc.containers': 'Contenedores Docker',
+  'svc.running': 'ejecutándose',
+  'svc.systemServices': 'Servicios del Sistema',
+  'svc.cpu': 'CPU',
+  'svc.memory': 'Memoria',
+  'svc.uptime': 'Tiempo activo',
 
   // Stacks
   'stacks.stacks': 'Stacks',
@@ -143,6 +149,7 @@ export const es: Record<string, string> = {
   'stacks.editing': 'Editando',
   'stacks.save': '💾 Guardar',
   'stacks.cancel': 'Cancelar',
+  'stacks.actions': 'Acciones',
 
   // HomeStore
   'store.installed': 'Instalados',
@@ -154,6 +161,15 @@ export const es: Record<string, string> = {
   'store.uninstall': 'Desinstalar',
   'store.open': 'Abrir',
   'store.noResults': 'No hay apps que coincidan',
+  'store.media': 'Multimedia',
+  'store.productivity': 'Productividad',
+  'store.security': 'Seguridad',
+  'store.development': 'Desarrollo',
+  'store.network': 'Red',
+  'store.backup': 'Backup',
+  'store.monitoring': 'Monitorización',
+  'store.installedFilter': '✓ Instalados',
+  'store.availableFilter': '+ Disponibles',
 
   // Network
   'net.interfaces': 'Interfaces de Red',
@@ -161,12 +177,18 @@ export const es: Record<string, string> = {
   'net.connected': 'Conectado',
   'net.noConnection': 'Sin Conexión',
   'net.speed': 'Velocidad',
+  'net.netmask': 'Máscara',
+  'net.gateway': 'Puerta de enlace',
   'net.received': 'Recibidos',
   'net.sent': 'Enviados',
 
   // Logs
   'logs.search': 'Buscar registros...',
   'logs.allLevels': 'Todos los niveles',
+  'logs.error': 'Error',
+  'logs.warning': 'Aviso',
+  'logs.info': 'Info',
+  'logs.debug': 'Depuración',
   'logs.allSources': 'Todas las fuentes',
   'logs.entries': 'entradas',
   'logs.auto': '⏬ Auto',
@@ -205,6 +227,9 @@ export const es: Record<string, string> = {
   'set.notifyBackup': 'Notificar fin de backup',
   'set.hardware': 'Hardware',
   'set.fanMode': 'Modo ventilador',
+  'set.fanAuto': 'auto',
+  'set.fanManual': 'manual',
+  'set.fanQuiet': 'silencioso',
   'set.powerRecovery': 'Encender tras corte de corriente',
   'set.save': '💾 Guardar Ajustes',
   'set.saved': '✅ ¡Guardado!',
@@ -226,6 +251,7 @@ export const es: Record<string, string> = {
   'users.failedLockout': 'Bloqueo por intentos fallidos',
   'users.lockAfter5': 'Bloquear tras 5 intentos fallidos',
   'users.enable': 'Activar',
+  'users.actions': 'Acciones',
 
   // Login
   'login.signIn': 'Iniciar Sesión',
@@ -248,6 +274,12 @@ export const es: Record<string, string> = {
   'common.next': 'Siguiente →',
   'common.running': 'Ejecutándose',
   'common.stopped': 'Parado',
+  'common.cancel': 'Cancelar',
+  'common.save': 'Guardar',
+  'common.edit': 'Editar',
+  'common.delete': 'Eliminar',
+  'common.status': 'Estado',
+  'common.actions': 'Acciones',
 
   // Wizard
   'wiz.language': 'Idioma',

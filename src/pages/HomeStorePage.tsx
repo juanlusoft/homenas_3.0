@@ -1,17 +1,18 @@
 import { useState, useMemo, useCallback } from 'react';
+import { t } from '@/i18n';
 import { GlassCard } from '@/components/UI';
 import { AppCard } from '@/components/HomeStore';
 import type { StoreApp, AppCategory } from '@/components/HomeStore';
 
 const CATEGORIES: { id: AppCategory | 'all'; label: string; icon: string }[] = [
-  { id: 'all', label: 'All', icon: '🏪' },
-  { id: 'media', label: 'Media', icon: '🎬' },
-  { id: 'productivity', label: 'Productivity', icon: '📝' },
-  { id: 'security', label: 'Security', icon: '🔒' },
-  { id: 'development', label: 'Dev Tools', icon: '💻' },
-  { id: 'network', label: 'Network', icon: '🌐' },
-  { id: 'backup', label: 'Backup', icon: '📦' },
-  { id: 'monitoring', label: 'Monitoring', icon: '📊' },
+  { id: 'all', label: t('store.all'), icon: '🏪' },
+  { id: 'media', label: t('store.media'), icon: '🎬' },
+  { id: 'productivity', label: t('store.productivity'), icon: '📝' },
+  { id: 'security', label: t('store.security'), icon: '🔒' },
+  { id: 'development', label: t('store.development'), icon: '💻' },
+  { id: 'network', label: t('store.network'), icon: '🌐' },
+  { id: 'backup', label: t('store.backup'), icon: '📦' },
+  { id: 'monitoring', label: t('store.monitoring'), icon: '📊' },
 ];
 
 const INITIAL_APPS: StoreApp[] = [
@@ -121,14 +122,14 @@ export default function HomeStorePage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Installed</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('store.installed')}</p>
           <p className="font-display text-2xl font-bold text-teal">{installedCount}</p>
           <p className="text-xs text-[var(--text-secondary)]">{runningCount} running</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Available</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('store.available')}</p>
           <p className="font-display text-2xl font-bold text-teal">{apps.length - installedCount}</p>
-          <p className="text-xs text-[var(--text-secondary)]">ready to install</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('store.readyToInstall')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Search</p>
@@ -136,7 +137,7 @@ export default function HomeStorePage() {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search apps..."
+            placeholder={t("store.search")}
             className="stitch-input rounded-lg px-3 py-1.5 text-sm w-full text-[var(--text-primary)] mt-1"
           />
         </GlassCard>
@@ -189,7 +190,7 @@ export default function HomeStorePage() {
       {filtered.length === 0 && (
         <div className="text-center py-12 text-[var(--text-disabled)]">
           <p className="text-3xl mb-2">🔍</p>
-          <p>No apps match your search</p>
+          <p>{t('store.noResults')}</p>
         </div>
       )}
     </div>

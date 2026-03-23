@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GlassCard, StitchButton } from '@/components/UI';
 
@@ -80,7 +81,7 @@ export default function LogsPage() {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search logs..."
+          placeholder={t("logs.search")}
           className="stitch-input rounded-lg px-3 py-1.5 text-sm w-48 text-[var(--text-primary)]"
         />
 
@@ -89,11 +90,11 @@ export default function LogsPage() {
           onChange={e => setFilter(e.target.value as LogEntry['level'] | 'all')}
           className="stitch-input rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)]"
         >
-          <option value="all">All levels</option>
-          <option value="error">Error ({errorCount})</option>
-          <option value="warn">Warning ({warnCount})</option>
-          <option value="info">Info</option>
-          <option value="debug">Debug</option>
+          <option value="all">{t('logs.allLevels')}</option>
+          <option value="error">{t('logs.error')} ({errorCount})</option>
+          <option value="warn">{t('logs.warning')} ({warnCount})</option>
+          <option value="info">{t('logs.info')}</option>
+          <option value="debug">{t('logs.debug')}</option>
         </select>
 
         <select
@@ -101,7 +102,7 @@ export default function LogsPage() {
           onChange={e => setSourceFilter(e.target.value)}
           className="stitch-input rounded-lg px-3 py-1.5 text-sm text-[var(--text-primary)]"
         >
-          <option value="all">All sources</option>
+          <option value="all">{t('logs.allSources')}</option>
           {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
 

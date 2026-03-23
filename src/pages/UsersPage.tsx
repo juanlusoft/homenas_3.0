@@ -77,7 +77,7 @@ export default function UsersPage() {
           </p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Actions</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('users.actions')}</p>
           <div className="flex gap-2 mt-2">
             <StitchButton size="sm">{t('users.addUser')}</StitchButton>
             <StitchButton size="sm" variant="ghost">{t('users.auditLog')}</StitchButton>
@@ -99,22 +99,22 @@ export default function UsersPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-[var(--text-primary)]">Require 2FA for all users</p>
-              <p className="text-xs text-[var(--text-secondary)]">Enforce TOTP authentication</p>
+              <p className="text-sm text-[var(--text-primary)]">{t('users.require2FA')}</p>
+              <p className="text-xs text-[var(--text-secondary)]">{t('users.enforce2FA')}</p>
             </div>
-            <StitchButton size="sm" variant="ghost">Enable</StitchButton>
+            <StitchButton size="sm" variant="ghost">{t('users.enable')}</StitchButton>
           </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-[var(--text-primary)]">{t('users.sessionTimeout')}</p>
-              <p className="text-xs text-[var(--text-secondary)]">Auto-logout after inactivity</p>
+              <p className="text-xs text-[var(--text-secondary)]">{t('users.autoLogout')}</p>
             </div>
             <span className="font-mono text-sm text-teal">30 min</span>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-[var(--text-primary)]">Failed login lockout</p>
-              <p className="text-xs text-[var(--text-secondary)]">Lock after 5 failed attempts</p>
+              <p className="text-sm text-[var(--text-primary)]">{t('users.failedLockout')}</p>
+              <p className="text-xs text-[var(--text-secondary)]">{t('users.lockAfter5')}</p>
             </div>
             <GlowPill status="healthy" label="Active" />
           </div>
