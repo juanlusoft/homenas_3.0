@@ -1,0 +1,55 @@
+/**
+ * HomePiNAS v3 — Backend Server
+ * Express + Socket.io for real-time system monitoring
+ */
+
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import { metricsRouter } from './routes/metrics.js';
+import { storageRouter } from './routes/storage.js';
+import { networkRouter } from './routes/network.js';
+import { servicesRouter } from './routes/services.js';
+import { startMetricsEmitter } from './realtime/metrics-emitter.js';
+
+const PORT = parseInt(process.env.PORT || '3001', 10);
+const app = express();
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+  transports: ['websocket', 'polling'],
+});
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// REST API routes
+app.use('/api/system', metricsRouter);
+app.use('/api/storage', storageRouter);
+app.use('/api/network', networkRouter);
+app.use('/api/services', servicesRouter);
+
+// Health check
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
+// Socket.io connection
+io.on('connection', (socket) => {
+  console.log(`[ws] Client connected: ${socket.id}`);
+
+  socket.on('disconnect', (reason) => {
+    console.log(`[ws] Client disconnected: ${socket.id} (${reason})`);
+  });
+});
+
+// Start real-time metrics emitter
+startMetricsEmitter(io);
+
+httpServer.listen(PORT, () => {
+  console.log(`[server] HomePiNAS API running on http://localhost:${PORT}`);
+  console.log(`[server] Socket.io ready for real-time connections`);
+});

@@ -16,7 +16,7 @@ export interface UseSocketReturn {
  * @param url - Socket.io server URL (defaults to localhost:3001)
  */
 export function useSocket(
-  url: string = "http://localhost:3001",
+  url: string = import.meta.env.VITE_WS_URL || window.location.origin,
 ): UseSocketReturn {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
