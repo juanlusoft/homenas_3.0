@@ -105,9 +105,11 @@ export default function HomeStorePage() {
 
   const handleInstall = useCallback((id: string) => {
     setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
+    // TODO: POST /api/store/install/:id when Docker API ready
   }, []);
 
   const handleUninstall = useCallback((id: string) => {
+    if (!confirm(t('store.uninstall') + '?')) return;
     setApps(prev => prev.map(a => a.id === id ? { ...a, installed: false, running: false } : a));
   }, []);
 

@@ -1,6 +1,6 @@
 import { t } from '@/i18n';
-import { useCallback, lazy, Suspense } from 'react';
-import { GlassCard, GlowPill } from '@/components/UI';
+import { useState, useCallback, lazy, Suspense } from 'react';
+import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
 import { api } from '@/api/client';
@@ -63,6 +63,9 @@ export default function NetworkPage() {
   const { data: interfaces, loading } = useAPI<NetworkInterface[]>(fetchNetwork, 5000);
   const { history } = useLiveMetrics();
 
+  const [editIface, setEditIface] = useState<string | null>(null);
+  const [netForm, setNetForm] = useState({ mode: 'dhcp', ip: '', netmask: '255.255.255.0', gateway: '', dns: '' });
+
   const activeCount = interfaces?.filter((i) => i.status === 'up').length || 0;
 
   return (
@@ -97,6 +100,27 @@ export default function NetworkPage() {
           {interfaces?.map((iface) => <InterfaceCard key={iface.name} iface={iface} />)}
         </div>
       )}
+
+      {/* Edit Interface Modal */}
+      <Modal open={!!editIface} onClose={() => setEditIface(null)} title={`${t('net.edit')}: ${editIface}`}
+        actions={<><StitchButton size="sm" variant="ghost" onClick={() => setEditIface(null)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={() => setEditIface(null)}>{t('common.save')}</StitchButton></>}>
+        <p className="text-xs text-orange mb-3">{t('net.editWarning')}</p>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            {(['dhcp', 'static'] as const).map(mode => (
+              <button key={mode} onClick={() => setNetForm(f => ({ ...f, mode }))}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors border ${netForm.mode === mode ? 'bg-teal/10 text-teal border-teal/30' : 'border-[var(--outline-variant)]'}`}>
+                {mode === 'dhcp' ? t('wiz.dhcp') : t('wiz.static')}
+              </button>
+            ))}
+          </div>
+          {netForm.mode === 'static' && (<>
+            <input value={netForm.ip} onChange={e => setNetForm(f => ({ ...f, ip: e.target.value }))} placeholder={t('net.ip')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+            <input value={netForm.gateway} onChange={e => setNetForm(f => ({ ...f, gateway: e.target.value }))} placeholder={t('net.gateway')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+            <input value={netForm.dns} onChange={e => setNetForm(f => ({ ...f, dns: e.target.value }))} placeholder={t('net.dns')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+          </>)}
+        </div>
+      </Modal>
     </div>
   );
 }
