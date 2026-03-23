@@ -8,13 +8,17 @@ import SystemPage from '@/pages/SystemPage';
 import BackupPage from '@/pages/BackupPage';
 import UsersPage from '@/pages/UsersPage';
 import FilesPage from '@/pages/FilesPage';
+import SharesPage from '@/pages/SharesPage';
 import LoginPage from '@/pages/LoginPage';
+import { NotificationBell } from '@/components/Notifications';
+import { useNotifications } from '@/hooks/useNotifications';
 
-type View = 'dashboard' | 'files' | 'storage' | 'backup' | 'services' | 'network' | 'system' | 'users';
+type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'services' | 'network' | 'system' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'files', label: 'Files', icon: '📂' },
+  { id: 'shares', label: 'Shares', icon: '🔗' },
   { id: 'storage', label: 'Storage', icon: '💾' },
   { id: 'backup', label: 'Backup', icon: '📦' },
   { id: 'services', label: 'Services', icon: '🐳' },
@@ -26,6 +30,7 @@ const navItems: { id: View; label: string; icon: string }[] = [
 const viewSubtitles: Record<View, string> = {
   dashboard: 'System overview & metrics',
   files: 'Browse & manage files',
+  shares: 'Samba & NFS shared folders',
   storage: 'Disk health & capacity',
   backup: 'Backup jobs & restore points',
   services: 'Docker & systemd management',
@@ -37,6 +42,7 @@ const viewSubtitles: Record<View, string> = {
 const viewComponents: Record<View, React.FC> = {
   dashboard: DashboardPage,
   files: FilesPage,
+  shares: SharesPage,
   storage: StoragePage,
   backup: BackupPage,
   services: ServicesPage,
@@ -49,6 +55,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<string | null>(null);
+  const { notifications, markRead, clearAll } = useNotifications();
   const ViewComponent = viewComponents[currentView];
 
   const navigate = useCallback((view: View) => {
@@ -148,6 +155,7 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-2 lg:gap-3">
+              <NotificationBell notifications={notifications} onMarkRead={markRead} onClearAll={clearAll} />
               <GlowPill status="healthy" label="All Systems" />
               <StitchButton size="sm" className="hidden sm:inline-flex" onClick={() => navigate('system')}>
                 Settings
