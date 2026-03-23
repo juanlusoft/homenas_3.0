@@ -13,12 +13,13 @@ import SharesPage from '@/pages/SharesPage';
 import LogsPage from '@/pages/LogsPage';
 import TerminalPage from '@/pages/TerminalPage';
 import DockerComposePage from '@/pages/DockerComposePage';
+import HomeStorePage from '@/pages/HomeStorePage';
 import SettingsPage from '@/pages/SettingsPage';
 import LoginPage from '@/pages/LoginPage';
 import { NotificationBell } from '@/components/Notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 
-type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'network' | 'logs' | 'terminal' | 'system' | 'settings' | 'users';
+type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'homestore' | 'network' | 'logs' | 'terminal' | 'system' | 'settings' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -29,6 +30,7 @@ const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'active-backup', label: 'Active Backup', icon: '🖥️' },
   { id: 'services', label: 'Services', icon: '🐳' },
   { id: 'stacks', label: 'Stacks', icon: '🏗️' },
+  { id: 'homestore', label: 'HomeStore', icon: '🏪' },
   { id: 'network', label: 'Network', icon: '🌐' },
   { id: 'logs', label: 'Logs', icon: '📋' },
   { id: 'terminal', label: 'Terminal', icon: '🖥️' },
@@ -47,6 +49,7 @@ const viewSubtitles: Record<View, string> = {
   services: 'Docker & systemd management',
   network: 'Network interfaces & traffic',
   stacks: 'Docker Compose stacks',
+  homestore: 'Install apps on your NAS',
   logs: 'System & service log viewer',
   terminal: 'Web terminal access',
   system: 'Hardware, OS & system settings',
@@ -64,6 +67,7 @@ const viewComponents: Record<View, React.FC> = {
   services: ServicesPage,
   network: NetworkPage,
   stacks: DockerComposePage,
+  homestore: HomeStorePage,
   logs: LogsPage,
   terminal: TerminalPage,
   system: SystemPage,
