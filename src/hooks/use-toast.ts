@@ -20,7 +20,8 @@ const actionTypes = {
   UPDATE_TOAST: "UPDATE_TOAST",
   DISMISS_TOAST: "DISMISS_TOAST",
   REMOVE_TOAST: "REMOVE_TOAST",
-} as const
+} as const;
+void actionTypes; // eslint: used as type reference
 
 let count = 0
 

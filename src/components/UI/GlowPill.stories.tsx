@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { GlowPill } from "./GlowPill";
 
 const meta: Meta<typeof GlowPill> = {

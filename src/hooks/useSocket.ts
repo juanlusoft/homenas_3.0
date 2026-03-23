@@ -1,5 +1,5 @@
 import { io, type Socket } from "socket.io-client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export interface UseSocketReturn {
   socket: Socket | null;
@@ -18,13 +18,31 @@ export interface UseSocketReturn {
 export function useSocket(
   url: string = "http://localhost:3001",
 ): UseSocketReturn {
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const socketRef = useRef<Socket | null>(null);
+
+  const handleConnect = useCallback(() => {
+    setIsConnected(true);
+    setConnectionError(null);
+    setReconnectAttempts(0);
+  }, []);
+
+  const handleDisconnect = useCallback(() => {
+    setIsConnected(false);
+  }, []);
+
+  const handleConnectError = useCallback((error: Error) => {
+    setConnectionError(error.message);
+  }, []);
+
+  const handleReconnectAttempt = useCallback((attempt: number) => {
+    setReconnectAttempts(attempt);
+  }, []);
 
   useEffect(() => {
-    const socket = io(url, {
+    const newSocket = io(url, {
       transports: ["websocket", "polling"],
       timeout: 20_000,
       reconnectionDelay: 1_000,
@@ -32,43 +50,26 @@ export function useSocket(
       forceNew: true,
     });
 
-    socketRef.current = socket;
+    newSocket.on("connect", handleConnect);
+    newSocket.on("disconnect", handleDisconnect);
+    newSocket.on("connect_error", handleConnectError);
+    newSocket.io.on("reconnect_attempt", handleReconnectAttempt);
 
-    const handleConnect = () => {
-      setIsConnected(true);
-      setConnectionError(null);
-      setReconnectAttempts(0);
-    };
-
-    const handleDisconnect = () => {
-      setIsConnected(false);
-    };
-
-    const handleConnectError = (error: Error) => {
-      setConnectionError(error.message);
-    };
-
-    const handleReconnectAttempt = (attempt: number) => {
-      setReconnectAttempts(attempt);
-    };
-
-    socket.on("connect", handleConnect);
-    socket.on("disconnect", handleDisconnect);
-    socket.on("connect_error", handleConnectError);
-    socket.io.on("reconnect_attempt", handleReconnectAttempt);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- socket must be initialized in effect
+    setSocket(newSocket);
 
     return () => {
-      socket.off("connect", handleConnect);
-      socket.off("disconnect", handleDisconnect);
-      socket.off("connect_error", handleConnectError);
-      socket.io.off("reconnect_attempt", handleReconnectAttempt);
-      socket.disconnect();
-      socketRef.current = null;
+      newSocket.off("connect", handleConnect);
+      newSocket.off("disconnect", handleDisconnect);
+      newSocket.off("connect_error", handleConnectError);
+      newSocket.io.off("reconnect_attempt", handleReconnectAttempt);
+      newSocket.disconnect();
+      setSocket(null);
     };
-  }, [url]);
+  }, [url, handleConnect, handleDisconnect, handleConnectError, handleReconnectAttempt]);
 
   return {
-    socket: socketRef.current,
+    socket,
     isConnected,
     connectionError,
     reconnectAttempts,

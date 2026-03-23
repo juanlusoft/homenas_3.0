@@ -1,38 +1,127 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ============================================
-   STITCH DESIGN SYSTEM — "Luminous Obsidian"
-   HomePiNAS v3 · The Kinetic Observatory
+   TAILWIND v4 THEME — Stitch "Luminous Obsidian"
+   Migrated from tailwind.config.js
    ============================================ */
+@theme {
+  /* Colors — shadcn/ui semantic */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
 
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* Stitch surface hierarchy */
+  --color-surface: #10141a;
+  --color-surface-void: #0a0e14;
+  --color-surface-low: #181c22;
+  --color-surface-mid: #1c2026;
+  --color-surface-high: #262a31;
+  --color-surface-highest: #31353c;
+  --color-surface-bright: #3a3f47;
+
+  /* Stitch accent palette */
+  --color-teal: #44e5c2;
+  --color-teal-dark: #00c9a7;
+  --color-teal-glow: rgba(68, 229, 194, 0.3);
+  --color-orange: #f5a623;
+  --color-orange-dark: #d4891a;
+
+  /* Semantic */
+  --color-success: #44e5c2;
+  --color-warning: #f5a623;
+  --color-error: #ff6b6b;
+  --color-info: #64b5f6;
+
+  /* Typography */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Border Radius */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-stitch: 0.75rem;
+  --radius-stitch-lg: 1rem;
+  --radius-stitch-xl: 1.5rem;
+
+  /* Box shadows */
+  --shadow-glow-teal: 0 20px 40px rgba(0, 201, 167, 0.08);
+  --shadow-glow-teal-strong: 0 8px 30px rgba(68, 229, 194, 0.2);
+  --shadow-glow-error: 0 0 4px #ff6b6b;
+  --shadow-glow-warning: 0 0 4px #f5a623;
+  --shadow-glow-success: 0 0 4px #44e5c2;
+
+  /* Animations */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-node-pulse: node-pulse 3s ease-in-out infinite;
+  --animate-glow-breathe: glow-breathe 2s ease-in-out infinite;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+  @keyframes node-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+  }
+  @keyframes glow-breathe {
+    0%, 100% { box-shadow: 0 0 4px rgba(68, 229, 194, 0.3); }
+    50% { box-shadow: 0 0 12px rgba(68, 229, 194, 0.5); }
+  }
+}
+
+/* ============================================
+   STITCH DESIGN SYSTEM — CSS Variables
+   ============================================ */
 @layer base {
   :root {
-    /* === Surface Hierarchy (Deep Slate Foundation) === */
-    --surface-void: #0a0e14;            /* The sunken void */
-    --surface: #10141a;                  /* Base — the infinite void */
-    --surface-container-low: #181c22;    /* Large structural areas */
-    --surface-container: #1c2026;        /* Standard component home */
-    --surface-container-high: #262a31;   /* Elevated focus */
-    --surface-container-highest: #31353c; /* Pop-overs, active states */
-    --surface-variant: rgba(28, 32, 38, 0.6); /* Glassmorphism base */
-    --surface-bright: #3a3f47;           /* Hover states */
+    /* Surface Hierarchy */
+    --surface-void: #0a0e14;
+    --surface: #10141a;
+    --surface-container-low: #181c22;
+    --surface-container: #1c2026;
+    --surface-container-high: #262a31;
+    --surface-container-highest: #31353c;
+    --surface-variant: rgba(28, 32, 38, 0.6);
+    --surface-bright: #3a3f47;
 
-    /* === Primary Teal Accent === */
+    /* Primary Teal */
     --primary-raw: #44e5c2;
     --primary-container: #00c9a7;
     --primary-fixed: rgba(68, 229, 194, 0.3);
     --on-primary: #002b24;
     --on-primary-container: rgba(0, 201, 167, 0.15);
 
-    /* === Secondary Orange (sparingly, <5% UI) === */
+    /* Secondary Orange */
     --secondary-raw: #f5a623;
     --secondary-container: #d4891a;
 
-    /* === Semantic Colors === */
+    /* Semantic */
     --error: #ff6b6b;
     --error-container: rgba(255, 107, 107, 0.15);
     --warning: #f5a623;
@@ -42,37 +131,37 @@
     --info: #64b5f6;
     --info-container: rgba(100, 181, 246, 0.15);
 
-    /* === Ghost Border === */
+    /* Ghost Border */
     --outline-variant: rgba(60, 74, 69, 0.15);
     --outline: rgba(60, 74, 69, 0.3);
 
-    /* === Text === */
+    /* Text */
     --text-primary: #e8eaed;
     --text-secondary: #9aa0a6;
     --text-disabled: #5f6368;
 
-    /* === Spacing Scale === */
+    /* Spacing */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
     --space-3: 0.75rem;
     --space-4: 1rem;
-    --space-6: 1.5rem;   /* Content separation */
+    --space-6: 1.5rem;
     --space-8: 2rem;
-    --space-10: 2.5rem;  /* Breathing room */
+    --space-10: 2.5rem;
     --space-12: 3rem;
 
-    /* === Typography === */
+    /* Typography */
     --font-display: 'Space Grotesk', sans-serif;
     --font-body: 'Manrope', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
-    /* === Radius === */
+    /* Radius */
     --radius-sm: 0.375rem;
     --radius-md: 0.75rem;
     --radius-lg: 1rem;
     --radius-xl: 1.5rem;
 
-    /* === shadcn/ui token mapping === */
+    /* shadcn/ui tokens */
     --background: 216 33% 8%;
     --foreground: 220 10% 92%;
     --card: 216 14% 13%;
@@ -94,9 +183,7 @@
     --ring: 166 75% 56%;
     --radius: 0.75rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -113,7 +200,6 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* === Typography Classes === */
   h1, h2, h3, .display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
@@ -128,7 +214,6 @@
    GLASSMORPHISM SYSTEM
    ============================================ */
 @layer components {
-  /* Standard glass panel */
   .glass {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -136,7 +221,6 @@
     border: 1px solid var(--outline-variant);
   }
 
-  /* Elevated glass (modals, tooltips) */
   .glass-elevated {
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
@@ -145,7 +229,6 @@
     box-shadow: 0 20px 40px rgba(0, 201, 167, 0.08);
   }
 
-  /* Primary gradient CTA — jewel-like */
   .glass-button {
     background: linear-gradient(135deg, var(--primary-raw), var(--primary-container));
     border: 1px solid var(--primary-fixed);
@@ -160,7 +243,6 @@
     box-shadow: 0 4px 20px rgba(68, 229, 194, 0.25);
   }
 
-  /* Ghost button */
   .ghost-button {
     background: transparent;
     border: 1px solid var(--outline);
@@ -172,7 +254,6 @@
     background: var(--surface-bright);
   }
 
-  /* Glow-Pill status indicators */
   .glow-pill {
     display: inline-flex;
     align-items: center;
@@ -202,7 +283,6 @@
     box-shadow: 0 0 4px var(--error);
   }
 
-  /* Surface cards — NO borders, tonal shifts only */
   .surface-card {
     background: var(--surface-container);
     border-radius: var(--radius-md);
@@ -224,14 +304,12 @@
     border: none;
   }
 
-  /* Sunken sub-element */
   .surface-sunken {
     background: var(--surface-void);
     border-radius: var(--radius-sm);
     padding: var(--space-4);
   }
 
-  /* Input field — bottom glow on focus */
   .stitch-input {
     background: var(--surface-void);
     border: 1px solid transparent;
@@ -245,7 +323,6 @@
     box-shadow: 0 1px 0 0 var(--primary-raw);
   }
 
-  /* Node pulse animation */
   .node-pulse {
     animation: nodePulse 3s ease-in-out infinite;
   }
@@ -260,9 +337,6 @@
   }
 }
 
-/* ============================================
-   UTILITY EXTENSIONS
-   ============================================ */
 @layer utilities {
   .text-display {
     font-family: var(--font-display);
@@ -277,7 +351,6 @@
     font-family: var(--font-body);
   }
 
-  /* Ambient glow (replaces drop-shadow) */
   .glow-primary {
     box-shadow: 0 20px 40px rgba(0, 201, 167, 0.08);
   }
