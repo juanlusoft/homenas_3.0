@@ -4,14 +4,16 @@ import DashboardPage from '@/pages/DashboardPage';
 import StoragePage from '@/pages/StoragePage';
 import ServicesPage from '@/pages/ServicesPage';
 import NetworkPage from '@/pages/NetworkPage';
+import SystemPage from '@/pages/SystemPage';
 
-type View = 'dashboard' | 'storage' | 'services' | 'network';
+type View = 'dashboard' | 'storage' | 'services' | 'network' | 'system';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'storage', label: 'Storage', icon: '💾' },
   { id: 'services', label: 'Services', icon: '🐳' },
   { id: 'network', label: 'Network', icon: '🌐' },
+  { id: 'system', label: 'System', icon: '⚙️' },
 ];
 
 const viewComponents: Record<View, React.FC> = {
@@ -19,6 +21,7 @@ const viewComponents: Record<View, React.FC> = {
   storage: StoragePage,
   services: ServicesPage,
   network: NetworkPage,
+  system: SystemPage,
 };
 
 export default function App() {
@@ -60,7 +63,7 @@ export default function App() {
           <div className="flex items-center gap-2 text-xs text-[var(--text-disabled)]">
             <GlowPill status="healthy" label="Online" />
           </div>
-          <p className="mt-2 text-xs text-[var(--text-disabled)]">v3.1.0 · Stitch</p>
+          <p className="mt-2 text-xs text-[var(--text-disabled)]">v3.3.0 · Stitch</p>
         </div>
       </aside>
 
@@ -77,6 +80,7 @@ export default function App() {
               {currentView === 'storage' && 'Disk health & capacity'}
               {currentView === 'services' && 'Docker & systemd management'}
               {currentView === 'network' && 'Network interfaces & traffic'}
+              {currentView === 'system' && 'Hardware, OS & system settings'}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -90,7 +94,7 @@ export default function App() {
 
         {/* Footer */}
         <footer className="mt-stitch-10 text-center text-xs text-[var(--text-disabled)]">
-          HomePiNAS v3.1.0 · Luminous Obsidian · Built with Stitch Design System
+          HomePiNAS v3.3.0 · Luminous Obsidian · Built with Stitch Design System
         </footer>
       </main>
     </div>

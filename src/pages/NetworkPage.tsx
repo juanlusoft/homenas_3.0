@@ -1,8 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, lazy, Suspense } from 'react';
 import { GlassCard, GlowPill } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
+import { useLiveMetrics } from '@/hooks/useLiveMetrics';
 import { api } from '@/api/client';
 import type { NetworkInterface } from '@/api/client';
+
+const NetworkChart = lazy(() => import('@/components/Charts/NetworkChart').then(m => ({ default: m.NetworkChart })));
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
@@ -57,11 +60,21 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
 export default function NetworkPage() {
   const fetchNetwork = useCallback(() => api.getNetwork(), []);
   const { data: interfaces, loading } = useAPI<NetworkInterface[]>(fetchNetwork, 5000);
+  const { history } = useLiveMetrics();
 
   const activeCount = interfaces?.filter((i) => i.status === 'up').length || 0;
 
   return (
     <div className="space-y-6">
+      {/* Real-time throughput chart */}
+      {history.length > 5 && (
+        <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface-void" />}>
+          <GlassCard elevation="low">
+            <NetworkChart data={history} />
+          </GlassCard>
+        </Suspense>
+      )}
+
       {/* Summary */}
       <GlassCard elevation="low">
         <div className="flex items-center justify-between">
