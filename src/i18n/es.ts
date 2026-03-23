@@ -398,8 +398,6 @@ export const es: Record<string, string> = {
   'sched.sat': 'Sáb',
 
   // Network status
-  'net.connected': 'Conectada',
-  'net.noConnection': 'Sin conexión',
   'status.up': 'ACTIVA',
   'status.down': 'INACTIVA',
 
