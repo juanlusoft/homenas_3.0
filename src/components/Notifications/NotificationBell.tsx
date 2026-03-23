@@ -2,6 +2,7 @@
  * Notification bell with dropdown — shows recent alerts
  */
 
+import { t } from '@/i18n';
 import { useState, useRef, useEffect } from 'react';
 
 export interface Notification {
@@ -60,7 +61,7 @@ export function NotificationBell({ notifications, onMarkRead, onClearAll }: Noti
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto glass-elevated rounded-xl shadow-lg z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--outline-variant)]">
-            <span className="text-sm font-semibold text-[var(--text-primary)]">Notifications</span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">{t('notif.title')}</span>
             {notifications.length > 0 && (
               <button onClick={onClearAll} className="text-xs text-teal hover:underline">
                 Clear all
@@ -69,7 +70,7 @@ export function NotificationBell({ notifications, onMarkRead, onClearAll }: Noti
           </div>
 
           {notifications.length === 0 ? (
-            <p className="py-8 text-center text-sm text-[var(--text-disabled)]">No notifications</p>
+            <p className="py-8 text-center text-sm text-[var(--text-disabled)]">{t('notif.noNotifications')}</p>
           ) : (
             <div>
               {notifications.slice(0, 10).map(n => (

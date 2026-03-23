@@ -30,7 +30,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl font-bold tracking-tight text-teal">HomePiNAS</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">Luminous Obsidian</p>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">{t('common.luminousObsidian')}</p>
         </div>
 
         <div className="glass rounded-xl p-6">

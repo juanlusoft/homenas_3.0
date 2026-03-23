@@ -125,10 +125,6 @@ function StepLanguage({ data, update, onLangChange }: StepProps & { onLangChange
   const langs = [
     { id: 'es', label: 'Español', flag: '🇪🇸' },
     { id: 'en', label: 'English', flag: '🇬🇧' },
-    { id: 'fr', label: 'Français', flag: '🇫🇷' },
-    { id: 'de', label: 'Deutsch', flag: '🇩🇪' },
-    { id: 'pt', label: 'Português', flag: '🇧🇷' },
-    { id: 'it', label: 'Italiano', flag: '🇮🇹' },
   ];
 
   return (

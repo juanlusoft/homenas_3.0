@@ -3,6 +3,7 @@
  */
 
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
+import { t } from '@/i18n';
 import type { BackupDevice } from './types';
 
 function formatBytes(bytes: number): string {
@@ -29,24 +30,24 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete }: DeviceDeta
           <p className="text-sm text-[var(--text-secondary)]">{device.hostname} · {device.os}</p>
         </div>
         <div className="flex gap-2">
-          <StitchButton size="sm" onClick={() => onBackup(device.id)}>▶ Backup Now</StitchButton>
-          <StitchButton size="sm" variant="ghost" onClick={onClose}>← Back</StitchButton>
+          <StitchButton size="sm" onClick={() => onBackup(device.id)}>{t('ab.backupNow')}</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={onClose}>{t('ab.back')}</StitchButton>
         </div>
       </div>
 
       {/* Config */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <GlassCard elevation="low">
-          <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">Configuration</h3>
+          <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">{t('ab.configuration')}</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-[var(--text-secondary)]">Backup type</span>
+              <span className="text-[var(--text-secondary)]">{t('ab.backupType')}</span>
               <span className="font-mono text-[var(--text-primary)]">
                 {device.backupType === 'full' ? 'Full image' : 'Selected folders'}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[var(--text-secondary)]">Schedule</span>
+              <span className="text-[var(--text-secondary)]">{t('ab.schedule')}</span>
               <span className="font-mono text-[var(--text-primary)]">{device.schedule}</span>
             </div>
             <div className="flex justify-between">
@@ -54,14 +55,14 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete }: DeviceDeta
               <span className="font-mono text-[var(--text-primary)]">{device.ip}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[var(--text-secondary)]">Total size</span>
+              <span className="text-[var(--text-secondary)]">{t('ab.totalSize')}</span>
               <span className="font-mono text-teal">{formatBytes(device.backupSize)}</span>
             </div>
           </div>
         </GlassCard>
 
         <GlassCard elevation="low">
-          <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">Backup Paths</h3>
+          <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">{t('ab.backupPaths')}</h3>
           {device.backupPaths.length > 0 ? (
             <div className="space-y-1">
               {device.backupPaths.map((p, i) => (
@@ -71,7 +72,7 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete }: DeviceDeta
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[var(--text-disabled)]">Full image — all drives</p>
+            <p className="text-sm text-[var(--text-disabled)]">{t('ab.allDrives')}</p>
           )}
         </GlassCard>
       </div>
@@ -87,11 +88,11 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete }: DeviceDeta
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase text-[var(--text-secondary)] border-b border-[var(--outline-variant)]">
-                <th className="py-2 pr-4">Date</th>
-                <th className="py-2 pr-4">Type</th>
-                <th className="py-2 pr-4">Size</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2">Actions</th>
+                <th className="py-2 pr-4">{t('ab.date')}</th>
+                <th className="py-2 pr-4">{t('ab.type')}</th>
+                <th className="py-2 pr-4">{t('ab.size')}</th>
+                <th className="py-2 pr-4">{t('ab.status')}</th>
+                <th className="py-2">{t('ab.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -110,7 +111,7 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete }: DeviceDeta
                     <GlowPill status={v.status === 'complete' ? 'healthy' : 'error'} label={v.status} />
                   </td>
                   <td className="py-2">
-                    <StitchButton size="sm" variant="ghost">Browse</StitchButton>
+                    <StitchButton size="sm" variant="ghost">{t('ab.browse')}</StitchButton>
                   </td>
                 </tr>
               ))}
@@ -123,8 +124,8 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete }: DeviceDeta
       <GlassCard elevation="low">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-[var(--error)]">Remove Device</h3>
-            <p className="text-xs text-[var(--text-secondary)]">This will delete all backup data for this device</p>
+            <h3 className="text-sm font-semibold text-[var(--error)]">{t('ab.removeDevice')}</h3>
+            <p className="text-xs text-[var(--text-secondary)]">{t('ab.removeWarning')}</p>
           </div>
           <StitchButton size="sm" variant="ghost" onClick={() => onDelete(device.id)}>
             🗑️ Remove

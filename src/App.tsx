@@ -96,7 +96,6 @@ export default function App() {
   }, []);
 
   // Show setup wizard on first run
-  console.log('[App] setupDone:', setupDone, 'localStorage:', localStorage.getItem('homepinas-setup'));
   if (!setupDone) {
     return <SetupWizard onComplete={(data) => {
       localStorage.setItem('homepinas-setup', 'done');
@@ -133,7 +132,7 @@ export default function App() {
           <h1 className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]">
             HomePiNAS
           </h1>
-          <p className="text-xs text-[var(--text-secondary)]">Luminous Obsidian</p>
+          <p className="text-xs text-[var(--text-secondary)]">{t('common.luminousObsidian')}</p>
         </div>
 
         <nav className="flex-1 px-3 overflow-y-auto">
@@ -178,7 +177,7 @@ export default function App() {
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-lg text-[var(--text-secondary)] hover:bg-surface-void"
-                aria-label="Open menu"
+                aria-label={t("common.openMenu")}
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                   <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

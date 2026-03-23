@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { useState, useEffect } from 'react';
 import type { StepProps } from './types';
 
@@ -35,9 +36,9 @@ const ROLE_LABELS: Record<DiskRole, string> = {
 };
 
 const POOL_MODES = [
-  { id: 'snapraid' as const, label: 'SnapRAID + MergerFS', desc: 'Mixed sizes, parity protection, best for media NAS', icon: '🛡️', minDisks: 2 },
-  { id: 'mirror' as const, label: 'Mirror (RAID1)', desc: 'Identical disks, 1 can fail, 50% capacity', icon: '🪞', minDisks: 2 },
-  { id: 'basic' as const, label: 'Basic (Single disk)', desc: 'No redundancy, use full capacity of one disk', icon: '💾', minDisks: 1 },
+  { id: 'snapraid' as const, label: t('pool.snapraid'), desc: t('pool.snapraidDesc'), icon: '🛡️', minDisks: 2 },
+  { id: 'mirror' as const, label: t('pool.mirror'), desc: t('pool.mirrorDesc'), icon: '🪞', minDisks: 2 },
+  { id: 'basic' as const, label: t('pool.basic'), desc: t('pool.basicDesc'), icon: '💾', minDisks: 1 },
 ];
 
 async function detectDisks(): Promise<DetectedDisk[]> {
@@ -98,9 +99,9 @@ export function StepStorage({ data, update }: StepProps) {
   };
 
   const FS_LIST = [
-    { id: 'ext4' as const, label: 'ext4', desc: 'Stable, proven' },
-    { id: 'btrfs' as const, label: 'Btrfs', desc: 'Snapshots, compression' },
-    { id: 'xfs' as const, label: 'XFS', desc: 'High performance' },
+    { id: 'ext4' as const, label: t('pool.ext4'), desc: t('pool.ext4Desc') },
+    { id: 'btrfs' as const, label: t('pool.btrfs'), desc: t('pool.btrfsDesc') },
+    { id: 'xfs' as const, label: t('pool.xfs'), desc: t('pool.xfsDesc') },
   ];
 
   return (
@@ -111,14 +112,14 @@ export function StepStorage({ data, update }: StepProps) {
 
       {loading ? (
         <div className="space-y-3 py-4">
-          <p className="text-sm text-[var(--text-secondary)]">🔍 Detecting disks...</p>
+          <p className="text-sm text-[var(--text-secondary)]">{t('pool.detecting')}</p>
           {[1, 2, 3].map(i => <div key={i} className="h-16 animate-pulse rounded-lg bg-surface-void" />)}
         </div>
       ) : (
         <>
           {/* Pool mode selection */}
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2">Pool Type</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2">{t('pool.poolType')}</p>
             <div className="space-y-2">
               {POOL_MODES.filter(m => disks.length >= m.minDisks).map(mode => (
                 <button key={mode.id} onClick={() => update('poolMode', mode.id)}
@@ -135,7 +136,7 @@ export function StepStorage({ data, update }: StepProps) {
           {/* Disk assignment — depends on mode */}
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2">
-              {data.poolMode === 'snapraid' ? 'Assign disk roles (click to cycle)' : 'Select disks'}
+              {data.poolMode === 'snapraid' ? t('pool.assignRoles') : t('pool.selectDisks')}
             </p>
             <div className="space-y-2">
               {disks.map(disk => {
@@ -180,7 +181,7 @@ export function StepStorage({ data, update }: StepProps) {
 
           {/* Filesystem */}
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2">Filesystem</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-2">{t('pool.filesystem')}</p>
             <div className="flex gap-2">
               {FS_LIST.map(fs => (
                 <button key={fs.id} onClick={() => update('poolFs', fs.id)}

@@ -3,6 +3,7 @@
  */
 
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
+import { t } from '@/i18n';
 import type { BackupDevice } from './types';
 
 function formatBytes(bytes: number): string {
@@ -65,33 +66,33 @@ export function DeviceCard({ device, onBackup, onSelect }: DeviceCardProps) {
 
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Type</span>
+          <span className="text-[var(--text-secondary)]">{t('ab.type')}</span>
           <span className="font-mono text-[var(--text-primary)]">
             {device.backupType === 'full' ? '💿 Full Image' : '📁 Folders'}
           </span>
         </div>
         {device.backupType === 'folders' && device.backupPaths.length > 0 && (
           <div className="flex justify-between">
-            <span className="text-[var(--text-secondary)]">Paths</span>
+            <span className="text-[var(--text-secondary)]">{t('ab.paths')}</span>
             <span className="font-mono text-xs text-[var(--text-primary)] text-right max-w-[60%] truncate">
               {device.backupPaths.length} folder{device.backupPaths.length > 1 ? 's' : ''}
             </span>
           </div>
         )}
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Last backup</span>
+          <span className="text-[var(--text-secondary)]">{t('ab.lastBackup')}</span>
           <span className="font-mono text-xs text-teal">{timeAgo(device.lastBackup)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Total size</span>
+          <span className="text-[var(--text-secondary)]">{t('ab.totalSize')}</span>
           <span className="font-mono text-xs text-[var(--text-primary)]">{formatBytes(device.backupSize)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Versions</span>
+          <span className="text-[var(--text-secondary)]">{t('ab.versions')}</span>
           <span className="font-mono text-xs text-[var(--text-primary)]">{device.versions.length}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-[var(--text-secondary)]">Schedule</span>
+          <span className="text-[var(--text-secondary)]">{t('ab.schedule')}</span>
           <span className="font-mono text-xs text-[var(--text-primary)]">{device.schedule}</span>
         </div>
       </div>
@@ -100,7 +101,7 @@ export function DeviceCard({ device, onBackup, onSelect }: DeviceCardProps) {
         <StitchButton size="sm" onClick={() => onBackup(device.id)} disabled={device.status === 'backing-up'}>
           {device.status === 'backing-up' ? '⏳ Running...' : '▶ Backup Now'}
         </StitchButton>
-        <StitchButton size="sm" variant="ghost" onClick={() => onSelect(device.id)}>Details</StitchButton>
+        <StitchButton size="sm" variant="ghost" onClick={() => onSelect(device.id)}>{t('ab.details')}</StitchButton>
       </div>
     </GlassCard>
   );

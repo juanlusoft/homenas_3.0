@@ -3,6 +3,7 @@
  */
 
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
+import { t } from '@/i18n';
 import type { StoreApp } from './types';
 
 interface AppCardProps {
@@ -43,12 +44,12 @@ export function AppCard({ app, onInstall, onUninstall, onOpen }: AppCardProps) {
         {app.installed ? (
           <>
             {app.port && (
-              <StitchButton size="sm" onClick={() => onOpen(app.id)}>Open</StitchButton>
+              <StitchButton size="sm" onClick={() => onOpen(app.id)}>{t('store.open')}</StitchButton>
             )}
-            <StitchButton size="sm" variant="ghost" onClick={() => onUninstall(app.id)}>Uninstall</StitchButton>
+            <StitchButton size="sm" variant="ghost" onClick={() => onUninstall(app.id)}>{t('store.uninstall')}</StitchButton>
           </>
         ) : (
-          <StitchButton size="sm" onClick={() => onInstall(app.id)}>Install</StitchButton>
+          <StitchButton size="sm" onClick={() => onInstall(app.id)}>{t('store.install')}</StitchButton>
         )}
       </div>
     </GlassCard>
