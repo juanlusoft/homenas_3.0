@@ -1,66 +1,114 @@
 # HomePiNAS v3
 
-**NAS Dashboard de nueva generación con diseño Stitch "Luminous Obsidian"**
+**Dashboard NAS de nueva generación · Diseño Stitch "Luminous Obsidian"**
+
+## Instalación
+
+```bash
+curl -sL https://raw.githubusercontent.com/juanlusoft/homenas_3.0/main/install.sh | sudo bash
+```
+
+Accede por HTTPS: `https://<IP-del-NAS>`
 
 ## Stack
 
-- **Frontend**: React 19 + TypeScript + Vite 8 + Tailwind CSS 4
-- **UI**: shadcn/ui (40+ components) + Stitch design system
-- **Database**: better-sqlite3 (WAL mode)
-- **Testing**: Vitest + Storybook 10
-- **Linting**: ESLint 10 (flat config)
+| Componente | Tecnología |
+|-----------|------------|
+| Frontend | React 19 + TypeScript + Vite 8 + Tailwind CSS 4 |
+| UI | shadcn/ui + Stitch "Luminous Obsidian" |
+| Backend | Express 5 + Socket.io 4 |
+| Monitorización | systeminformation (real-time) |
+| Base de datos | better-sqlite3 (WAL mode) |
+| Charts | Recharts 3 (lazy-loaded) |
+| Testing | Vitest + Storybook 10 |
+| Linting | ESLint 10 (flat config) |
+| i18n | Español + English |
 
-## Quick Start
+## Vistas (15)
+
+| Vista | Descripción |
+|-------|-------------|
+| 🔐 Login | Autenticación con TOTP 2FA |
+| 📊 Panel | Métricas en tiempo real + 4 gráficos |
+| 📂 Archivos | Gestor de archivos lista/cuadrícula |
+| 🔗 Compartidos | Samba + NFS |
+| 💾 Almacenamiento | Discos + SMART |
+| 📦 Copias de seguridad | Tareas programadas |
+| 🖥️ Active Backup | Backup de PCs remotos |
+| 🐳 Servicios | Docker + systemd |
+| 🏗️ Stacks | Editor Docker Compose |
+| 🏪 Tienda | 57 apps instalables |
+| 🌐 Red | Interfaces + gráfico tráfico |
+| 📋 Registros | Visor de logs filtrable |
+| 🖥️ Terminal | Terminal web |
+| ⚙️ Sistema | Info hardware + acciones |
+| 🔧 Ajustes | Hostname, SSH, HTTPS, ventiladores |
+| 👤 Usuarios | Cuentas + seguridad 2FA |
+
+## Wizard de Primer Inicio
+
+6 pasos: Idioma → Cuenta Admin → Nombre NAS → Red → Pool de Discos → Resumen
+
+### Pool de Discos
+- **SnapRAID + MergerFS**: paridad + datos + caché (recomendado)
+- **Mirror (RAID1)**: discos idénticos
+- **Basic**: disco único
+- Detección automática de discos (NVMe via JMB585, SSD, HDD)
+- Filtro de puertos vacíos y tarjetas SD
+
+## Desarrollo
 
 ```bash
 pnpm install
-cp .env.example .env.local  # adjust API URL
-pnpm dev                    # http://localhost:5173
-pnpm build                  # production build
-pnpm lint                   # ESLint
+pnpm dev          # Vite + backend concurrently
+pnpm build        # producción
+pnpm lint         # ESLint
+pnpm run storybook # componentes en :6006
 ```
 
-## Design System — Stitch "Luminous Obsidian"
+## Arquitectura
 
-- Deep Slate surfaces (`#10141a` base) with teal accents (`#44e5c2`)
-- Space Grotesk (display) + Manrope (body) + JetBrains Mono (metrics)
-- Glassmorphism: backdrop-blur + ambient shadows
-- No-Line Rule: tonal surface shifts instead of borders
-- Glow-Pill status indicators (healthy/warning/error)
+```
+src/
+├── api/           # Cliente API
+├── components/
+│   ├── UI/        # GlassCard, GlowPill, StitchButton
+│   ├── Charts/    # MetricsChart, NetworkChart
+│   ├── ActiveBackup/  # DeviceCard, DeviceDetail
+│   ├── HomeStore/     # AppCard
+│   ├── Notifications/ # NotificationBell
+│   └── Wizard/        # StepStorage
+├── hooks/         # useSocket, useLiveMetrics, useAPI...
+├── i18n/          # es.ts, en.ts (300+ claves)
+├── pages/         # 15 vistas
+└── db/            # SQLite schema + database.ts
+
+server/
+├── routes/        # metrics, storage, network, services, active-backup
+├── realtime/      # Socket.io metrics emitter (2s)
+└── index.ts       # Express + Socket.io
+```
 
 ## 📋 Changelog
 
-### v3.1.0 (23 Marzo 2026)
-- Tailwind CSS 3.4 → **4.2.2** (CSS-first @theme, @tailwindcss/vite)
-- ESLint 9 → **10.1.0** (strict flat config)
-- Added **better-sqlite3** + DB layer (config, metrics, notifications)
-- Fixed hardcoded API URL → env variable (`VITE_API_URL`)
-- Fixed storybook imports, useSocket render safety
-- Removed `tailwind.config.js`, `postcss.config.js`
+### v3.20.0 (23 Marzo 2026)
+- i18n completo: 300+ claves, todas las páginas traducidas
+- Wizard solo Español + English
+- Active Backup: backup de PCs remotos (Win/Mac/Linux)
+- HomeStore: 57 apps instalables
+- Charts real-time: CPU, Memoria, Temperatura, Red
+- Docker Compose editor
+- Terminal web + visor de logs
+- Login + Wizard de primer inicio
+- Detección de discos real (JMB585, SSD, HDD)
+- HTTPS self-signed + nginx reverse proxy
+- Responsive sidebar (mobile hamburger)
 
-### v3.0.0 (21 Marzo 2026) - Initial Release
+### v3.0.0 (21 Marzo 2026) - Release Inicial
 - React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui
 - Stitch "Luminous Obsidian" design system
-- GlassCard, GlowPill, StitchButton components
-- Dashboard with system metrics + disk array + services
-
-## 🗺️ Roadmap
-
-- v3.2.0: Socket.io real-time metrics + chart components
-- v3.3.0: Full NAS API integration (backend Express proxy)
-- v3.4.0: Storybook component documentation
-- v3.5.0: Framer Motion page transitions
-- v4.0.0: Multi-device management + mobile
-
-## Development
-
-```bash
-pnpm run storybook          # component docs on :6006
-pnpm run build-storybook    # static storybook
-./scripts/update-version.sh patch "description"
-```
 
 ---
 
-**Team**: Vision 👁️ (HomeLabs Avengers)
-**Target**: HomePiNAS production NAS
+**Equipo**: Vision 👁️ (HomeLabs Avengers)
+**Destino**: HomePiNAS NAS de producción
