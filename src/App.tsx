@@ -9,11 +9,13 @@ import BackupPage from '@/pages/BackupPage';
 import UsersPage from '@/pages/UsersPage';
 import FilesPage from '@/pages/FilesPage';
 import SharesPage from '@/pages/SharesPage';
+import LogsPage from '@/pages/LogsPage';
+import TerminalPage from '@/pages/TerminalPage';
 import LoginPage from '@/pages/LoginPage';
 import { NotificationBell } from '@/components/Notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 
-type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'services' | 'network' | 'system' | 'users';
+type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'services' | 'network' | 'logs' | 'terminal' | 'system' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -23,6 +25,8 @@ const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'backup', label: 'Backup', icon: '📦' },
   { id: 'services', label: 'Services', icon: '🐳' },
   { id: 'network', label: 'Network', icon: '🌐' },
+  { id: 'logs', label: 'Logs', icon: '📋' },
+  { id: 'terminal', label: 'Terminal', icon: '🖥️' },
   { id: 'system', label: 'System', icon: '⚙️' },
   { id: 'users', label: 'Users', icon: '👤' },
 ];
@@ -35,6 +39,8 @@ const viewSubtitles: Record<View, string> = {
   backup: 'Backup jobs & restore points',
   services: 'Docker & systemd management',
   network: 'Network interfaces & traffic',
+  logs: 'System & service log viewer',
+  terminal: 'Web terminal access',
   system: 'Hardware, OS & system settings',
   users: 'User accounts & access control',
 };
@@ -47,6 +53,8 @@ const viewComponents: Record<View, React.FC> = {
   backup: BackupPage,
   services: ServicesPage,
   network: NetworkPage,
+  logs: LogsPage,
+  terminal: TerminalPage,
   system: SystemPage,
   users: UsersPage,
 };
