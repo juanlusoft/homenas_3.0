@@ -20,6 +20,9 @@ import { usersRouter } from './routes/users.js';
 import { stacksRouter } from './routes/stacks.js';
 import { logsRouter } from './routes/logs.js';
 import { terminalRouter } from './routes/terminal.js';
+import { ddnsRouter } from './routes/ddns.js';
+import { vpnRouter } from './routes/vpn.js';
+import { schedulerRouter } from './routes/scheduler.js';
 import { storeRouter } from './routes/store.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
 
@@ -51,6 +54,9 @@ app.use('/api/users', usersRouter);
 app.use('/api/stacks', stacksRouter);
 app.use('/api/logs', logsRouter);
 app.use('/api/terminal', terminalRouter);
+app.use('/api/ddns', ddnsRouter);
+app.use('/api/vpn', vpnRouter);
+app.use('/api/scheduler', schedulerRouter);
 app.use('/api/store', storeRouter);
 
 // Serve built frontend in production

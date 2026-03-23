@@ -72,6 +72,46 @@ settingsRouter.post('/fan', async (req, res) => {
   }
 });
 
+/** POST /api/settings/notifications/test-email — Test SMTP email */
+settingsRouter.post('/notifications/test-email', async (req, res) => {
+  const { smtpHost, smtpPort, smtpUser, smtpPass, emailTo } = req.body;
+  if (!smtpHost || !emailTo) return res.status(400).json({ error: 'SMTP host and recipient required' });
+
+  try {
+    // Use nodemailer-like approach with raw SMTP
+    const net = await import('net');
+    const tls = await import('tls');
+
+    const port = parseInt(smtpPort) || 587;
+    const socket = port === 465
+      ? tls.connect(port, smtpHost)
+      : net.createConnection(port, smtpHost);
+
+    const commands = [
+      `EHLO homepinas`,
+      `AUTH LOGIN`,
+      Buffer.from(smtpUser || '').toString('base64'),
+      Buffer.from(smtpPass || '').toString('base64'),
+      `MAIL FROM:<${smtpUser}>`,
+      `RCPT TO:<${emailTo}>`,
+      `DATA`,
+      `From: HomePiNAS <${smtpUser}>\r\nTo: ${emailTo}\r\nSubject: HomePiNAS Test\r\n\r\nThis is a test notification from HomePiNAS.\r\n.`,
+      `QUIT`,
+    ];
+
+    let cmdIdx = 0;
+    socket.on('data', () => {
+      if (cmdIdx < commands.length) {
+        socket.write(commands[cmdIdx++] + '\r\n');
+      }
+    });
+
+    setTimeout(() => { socket.destroy(); res.json({ success: true }); }, 5000);
+  } catch {
+    res.json({ success: false, error: 'SMTP connection failed' });
+  }
+});
+
 /** POST /api/settings/notifications/test-telegram — Test Telegram */
 settingsRouter.post('/notifications/test-telegram', async (req, res) => {
   const { token, chatId } = req.body;

@@ -448,4 +448,50 @@ export const es: Record<string, string> = {
   'users.edit': 'Editar',
   'users.delete': 'Eliminar',
   'users.cannotDeleteSelf': 'No puedes eliminarte a ti mismo',
+  // DDNS
+  'ddns.title': 'DNS Dinámico',
+  'ddns.provider': 'Proveedor',
+  'ddns.domain': 'Dominio',
+  'ddns.token': 'Token',
+  'ddns.interval': 'Intervalo (min)',
+  'ddns.lastUpdate': 'Última actualización',
+  'ddns.lastIp': 'Última IP',
+  'ddns.updateNow': 'Actualizar Ahora',
+  'ddns.enabled': 'DDNS Activado',
+
+  // VPN
+  'vpn.title': 'VPN (WireGuard)',
+  'vpn.setup': 'Configurar WireGuard',
+  'vpn.port': 'Puerto',
+  'vpn.serverAddr': 'Dirección servidor',
+  'vpn.peers': 'Clientes',
+  'vpn.addPeer': '+ Añadir Cliente',
+  'vpn.peerName': 'Nombre del cliente',
+  'vpn.downloadConfig': 'Descargar Config',
+  'vpn.notInstalled': 'WireGuard no instalado',
+
+  // Scheduler
+  'sched.title': 'Tareas Programadas',
+  'sched.newTask': '+ Nueva Tarea',
+  'sched.name': 'Nombre',
+  'sched.schedule': 'Programación (cron)',
+  'sched.command': 'Comando',
+  'sched.lastRun': 'Última ejecución',
+  'sched.result': 'Resultado',
+  'sched.runNow': 'Ejecutar',
+  'sched.never': 'nunca',
+
+  // SMTP
+  'smtp.title': 'Email (SMTP)',
+  'smtp.host': 'Servidor SMTP',
+  'smtp.port': 'Puerto',
+  'smtp.user': 'Usuario',
+  'smtp.pass': 'Contraseña',
+  'smtp.to': 'Destinatario',
+  'smtp.test': 'Enviar Prueba',
+  'smtp.enabled': 'Notificaciones por email',
+
+  // Docker logs
+  'svc.logs': 'Ver Logs',
+  'svc.restart': 'Reiniciar',
 };

@@ -79,6 +79,35 @@ servicesRouter.post('/stop/:name', async (req, res) => {
   }
 });
 
+/** GET /api/services/docker/:id/logs — Container logs */
+servicesRouter.get('/docker/:id/logs', async (req, res) => {
+  const id = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
+  const lines = parseInt(req.query.lines as string) || 100;
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify: p } = await import('util');
+    const exec = p(ef);
+    const { stdout } = await exec('docker', ['logs', '--tail', String(lines), '--timestamps', id], { timeout: 10000 });
+    res.json({ logs: stdout });
+  } catch {
+    res.json({ logs: '', error: 'Failed to read container logs' });
+  }
+});
+
+/** POST /api/services/docker/:id/restart — Restart container */
+servicesRouter.post('/docker/:id/restart', async (req, res) => {
+  const id = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify: p } = await import('util');
+    const exec = p(ef);
+    await exec('docker', ['restart', id], { timeout: 30000 });
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, error: 'Failed to restart container' });
+  }
+});
+
 function timeSince(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return `${seconds}s`;

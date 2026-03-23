@@ -33,6 +33,16 @@ function ContainerCard({ container }: { container: DockerContainer }) {
         </div>
       </div>
 
+      <div className="flex gap-2 mb-3">
+        <StitchButton size="sm" variant="ghost" onClick={async () => {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/docker/${container.id}/logs?lines=50`);
+          const data = await res.json();
+          alert(data.logs || 'Sin logs');
+        }}>{t('svc.logs')}</StitchButton>
+        <StitchButton size="sm" variant="ghost" onClick={async () => {
+          await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/docker/${container.id}/restart`, { method: 'POST' });
+        }}>{t('svc.restart')}</StitchButton>
+      </div>
       {container.ports.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {container.ports.map((port) => (

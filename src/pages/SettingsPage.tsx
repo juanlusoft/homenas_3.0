@@ -18,6 +18,16 @@ interface SettingsState {
   telegramToken: string;
   telegramChatId: string;
   telegramEnabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+  smtpTo: string;
+  smtpEnabled: boolean;
+  ddnsEnabled: boolean;
+  ddnsProvider: string;
+  ddnsDomain: string;
+  ddnsToken: string;
 }
 
 const INITIAL: SettingsState = {
@@ -36,6 +46,16 @@ const INITIAL: SettingsState = {
   telegramToken: '',
   telegramChatId: '',
   telegramEnabled: false,
+  smtpHost: '',
+  smtpPort: 587,
+  smtpUser: '',
+  smtpPass: '',
+  smtpTo: '',
+  smtpEnabled: false,
+  ddnsEnabled: false,
+  ddnsProvider: 'duckdns',
+  ddnsDomain: '',
+  ddnsToken: '',
 };
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
@@ -181,6 +201,52 @@ export default function SettingsPage() {
                   className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
               </div>
               <StitchButton size="sm" variant="ghost" onClick={handleTestTelegram}>{t('set.telegramTest')}</StitchButton>
+            </>
+          )}
+        </div>
+      </GlassCard>
+
+      {/* SMTP */}
+      <GlassCard elevation="low">
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('smtp.title')}</h3>
+        <div className="space-y-4">
+          <Toggle checked={settings.smtpEnabled} onChange={() => update('smtpEnabled', !settings.smtpEnabled)} label={t('smtp.enabled')} />
+          {settings.smtpEnabled && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('smtp.host')}</label>
+                  <input value={settings.smtpHost} onChange={e => update('smtpHost', e.target.value)} placeholder="smtp.gmail.com" className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--text-secondary)] mb-1">{t('smtp.port')}</label>
+                  <input type="number" value={settings.smtpPort} onChange={e => update('smtpPort', parseInt(e.target.value) || 587)} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+                </div>
+              </div>
+              <input value={settings.smtpUser} onChange={e => update('smtpUser', e.target.value)} placeholder={t('smtp.user')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+              <input type="password" value={settings.smtpPass} onChange={e => update('smtpPass', e.target.value)} placeholder={t('smtp.pass')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+              <input value={settings.smtpTo} onChange={e => update('smtpTo', e.target.value)} placeholder={t('smtp.to')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+              <StitchButton size="sm" variant="ghost" onClick={async () => { await fetch(`${API}/settings/notifications/test-email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smtpHost: settings.smtpHost, smtpPort: settings.smtpPort, smtpUser: settings.smtpUser, smtpPass: settings.smtpPass, emailTo: settings.smtpTo }) }); }}>{t('smtp.test')}</StitchButton>
+            </>
+          )}
+        </div>
+      </GlassCard>
+
+      {/* DDNS */}
+      <GlassCard elevation="low">
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('ddns.title')}</h3>
+        <div className="space-y-4">
+          <Toggle checked={settings.ddnsEnabled} onChange={() => update('ddnsEnabled', !settings.ddnsEnabled)} label={t('ddns.enabled')} />
+          {settings.ddnsEnabled && (
+            <>
+              <select value={settings.ddnsProvider} onChange={e => update('ddnsProvider', e.target.value)} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]">
+                <option value="duckdns">DuckDNS</option>
+                <option value="noip">No-IP</option>
+                <option value="cloudflare">Cloudflare</option>
+              </select>
+              <input value={settings.ddnsDomain} onChange={e => update('ddnsDomain', e.target.value)} placeholder={t('ddns.domain')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+              <input value={settings.ddnsToken} onChange={e => update('ddnsToken', e.target.value)} placeholder={t('ddns.token')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+              <StitchButton size="sm" variant="ghost" onClick={async () => { await fetch(`${API}/ddns/update`, { method: 'POST' }); }}>{t('ddns.updateNow')}</StitchButton>
             </>
           )}
         </div>
