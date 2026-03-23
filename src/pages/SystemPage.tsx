@@ -134,6 +134,21 @@ export default function SystemPage() {
           <StitchButton size="sm" variant="ghost" onClick={() => goTo('settings')}>{t('sys.configuration')}</StitchButton>
         </div>
       </GlassCard>
+
+      {/* Power */}
+      <GlassCard elevation="low">
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">⚡ Control de Energía</h3>
+        <div className="flex gap-3">
+          <StitchButton size="sm" variant="ghost" onClick={async () => {
+            if (!confirm('¿Reiniciar el NAS?')) return;
+            await fetch((import.meta.env.VITE_API_URL || '/api') + '/system/reboot', { method: 'POST' });
+          }}>🔄 Reiniciar</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={async () => {
+            if (!confirm('¿Apagar el NAS? Necesitarás encenderlo físicamente.')) return;
+            await fetch((import.meta.env.VITE_API_URL || '/api') + '/system/shutdown', { method: 'POST' });
+          }}>⏻ Apagar</StitchButton>
+        </div>
+      </GlassCard>
     </div>
   );
 }

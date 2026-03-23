@@ -78,6 +78,32 @@ metricsRouter.get('/updates', async (_req, res) => {
   }
 });
 
+/** POST /api/system/reboot — Reboot the NAS */
+metricsRouter.post('/reboot', async (_req, res) => {
+  res.json({ success: true, message: 'Rebooting in 5 seconds...' });
+  setTimeout(async () => {
+    try {
+      const { execFile: ef } = await import('child_process');
+      const { promisify: p } = await import('util');
+      const exec = p(ef);
+      await exec('sudo', ['reboot'], { timeout: 5000 });
+    } catch {}
+  }, 5000);
+});
+
+/** POST /api/system/shutdown — Shutdown the NAS */
+metricsRouter.post('/shutdown', async (_req, res) => {
+  res.json({ success: true, message: 'Shutting down in 5 seconds...' });
+  setTimeout(async () => {
+    try {
+      const { execFile: ef } = await import('child_process');
+      const { promisify: p } = await import('util');
+      const exec = p(ef);
+      await exec('sudo', ['shutdown', '-h', 'now'], { timeout: 5000 });
+    } catch {}
+  }, 5000);
+});
+
 /** GET /api/system/info — Static system info */
 metricsRouter.get('/info', async (_req, res) => {
   try {

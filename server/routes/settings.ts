@@ -26,6 +26,45 @@ function saveSettings(data: Record<string, unknown>): void {
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
 }
 
+/** GET /api/settings/notifications/history — Notification history */
+settingsRouter.get('/notifications/history', (_req, res) => {
+  try {
+    const historyFile = path.join(process.cwd(), 'data', 'notifications.json');
+    const history = JSON.parse(fs.readFileSync(historyFile, 'utf-8'));
+    res.json(history);
+  } catch {
+    res.json([]);
+  }
+});
+
+/** GET /api/settings/export — Export all config as JSON */
+settingsRouter.get('/export', (_req, res) => {
+  const dataDir = path.join(process.cwd(), 'data');
+  const config: Record<string, unknown> = {};
+  try {
+    const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+    for (const file of files) {
+      try { config[file.replace('.json', '')] = JSON.parse(fs.readFileSync(path.join(dataDir, file), 'utf-8')); } catch {}
+    }
+  } catch {}
+  res.setHeader('Content-Disposition', 'attachment; filename=homepinas-config.json');
+  res.json(config);
+});
+
+/** POST /api/settings/import — Import config from JSON */
+settingsRouter.post('/import', (req, res) => {
+  const dataDir = path.join(process.cwd(), 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    for (const [key, value] of Object.entries(req.body)) {
+      fs.writeFileSync(path.join(dataDir, `${key}.json`), JSON.stringify(value, null, 2));
+    }
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, error: 'Import failed' });
+  }
+});
+
 /** GET /api/settings — Load settings */
 settingsRouter.get('/', (_req, res) => {
   res.json(loadSettings());

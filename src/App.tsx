@@ -13,6 +13,8 @@ import FilesPage from '@/pages/FilesPage';
 import SharesPage from '@/pages/SharesPage';
 import LogsPage from '@/pages/LogsPage';
 import TerminalPage from '@/pages/TerminalPage';
+import VpnPage from '@/pages/VpnPage';
+import SchedulerPage from '@/pages/SchedulerPage';
 import DockerComposePage from '@/pages/DockerComposePage';
 import HomeStorePage from '@/pages/HomeStorePage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -21,7 +23,7 @@ import SetupWizard from '@/pages/SetupWizard';
 import { NotificationBell } from '@/components/Notifications';
 import { useNotifications } from '@/hooks/useNotifications';
 
-type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'homestore' | 'network' | 'logs' | 'terminal' | 'system' | 'settings' | 'users';
+type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'homestore' | 'network' | 'logs' | 'terminal' | 'vpn' | 'scheduler' | 'system' | 'settings' | 'users';
 
 function getNavItems(): { id: View; label: string; icon: string }[] {
   return [
@@ -37,6 +39,8 @@ function getNavItems(): { id: View; label: string; icon: string }[] {
   { id: 'network', label: t('nav.network'), icon: '🌐' },
   { id: 'logs', label: t('nav.logs'), icon: '📋' },
   { id: 'terminal', label: t('nav.terminal'), icon: '🖥️' },
+  { id: 'vpn', label: 'VPN', icon: '🔐' },
+  { id: 'scheduler', label: t('sched.title'), icon: '⏰' },
   { id: 'system', label: t('nav.system'), icon: '⚙️' },
   { id: 'settings', label: t('nav.settings'), icon: '🔧' },
   { id: 'users', label: t('nav.users'), icon: '👤' },
@@ -57,6 +61,8 @@ function getSubtitles(): Record<View, string> {
   homestore: t('sub.homestore'),
   logs: t('sub.logs'),
   terminal: t('sub.terminal'),
+  vpn: t('vpn.title'),
+  scheduler: t('sched.title'),
   system: t('sub.system'),
   settings: t('sub.settings'),
   users: t('sub.users'),
@@ -76,6 +82,8 @@ const viewComponents: Record<View, React.FC> = {
   homestore: HomeStorePage,
   logs: LogsPage,
   terminal: TerminalPage,
+  vpn: VpnPage,
+  scheduler: SchedulerPage,
   system: SystemPage,
   settings: SettingsPage,
   users: UsersPage,

@@ -55,6 +55,16 @@ export async function notify(title: string, message: string, severity: 'info' | 
     } catch {}
   }
 
+  // Save to notification history
+  try {
+    const historyFile = path.join(process.cwd(), 'data', 'notifications.json');
+    let history: { title: string; message: string; severity: string; time: string }[] = [];
+    try { history = JSON.parse(fs.readFileSync(historyFile, 'utf-8')); } catch {}
+    history.unshift({ title, message, severity, time: new Date().toISOString() });
+    if (history.length > 100) history = history.slice(0, 100); // keep last 100
+    fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
+  } catch {}
+
   // Always log
   console.log(`[notify:${severity}] ${title}: ${message}`);
 }

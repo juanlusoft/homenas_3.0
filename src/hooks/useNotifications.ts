@@ -3,20 +3,34 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+// useEffect already imported
 import { useSocket } from './useSocket';
 import type { Notification } from '@/components/Notifications';
 
-// Initial mock notifications
-const INITIAL: Notification[] = [
-  { id: 1, type: 'success', title: 'System backup completed', message: 'Full backup finished in 12 minutes', time: '10 min ago', read: false },
-  { id: 2, type: 'warning', title: 'Disk /dev/sda at 85%', message: 'Consider cleaning up or expanding storage', time: '1h ago', read: false },
-  { id: 3, type: 'info', title: 'Docker update available', message: 'nginx:1.27 → 1.28 available', time: '3h ago', read: true },
-];
+const INITIAL: Notification[] = [];
 
 let nextId = 100;
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL);
+
+  // Fetch notification history from backend
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL || '/api'}/settings/notifications/history`)
+      .then(r => r.json())
+      .then((history: { title: string; message: string; severity: string; time: string }[]) => {
+        const mapped: Notification[] = history.slice(0, 20).map((h, i) => ({
+          id: nextId + i,
+          type: h.severity === 'error' ? 'error' as const : h.severity === 'warning' ? 'warning' as const : 'info' as const,
+          title: h.title,
+          message: h.message,
+          time: new Date(h.time).toLocaleString(),
+          read: false,
+        }));
+        if (mapped.length > 0) setNotifications(mapped);
+      })
+      .catch(() => {});
+  }, []);
   const { socket } = useSocket();
 
   // Listen for server-pushed notifications
