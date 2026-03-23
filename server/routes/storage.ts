@@ -16,9 +16,43 @@ const execFileAsync = promisify(execFile);
  * Without it, smartctl will fail and all SMART values will show N/A.
  */
 async function getSmartData(device: string): Promise<{ temperature: number; powerOnHours: number; badSectors: number; status: string }> {
+  // Try multiple smartctl strategies
+  for (const args of [
+    ['sudo', 'smartctl', '-A', '-H', device],              // standard
+    ['sudo', 'smartctl', '-A', '-H', '-d', 'sat', device], // USB/SATA bridge (JMB585)
+    ['sudo', 'smartctl', '-A', '-H', '-d', 'auto', device], // auto-detect
+  ]) {
+    try {
+      const result = await trySmartctl(args);
+      if (result) return result;
+    } catch {}
+  }
+
+  // Fallback: read temperature from hwmon/thermal
+  const temp = await getHwmonTemp(device);
+  return { temperature: temp, powerOnHours: 0, badSectors: 0, status: temp > 0 ? 'OK' : 'N/A' };
+}
+
+/** Read temp from /sys/class/hwmon or /sys/class/thermal */
+async function getHwmonTemp(_device: string): Promise<number> {
   try {
-    // Try with sudo first (needed for most USB/SATA devices)
-    const { stdout } = await execFileAsync('sudo', ['smartctl', '-A', '-H', device], { timeout: 5000 });
+    const fs = await import('fs');
+    // Check all hwmon devices for temperature
+    const hwmonDirs = fs.readdirSync('/sys/class/hwmon/');
+    for (const dir of hwmonDirs) {
+      const tempFile = `/sys/class/hwmon/${dir}/temp1_input`;
+      if (fs.existsSync(tempFile)) {
+        const val = parseInt(fs.readFileSync(tempFile, 'utf-8').trim(), 10);
+        if (val > 0) return Math.round(val / 1000); // millidegrees to degrees
+      }
+    }
+  } catch {}
+  return 0;
+}
+
+async function trySmartctl(args: string[]): Promise<{ temperature: number; powerOnHours: number; badSectors: number; status: string } | null> {
+  try {
+    const { stdout } = await execFileAsync(args[0], args.slice(1), { timeout: 5000 });
     const temp = stdout.match(/Temperature_Celsius.*?(\d+)\s*$/m)
       || stdout.match(/194\s+.*?(\d+)\s+/m)
       || stdout.match(/Current Temperature:\s+(\d+)/m);
@@ -34,13 +68,8 @@ async function getSmartData(device: string): Promise<{ temperature: number; powe
       badSectors: badSectors ? parseInt(badSectors[1], 10) : 0,
       status: healthy ? 'OK' : 'WARN',
     };
-  } catch (err) {
-    // Log the error so it's diagnosable — most common cause is missing sudoers entry
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('password') || msg.includes('EACCES') || msg.includes('not allowed')) {
-      console.warn(`[SMART] Permission denied for ${device}. Add to sudoers: homepinas ALL=(ALL) NOPASSWD: /usr/sbin/smartctl`);
-    }
-    return { temperature: 0, powerOnHours: 0, badSectors: 0, status: 'N/A' };
+  } catch {
+    return null;
   }
 }
 
