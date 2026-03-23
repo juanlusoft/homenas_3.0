@@ -1,23 +1,14 @@
 import { useState } from 'react';
 import { GlassCard, StitchButton } from '@/components/UI';
+import { StepStorage } from "@/components/Wizard/StepStorage";
+import type { SetupData, StepProps } from "@/components/Wizard/types";
 
-interface SetupData {
-  language: string;
-  hostname: string;
-  username: string;
-  password: string;
-  passwordConfirm: string;
-  networkMode: 'dhcp' | 'static';
-  staticIp: string;
-  gateway: string;
-  dns: string;
-}
 
 interface SetupWizardProps {
   onComplete: (data: SetupData) => void;
 }
 
-const STEPS = ['Language', 'Admin Account', 'NAS Name', 'Network', 'Ready'];
+const STEPS = ['Language', 'Admin Account', 'NAS Name', 'Network', 'Storage Pool', 'Ready'];
 
 export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [step, setStep] = useState(0);
@@ -25,6 +16,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     language: 'es', hostname: 'homepinas', username: 'admin',
     password: '', passwordConfirm: '', networkMode: 'dhcp',
     staticIp: '', gateway: '', dns: '8.8.8.8',
+    poolMode: 'single', poolFs: 'ext4', selectedDisks: [],
   });
   const [error, setError] = useState('');
 
@@ -40,6 +32,9 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     }
     if (step === 2 && !data.hostname) return false;
     if (step === 3 && data.networkMode === 'static' && !data.staticIp) return false;
+    if (step === 4 && data.selectedDisks.length === 0) return false;
+    if (step === 4 && data.poolMode === 'mirror' && data.selectedDisks.length < 2) return false;
+    if (step === 4 && data.poolMode === 'raidz' && data.selectedDisks.length < 3) return false;
     return true;
   };
 
@@ -93,7 +88,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           {step === 1 && <StepAccount data={data} update={update} error={error} />}
           {step === 2 && <StepHostname data={data} update={update} />}
           {step === 3 && <StepNetwork data={data} update={update} />}
-          {step === 4 && <StepReady data={data} />}
+          {step === 4 && <StepStorage data={data} update={update} />}
+          {step === 5 && <StepReady data={data} />}
 
           {/* Navigation */}
           <div className="flex justify-between mt-6 pt-4 border-t border-[var(--outline-variant)]">
@@ -260,11 +256,21 @@ function StepReady({ data }: { data: SetupData }) {
           <span className="text-[var(--text-secondary)]">NAS name</span>
           <span className="font-mono text-[var(--text-primary)]">{data.hostname}</span>
         </div>
-        <div className="flex justify-between py-2">
+        <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
           <span className="text-[var(--text-secondary)]">Network</span>
           <span className="font-mono text-[var(--text-primary)]">
             {data.networkMode === 'dhcp' ? 'DHCP (auto)' : data.staticIp}
           </span>
+        </div>
+        <div className="flex justify-between py-2 border-b border-[var(--outline-variant)]">
+          <span className="text-[var(--text-secondary)]">Storage Pool</span>
+          <span className="font-mono text-[var(--text-primary)]">
+            {data.selectedDisks.length} disk{data.selectedDisks.length !== 1 ? 's' : ''} · {data.poolMode} · {data.poolFs}
+          </span>
+        </div>
+        <div className="flex justify-between py-2">
+          <span className="text-[var(--text-secondary)]">Disks</span>
+          <span className="font-mono text-xs text-teal">{data.selectedDisks.join(', ')}</span>
         </div>
       </div>
       <p className="mt-4 text-xs text-[var(--text-disabled)] text-center">
@@ -274,4 +280,3 @@ function StepReady({ data }: { data: SetupData }) {
   );
 }
 
-type StepProps = { data: SetupData; update: <K extends keyof SetupData>(key: K, value: SetupData[K]) => void };
