@@ -34,6 +34,16 @@ app.use('/api/network', networkRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/active-backup', activeBackupRouter);
 
+// Serve built frontend in production
+if (process.env.NODE_ENV === 'production') {
+  const distPath = new URL('../dist', import.meta.url).pathname;
+  app.use(express.static(distPath));
+  // SPA fallback — serve index.html for all non-API routes
+  app.get(/^\/(?!api|socket\.io).*/, (_req, res) => {
+    res.sendFile('index.html', { root: distPath });
+  });
+}
+
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
