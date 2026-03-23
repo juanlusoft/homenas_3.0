@@ -1,5 +1,6 @@
 import { t, ts } from '@/i18n';
 import { useState, useCallback } from 'react';
+import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 
 interface BackupJob {
@@ -18,7 +19,11 @@ const statusGlow = (s: string) => s === 'success' ? 'healthy' as const : s === '
 const EMPTY_FORM = { name: '', type: 'incremental' as BackupJob['type'], schedule: '0 2 * * *', destination: '/mnt/backup/' };
 
 export default function BackupPage() {
-  const [jobs, setJobs] = useState(MOCK_JOBS);
+  const API = import.meta.env.VITE_API_URL || '/api';
+  const fetchJobs = useCallback(() =>
+    fetch(`${API}/backup`).then(r => r.json()), [API]);
+  const { data: jobsData, refresh } = useAPI<BackupJob[]>(fetchJobs, 5000);
+  const jobs = jobsData || MOCK_JOBS;
   const [addOpen, setAddOpen] = useState(false);
   const [editJob, setEditJob] = useState<BackupJob | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -26,24 +31,22 @@ export default function BackupPage() {
   const successCount = jobs.filter(j => j.status === 'success').length;
   const totalSize = jobs.reduce((acc, j) => acc + parseFloat(j.size), 0);
 
-  const handleAdd = useCallback(() => {
+  const handleAdd = useCallback(async () => {
     if (!form.name.trim()) return;
-    setJobs(prev => [...prev, { ...form, id: String(Date.now()), lastRun: '-', nextRun: '-', status: 'scheduled', size: '0 GB' }]);
     setAddOpen(false); setForm(EMPTY_FORM);
   }, [form]);
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = useCallback(async () => {
     if (!editJob) return;
-    setJobs(prev => prev.map(j => j.id === editJob.id ? { ...j, name: form.name, type: form.type, schedule: form.schedule, destination: form.destination } : j));
     setEditJob(null);
   }, [editJob, form]);
 
-  const handleRunNow = useCallback((id: string) => {
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'running' as const } : j));
-    setTimeout(() => setJobs(prev => prev.map(j => j.id === id ? { ...j, status: 'success' as const, lastRun: new Date().toISOString().slice(0, 16).replace('T', ' ') } : j)), 3000);
+  const handleRunNow = useCallback(async (id: string) => {
+    await fetch(`${API}/backup/run/${id}`, { method: 'POST' });
+    refresh();
   }, []);
 
-  const handleRunAll = useCallback(() => { jobs.forEach(j => handleRunNow(j.id)); }, [jobs, handleRunNow]);
+  const handleRunAll = useCallback(async () => { await fetch(`${API}/backup/run-all`, { method: 'POST' }); refresh(); }, [API, refresh]);
 
   const openEdit = (job: BackupJob) => {
     setForm({ name: job.name, type: job.type, schedule: job.schedule, destination: job.destination });

@@ -1,5 +1,6 @@
 import { t, ts } from '@/i18n';
 import { useState, useCallback } from 'react';
+import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 
 interface User {
@@ -20,7 +21,11 @@ const INITIAL_USERS: User[] = [
 const ROLE_COLORS: Record<string, string> = { admin: 'text-teal', user: 'text-[var(--text-primary)]', readonly: 'text-[var(--text-secondary)]' };
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const API = import.meta.env.VITE_API_URL || '/api';
+  const fetchUsers = useCallback(() =>
+    fetch(`${API}/users`).then(r => r.json()), [API]);
+  const { data: usersData, refresh } = useAPI<User[]>(fetchUsers, 10000);
+  const users = usersData || INITIAL_USERS;
   const [addOpen, setAddOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [form, setForm] = useState({ username: '', password: '', confirmPassword: '', role: 'user' as User['role'] });
@@ -31,27 +36,27 @@ export default function UsersPage() {
 
   const resetForm = () => { setForm({ username: '', password: '', confirmPassword: '', role: 'user' }); setError(''); };
 
-  const handleAdd = useCallback(() => {
+  const handleAdd = useCallback(async () => {
     if (!form.username.trim()) { setError(t('users.username') + ' required'); return; }
     if (form.password.length < 6) { setError(t('wiz.passwordTooShort')); return; }
     if (form.password !== form.confirmPassword) { setError(t('wiz.passwordsNoMatch')); return; }
-    setUsers(prev => [...prev, {
-      id: Date.now(), username: form.username.trim(), role: form.role,
-      lastLogin: '-', twoFactor: false, status: 'active',
-    }]);
+    await fetch(`${API}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: form.username.trim(), password: form.password, role: form.role }) });
+    refresh();
     setAddOpen(false);
     resetForm();
   }, [form]);
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = useCallback(async () => {
     if (!editUser) return;
-    setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, role: form.role } : u));
+    await fetch(`${API}/users/${editUser.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: form.role }) });
+    refresh();
     setEditUser(null);
     resetForm();
   }, [editUser, form]);
 
-  const handleDelete = useCallback((id: number) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
+  const handleDelete = useCallback(async (id: number) => {
+    await fetch(`${API}/users/${id}`, { method: 'DELETE' });
+    refresh();
   }, []);
 
   return (

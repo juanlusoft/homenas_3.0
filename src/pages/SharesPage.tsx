@@ -1,5 +1,6 @@
 import { t, ts } from '@/i18n';
 import { useState, useCallback } from 'react';
+import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 
 interface Share {
@@ -23,7 +24,10 @@ const MOCK_SHARES: Share[] = [
 const EMPTY_FORM: { name: string; path: string; protocol: 'smb' | 'nfs'; accessMode: 'read-write' | 'read-only'; allowedUsers: string } = { name: '', path: '/mnt/storage/', protocol: 'smb', accessMode: 'read-write', allowedUsers: '' };
 
 export default function SharesPage() {
-  const [shares, setShares] = useState(MOCK_SHARES);
+  const fetchShares = useCallback(() =>
+    fetch(`${import.meta.env.VITE_API_URL || '/api'}/shares`).then(r => r.json()), []);
+  const { data: sharesData, refresh } = useAPI<Share[]>(fetchShares, 10000);
+  const shares = sharesData || MOCK_SHARES;
   const [addOpen, setAddOpen] = useState(false);
   const [editShare, setEditShare] = useState<Share | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -31,29 +35,22 @@ export default function SharesPage() {
   const activeCount = shares.filter(s => s.status === 'active').length;
   const totalClients = shares.reduce((acc, s) => acc + s.connectedClients, 0);
 
-  const handleAdd = useCallback(() => {
+  const handleAdd = useCallback(async () => {
     if (!form.name.trim() || !form.path.trim()) return;
-    setShares(prev => [...prev, {
-      id: String(Date.now()), name: form.name.trim(), path: form.path.trim(),
-      protocol: form.protocol, status: 'active', accessMode: form.accessMode,
-      allowedUsers: form.allowedUsers.split(',').map(u => u.trim()).filter(Boolean),
-      connectedClients: 0,
-    }]);
-    setAddOpen(false);
-    setForm(EMPTY_FORM);
+    const API = import.meta.env.VITE_API_URL || '/api';
+    await fetch(`${API}/shares`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), sharePath: form.path.trim(), protocol: form.protocol, accessMode: form.accessMode, allowedUsers: form.allowedUsers.split(',').map((u: string) => u.trim()).filter(Boolean) }) });
+    refresh();
+    setAddOpen(false); setForm(EMPTY_FORM);
   }, [form]);
 
-  const handleEdit = useCallback(() => {
+  const handleEdit = useCallback(async () => {
     if (!editShare) return;
-    setShares(prev => prev.map(s => s.id === editShare.id ? {
-      ...s, name: form.name, path: form.path, protocol: form.protocol,
-      accessMode: form.accessMode, allowedUsers: form.allowedUsers.split(',').map(u => u.trim()).filter(Boolean),
-    } : s));
     setEditShare(null);
   }, [editShare, form]);
 
-  const handleToggle = useCallback((id: string) => {
-    setShares(prev => prev.map(s => s.id === id ? { ...s, status: s.status === 'active' ? 'inactive' as const : 'active' as const } : s));
+  const handleToggle = useCallback(async (id: string) => {
+    await fetch(`${import.meta.env.VITE_API_URL || '/api'}/shares/${id}/toggle`, { method: 'POST' });
+    refresh();
   }, []);
 
   const openEdit = (share: Share) => {
