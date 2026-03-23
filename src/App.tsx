@@ -7,11 +7,14 @@ import NetworkPage from '@/pages/NetworkPage';
 import SystemPage from '@/pages/SystemPage';
 import BackupPage from '@/pages/BackupPage';
 import UsersPage from '@/pages/UsersPage';
+import FilesPage from '@/pages/FilesPage';
+import LoginPage from '@/pages/LoginPage';
 
-type View = 'dashboard' | 'storage' | 'backup' | 'services' | 'network' | 'system' | 'users';
+type View = 'dashboard' | 'files' | 'storage' | 'backup' | 'services' | 'network' | 'system' | 'users';
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'files', label: 'Files', icon: '📂' },
   { id: 'storage', label: 'Storage', icon: '💾' },
   { id: 'backup', label: 'Backup', icon: '📦' },
   { id: 'services', label: 'Services', icon: '🐳' },
@@ -22,6 +25,7 @@ const navItems: { id: View; label: string; icon: string }[] = [
 
 const viewSubtitles: Record<View, string> = {
   dashboard: 'System overview & metrics',
+  files: 'Browse & manage files',
   storage: 'Disk health & capacity',
   backup: 'Backup jobs & restore points',
   services: 'Docker & systemd management',
@@ -32,6 +36,7 @@ const viewSubtitles: Record<View, string> = {
 
 const viewComponents: Record<View, React.FC> = {
   dashboard: DashboardPage,
+  files: FilesPage,
   storage: StoragePage,
   backup: BackupPage,
   services: ServicesPage,
@@ -43,12 +48,23 @@ const viewComponents: Record<View, React.FC> = {
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState<string | null>(null);
   const ViewComponent = viewComponents[currentView];
 
   const navigate = useCallback((view: View) => {
     setCurrentView(view);
     setSidebarOpen(false);
   }, []);
+
+  const handleLogout = useCallback(() => {
+    setUser(null);
+    setCurrentView('dashboard');
+  }, []);
+
+  // Show login if not authenticated
+  if (!user) {
+    return <LoginPage onLogin={setUser} />;
+  }
 
   return (
     <div className="min-h-screen bg-surface flex">
@@ -67,7 +83,6 @@ export default function App() {
         lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* Logo */}
         <div className="p-6 mb-2">
           <h1 className="font-display text-xl font-bold tracking-tight text-[var(--text-primary)]">
             HomePiNAS
@@ -75,7 +90,6 @@ export default function App() {
           <p className="text-xs text-[var(--text-secondary)]">Luminous Obsidian</p>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 overflow-y-auto">
           {navItems.map((item) => (
             <button
@@ -93,29 +107,35 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Footer */}
+        {/* User + logout */}
         <div className="p-4 border-t border-[var(--outline-variant)]">
-          <div className="flex items-center gap-2 text-xs text-[var(--text-disabled)]">
-            <GlowPill status="healthy" label="Online" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-teal/20 flex items-center justify-center text-xs font-bold text-teal">
+                {user[0].toUpperCase()}
+              </div>
+              <span className="text-sm text-[var(--text-primary)]">{user}</span>
+            </div>
+            <button onClick={handleLogout} className="text-xs text-[var(--text-disabled)] hover:text-[var(--error)]">
+              Logout
+            </button>
           </div>
-          <p className="mt-2 text-xs text-[var(--text-disabled)]">v3.4.0 · Stitch</p>
+          <p className="text-xs text-[var(--text-disabled)]">v3.5.0 · Stitch</p>
         </div>
       </aside>
 
       {/* Main content */}
       <main className="lg:ml-60 flex-1 min-h-screen flex flex-col">
-        {/* Header */}
         <header className="sticky top-0 z-20 bg-surface/80 backdrop-blur-lg border-b border-[var(--outline-variant)] px-4 py-3 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Mobile hamburger */}
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 rounded-lg text-[var(--text-secondary)] hover:bg-surface-void"
                 aria-label="Open menu"
               >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </button>
               <div>
@@ -129,19 +149,19 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2 lg:gap-3">
               <GlowPill status="healthy" label="All Systems" />
-              <StitchButton size="sm" className="hidden sm:inline-flex">Settings</StitchButton>
+              <StitchButton size="sm" className="hidden sm:inline-flex" onClick={() => navigate('system')}>
+                Settings
+              </StitchButton>
             </div>
           </div>
         </header>
 
-        {/* View content */}
         <div className="flex-1 p-4 lg:p-8">
           <ViewComponent />
         </div>
 
-        {/* Footer */}
         <footer className="py-4 text-center text-xs text-[var(--text-disabled)]">
-          HomePiNAS v3.4.0 · Luminous Obsidian · Stitch Design System
+          HomePiNAS v3.5.0 · Luminous Obsidian · Stitch Design System
         </footer>
       </main>
     </div>
