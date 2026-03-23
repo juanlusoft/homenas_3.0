@@ -3,7 +3,7 @@
  */
 
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
-import { t } from '@/i18n';
+import { t, ts } from '@/i18n';
 import type { StoreApp } from './types';
 
 interface AppCardProps {
@@ -17,7 +17,12 @@ export function AppCard({ app, onInstall, onUninstall, onOpen }: AppCardProps) {
   return (
     <GlassCard elevation="mid" className="flex flex-col">
       <div className="flex items-start gap-3 mb-3">
-        <span className="text-3xl">{app.icon}</span>
+        {app.iconUrl ? (
+          <img src={app.iconUrl} alt={app.name} className="w-9 h-9 rounded-lg object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling!.classList.remove('hidden'); }}
+          />
+        ) : null}
+        <span className={`text-3xl${app.iconUrl ? ' hidden' : ''}`}>{app.icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] truncate">{app.name}</h3>
@@ -28,7 +33,7 @@ export function AppCard({ app, onInstall, onUninstall, onOpen }: AppCardProps) {
           <p className="text-xs text-[var(--text-secondary)]">{app.author}</p>
         </div>
         {app.installed && (
-          <GlowPill status={app.running ? 'healthy' : 'error'} label={app.running ? 'Running' : 'Stopped'} />
+          <GlowPill status={app.running ? 'healthy' : 'error'} label={app.running ? ts('running') : ts('stopped')} />
         )}
       </div>
 

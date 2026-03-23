@@ -49,6 +49,11 @@ const pendingAgents = new Map<string, PendingAgent>();
 // Seed demo data
 seedDemoData();
 
+/** GET /agent/download — Redirect to latest agent release */
+activeBackupRouter.get('/agent/download', (_req, res) => {
+  res.redirect('https://github.com/juanlusoft/homenas_3.0/releases/latest/download/homepinas-agent');
+});
+
 /** POST /agent/register — Agent self-registration */
 activeBackupRouter.post('/agent/register', (req, res) => {
   const { hostname, os } = req.body;

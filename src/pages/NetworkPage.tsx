@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t, ts } from '@/i18n';
 import { useState, useCallback, lazy, Suspense } from 'react';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -24,7 +24,7 @@ function InterfaceCard({ iface }: { iface: NetworkInterface }) {
           <h3 className="font-display text-lg font-semibold text-[var(--text-primary)]">{iface.name}</h3>
           <p className="font-mono text-sm text-teal">{iface.ip}</p>
         </div>
-        <GlowPill status={status} label={iface.status.toUpperCase()} />
+        <GlowPill status={status} label={ts(iface.status)} />
       </div>
 
       <div className="space-y-3">
@@ -95,9 +95,9 @@ export default function NetworkPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('net.interfaces')}</p>
-            <p className="font-display text-2xl font-bold text-teal">{activeCount}/{interfaces?.length || 0} active</p>
+            <p className="font-display text-2xl font-bold text-teal">{activeCount}/{interfaces?.length || 0} {ts('active')}</p>
           </div>
-          <GlowPill status={activeCount > 0 ? 'healthy' : 'error'} label={activeCount > 0 ? 'Connected' : 'No Connection'} />
+          <GlowPill status={activeCount > 0 ? 'healthy' : 'error'} label={activeCount > 0 ? t('net.connected') : t('net.noConnection')} />
         </div>
       </GlassCard>
 

@@ -389,6 +389,24 @@ export const es: Record<string, string> = {
   'sched.daily': 'Diario',
   'sched.every': 'Cada',
   'sched.weekly': 'Semanal',
+  'sched.sun': 'Dom',
+  'sched.mon': 'Lun',
+  'sched.tue': 'Mar',
+  'sched.wed': 'Mié',
+  'sched.thu': 'Jue',
+  'sched.fri': 'Vie',
+  'sched.sat': 'Sáb',
+
+  // Network status
+  'net.connected': 'Conectada',
+  'net.noConnection': 'Sin conexión',
+  'status.up': 'ACTIVA',
+  'status.down': 'INACTIVA',
+
+  // HomeStore status
+  'store.running': 'en ejecución',
+  'store.stopped': 'detenido',
+  'store.searchLabel': 'Buscar',
 
   // Services extra
   'svc.start': '▶ Iniciar',

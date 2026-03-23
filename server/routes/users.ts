@@ -100,6 +100,97 @@ usersRouter.delete('/:id', (req, res) => {
   res.json({ success: true });
 });
 
+/** POST /api/users/enforce-2fa — Toggle global 2FA enforcement */
+usersRouter.post('/enforce-2fa', (req, res) => {
+  const { enforce } = req.body;
+  const settingsFile = path.join(process.cwd(), 'data', 'settings.json');
+  let settings: Record<string, unknown> = {};
+  try { settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8')); } catch { /* new file */ }
+  settings.enforce2FA = !!enforce;
+  fs.mkdirSync(path.dirname(settingsFile), { recursive: true });
+  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+  res.json({ success: true, enforce2FA: settings.enforce2FA });
+});
+
+/** POST /api/users/:id/2fa/setup — Generate TOTP secret and provisioning URI */
+usersRouter.post('/:id/2fa/setup', (req, res) => {
+  const users = loadUsers();
+  const user = users.find(u => u.id === parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  // Generate a 20-byte base32-encoded secret
+  const secretBytes = crypto.randomBytes(20);
+  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let secret = '';
+  for (let i = 0; i < secretBytes.length; i++) {
+    secret += base32Chars[secretBytes[i] % 32];
+  }
+
+  user.totpSecret = secret;
+  user.twoFactor = true;
+  saveUsers(users);
+
+  const issuer = 'HomePiNAS';
+  const otpauthUrl = `otpauth://totp/${issuer}:${user.username}?secret=${secret}&issuer=${issuer}&digits=6&period=30`;
+
+  res.json({ secret, otpauthUrl });
+});
+
+/** POST /api/users/:id/2fa/verify — Verify a TOTP code */
+usersRouter.post('/:id/2fa/verify', (req, res) => {
+  const users = loadUsers();
+  const user = users.find(u => u.id === parseInt(req.params.id));
+  if (!user || !user.totpSecret) return res.status(400).json({ error: 'No 2FA configured' });
+
+  const { code } = req.body;
+  if (!code || typeof code !== 'string' || code.length !== 6) {
+    return res.status(400).json({ error: 'Invalid code format' });
+  }
+
+  // Simple TOTP verification: generate current code and compare
+  const epoch = Math.floor(Date.now() / 1000);
+  const timeStep = Math.floor(epoch / 30);
+
+  // Check current and adjacent time steps (±1 for clock drift)
+  for (const offset of [-1, 0, 1]) {
+    const expected = generateTOTP(user.totpSecret, timeStep + offset);
+    if (expected === code) {
+      return res.json({ success: true });
+    }
+  }
+
+  res.status(401).json({ error: 'Invalid code' });
+});
+
+/** Generate a 6-digit TOTP code from base32 secret and time step */
+function generateTOTP(base32Secret: string, timeStep: number): string {
+  // Decode base32
+  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const c of base32Secret.toUpperCase()) {
+    const val = base32Chars.indexOf(c);
+    if (val >= 0) bits += val.toString(2).padStart(5, '0');
+  }
+  const keyBytes = Buffer.alloc(Math.floor(bits.length / 8));
+  for (let i = 0; i < keyBytes.length; i++) {
+    keyBytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+  }
+
+  // Time step to 8-byte big-endian buffer
+  const timeBuffer = Buffer.alloc(8);
+  timeBuffer.writeUInt32BE(Math.floor(timeStep / 0x100000000), 0);
+  timeBuffer.writeUInt32BE(timeStep >>> 0, 4);
+
+  // HMAC-SHA1
+  const hmac = crypto.createHmac('sha1', keyBytes).update(timeBuffer).digest();
+
+  // Dynamic truncation
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code = ((hmac[offset] & 0x7f) << 24 | hmac[offset + 1] << 16 | hmac[offset + 2] << 8 | hmac[offset + 3]) % 1000000;
+
+  return code.toString().padStart(6, '0');
+}
+
 /** POST /api/users/login — Authenticate */
 usersRouter.post('/login', (req, res) => {
   const { username, password } = req.body;

@@ -2,6 +2,7 @@ export interface StoreApp {
   id: string;
   name: string;
   icon: string;
+  iconUrl?: string; // URL to official app icon (falls back to emoji icon)
   author: string;
   description: string;
   version: string;

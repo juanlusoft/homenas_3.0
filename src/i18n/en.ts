@@ -16,5 +16,18 @@ export const en: Record<string, string> = {
   'nav.users': 'Users',
   'header.allSystems': 'All Systems',
   'header.settings': 'Settings',
-  // English defaults — keys map to themselves
+  // Schedule
+  'sched.daily': 'Daily',
+  'sched.every': 'Every',
+  'sched.weekly': 'Weekly',
+  'sched.sun': 'Sun', 'sched.mon': 'Mon', 'sched.tue': 'Tue', 'sched.wed': 'Wed',
+  'sched.thu': 'Thu', 'sched.fri': 'Fri', 'sched.sat': 'Sat',
+  // Network
+  'net.connected': 'Connected',
+  'net.noConnection': 'No Connection',
+  'status.up': 'UP', 'status.down': 'DOWN',
+  // HomeStore
+  'store.running': 'running',
+  'store.stopped': 'stopped',
+  'store.searchLabel': 'Search',
 };

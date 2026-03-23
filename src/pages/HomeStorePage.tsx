@@ -19,28 +19,28 @@ function getCategories(): { id: AppCategory | 'all'; label: string; icon: string
 
 const INITIAL_APPS: StoreApp[] = [
   // Media
-  { id: 'plex', name: 'Plex Media Server', icon: '🎬', author: 'Plex Inc.', description: 'Stream your media anywhere. Organize movies, TV shows, music, and photos.', version: '1.41.0', category: 'media', port: 32400, official: true, installed: true, running: true, image: 'plexinc/pms-docker', size: '350 MB' },
-  { id: 'jellyfin', name: 'Jellyfin', icon: '🪼', author: 'Jellyfin Project', description: 'Free software media system. No premium features behind paywalls.', version: '10.9.0', category: 'media', port: 8096, official: true, installed: false, running: false, image: 'jellyfin/jellyfin', size: '300 MB' },
-  { id: 'sonarr', name: 'Sonarr', icon: '📺', author: 'Sonarr Team', description: 'TV show management and automated downloads. PVR for Usenet and BitTorrent.', version: '4.0.5', category: 'media', port: 8989, official: true, installed: true, running: true, image: 'linuxserver/sonarr', size: '250 MB' },
-  { id: 'radarr', name: 'Radarr', icon: '🎥', author: 'Radarr Team', description: 'Movie collection manager for Usenet and BitTorrent users.', version: '5.6.0', category: 'media', port: 7878, official: true, installed: false, running: false, image: 'linuxserver/radarr', size: '250 MB' },
-  { id: 'transmission', name: 'Transmission', icon: '⬇️', author: 'Transmission Project', description: 'Lightweight BitTorrent client with web interface.', version: '4.0.6', category: 'media', port: 9091, official: true, installed: true, running: true, image: 'linuxserver/transmission', size: '120 MB' },
+  { id: 'plex', name: 'Plex Media Server', icon: '🎬', iconUrl: 'https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/plex-icon.png', author: 'Plex Inc.', description: 'Stream your media anywhere. Organize movies, TV shows, music, and photos.', version: '1.41.0', category: 'media', port: 32400, official: true, installed: true, running: true, image: 'plexinc/pms-docker', size: '350 MB' },
+  { id: 'jellyfin', name: 'Jellyfin', icon: '🪼', iconUrl: 'https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg', author: 'Jellyfin Project', description: 'Free software media system. No premium features behind paywalls.', version: '10.9.0', category: 'media', port: 8096, official: true, installed: false, running: false, image: 'jellyfin/jellyfin', size: '300 MB' },
+  { id: 'sonarr', name: 'Sonarr', icon: '📺', iconUrl: 'https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/sonarr-icon.png', author: 'Sonarr Team', description: 'TV show management and automated downloads. PVR for Usenet and BitTorrent.', version: '4.0.5', category: 'media', port: 8989, official: true, installed: true, running: true, image: 'linuxserver/sonarr', size: '250 MB' },
+  { id: 'radarr', name: 'Radarr', icon: '🎥', iconUrl: 'https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/radarr-icon.png', author: 'Radarr Team', description: 'Movie collection manager for Usenet and BitTorrent users.', version: '5.6.0', category: 'media', port: 7878, official: true, installed: false, running: false, image: 'linuxserver/radarr', size: '250 MB' },
+  { id: 'transmission', name: 'Transmission', icon: '⬇️', iconUrl: 'https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/transmission-icon.png', author: 'Transmission Project', description: 'Lightweight BitTorrent client with web interface.', version: '4.0.6', category: 'media', port: 9091, official: true, installed: true, running: true, image: 'linuxserver/transmission', size: '120 MB' },
 
   // Productivity
-  { id: 'nextcloud', name: 'Nextcloud', icon: '☁️', author: 'Nextcloud GmbH', description: 'Self-hosted cloud storage, calendar, contacts, and more.', version: '29.0', category: 'productivity', port: 8080, official: true, installed: false, running: false, image: 'nextcloud', size: '800 MB' },
-  { id: 'vaultwarden', name: 'Vaultwarden', icon: '🔑', author: 'dani-garcia', description: 'Bitwarden-compatible password manager server. Lightweight Rust implementation.', version: '1.32.0', category: 'security', port: 8888, official: false, installed: true, running: true, image: 'vaultwarden/server', size: '50 MB' },
+  { id: 'nextcloud', name: 'Nextcloud', icon: '☁️', iconUrl: 'https://raw.githubusercontent.com/nextcloud/promo/master/nextcloud-icon.svg', author: 'Nextcloud GmbH', description: 'Self-hosted cloud storage, calendar, contacts, and more.', version: '29.0', category: 'productivity', port: 8080, official: true, installed: false, running: false, image: 'nextcloud', size: '800 MB' },
+  { id: 'vaultwarden', name: 'Vaultwarden', icon: '🔑', iconUrl: 'https://raw.githubusercontent.com/dani-garcia/vaultwarden/main/resources/vaultwarden-icon.svg', author: 'dani-garcia', description: 'Bitwarden-compatible password manager server. Lightweight Rust implementation.', version: '1.32.0', category: 'security', port: 8888, official: false, installed: true, running: true, image: 'vaultwarden/server', size: '50 MB' },
   { id: 'syncthing', name: 'Syncthing', icon: '🔄', author: 'Syncthing Foundation', description: 'Continuous file synchronization between devices. No cloud required.', version: '1.27.0', category: 'backup', port: 8384, official: true, installed: false, running: false, image: 'syncthing/syncthing', size: '40 MB' },
 
   // Development
-  { id: 'gitea', name: 'Gitea', icon: '🐙', author: 'Gitea', description: 'Lightweight self-hosted Git service. Fork of Gogs.', version: '1.22.0', category: 'development', port: 3000, official: true, installed: true, running: true, image: 'gitea/gitea', size: '100 MB' },
+  { id: 'gitea', name: 'Gitea', icon: '🐙', iconUrl: 'https://raw.githubusercontent.com/go-gitea/gitea/main/assets/logo.svg', author: 'Gitea', description: 'Lightweight self-hosted Git service. Fork of Gogs.', version: '1.22.0', category: 'development', port: 3000, official: true, installed: true, running: true, image: 'gitea/gitea', size: '100 MB' },
   { id: 'postgres', name: 'PostgreSQL', icon: '🐘', author: 'PostgreSQL Global', description: 'Powerful open-source relational database system.', version: '16.3', category: 'development', port: 5432, official: true, installed: false, running: false, image: 'postgres:16', size: '200 MB' },
   { id: 'redis', name: 'Redis', icon: '🔴', author: 'Redis Ltd.', description: 'In-memory data store for caching, queues, and real-time analytics.', version: '7.4', category: 'development', port: 6379, official: true, installed: false, running: false, image: 'redis:7-alpine', size: '15 MB' },
 
   // Monitoring
-  { id: 'grafana', name: 'Grafana', icon: '📈', author: 'Grafana Labs', description: 'Analytics and monitoring dashboards. Visualize metrics from any source.', version: '11.1', category: 'monitoring', port: 3001, official: true, installed: false, running: false, image: 'grafana/grafana', size: '150 MB' },
+  { id: 'grafana', name: 'Grafana', icon: '📈', iconUrl: 'https://raw.githubusercontent.com/grafana/grafana/main/public/img/grafana_icon.svg', author: 'Grafana Labs', description: 'Analytics and monitoring dashboards. Visualize metrics from any source.', version: '11.1', category: 'monitoring', port: 3001, official: true, installed: false, running: false, image: 'grafana/grafana', size: '150 MB' },
   { id: 'uptime-kuma', name: 'Uptime Kuma', icon: '📡', author: 'Louis Lam', description: 'Self-hosted monitoring tool. Check HTTP, TCP, DNS, and more.', version: '1.23.0', category: 'monitoring', port: 3002, official: false, installed: true, running: true, image: 'louislam/uptime-kuma', size: '120 MB' },
 
   // Network
-  { id: 'pihole', name: 'Pi-hole', icon: '🕳️', author: 'Pi-hole', description: 'Network-wide ad blocking. DNS sinkhole for your entire network.', version: '2024.07', category: 'network', port: 8053, official: true, installed: false, running: false, image: 'pihole/pihole', size: '200 MB' },
+  { id: 'pihole', name: 'Pi-hole', icon: '🕳️', iconUrl: 'https://raw.githubusercontent.com/pi-hole/graphics/master/Vortex/Vortex_Vertical.svg', author: 'Pi-hole', description: 'Network-wide ad blocking. DNS sinkhole for your entire network.', version: '2024.07', category: 'network', port: 8053, official: true, installed: false, running: false, image: 'pihole/pihole', size: '200 MB' },
   { id: 'wireguard', name: 'WireGuard', icon: '🔐', author: 'WireGuard', description: 'Modern VPN. Simple, fast, and secure. Access your NAS from anywhere.', version: '1.0.20210914', category: 'network', port: 51820, official: true, installed: false, running: false, image: 'linuxserver/wireguard', size: '80 MB' },
   { id: 'nginx-proxy', name: 'Nginx Proxy Manager', icon: '🔀', author: 'NginxProxyManager', description: 'Reverse proxy with Let\'s Encrypt SSL. Easy GUI management.', version: '2.11.3', category: 'network', port: 81, official: false, installed: false, running: false, image: 'jc21/nginx-proxy-manager', size: '180 MB' },
   { id: 'bazarr', name: 'Bazarr', icon: '💬', author: 'morpheus65535', description: 'Companion app for Sonarr/Radarr. Manages and downloads subtitles automatically.', version: '1.4.3', category: 'media', port: 6767, official: false, installed: false, running: false, image: 'linuxserver/bazarr', size: '180 MB' },
@@ -63,7 +63,7 @@ const INITIAL_APPS: StoreApp[] = [
   { id: 'crowdsec', name: 'CrowdSec', icon: '🛡️', author: 'CrowdSec', description: 'Collaborative security engine. Detect and block malicious IPs using crowd intelligence.', version: '1.6.3', category: 'security', port: 8082, official: true, installed: false, running: false, image: 'crowdsecurity/crowdsec', size: '100 MB' },
   { id: 'authelia', name: 'Authelia', icon: '🔏', author: 'Authelia', description: 'SSO and 2FA portal. Protect your apps with authentication and authorization.', version: '4.38.9', category: 'security', port: 9091, official: true, installed: false, running: false, image: 'authelia/authelia', size: '50 MB' },
   { id: 'fail2ban', name: 'Fail2Ban', icon: '🚫', author: 'Fail2Ban', description: 'Intrusion prevention. Bans IPs with too many failed login attempts.', version: '1.1.0', category: 'security', official: true, installed: false, running: false, image: 'linuxserver/fail2ban', size: '30 MB' },
-  { id: 'portainer', name: 'Portainer', icon: '🐳', author: 'Portainer.io', description: 'Docker management UI. Manage containers, images, volumes, and networks visually.', version: '2.21.0', category: 'development', port: 9443, official: true, installed: false, running: false, image: 'portainer/portainer-ce', size: '100 MB' },
+  { id: 'portainer', name: 'Portainer', icon: '🐳', iconUrl: 'https://raw.githubusercontent.com/portainer/portainer/develop/app/assets/ico/favicon.svg', author: 'Portainer.io', description: 'Docker management UI. Manage containers, images, volumes, and networks visually.', version: '2.21.0', category: 'development', port: 9443, official: true, installed: false, running: false, image: 'portainer/portainer-ce', size: '100 MB' },
   { id: 'code-server', name: 'Code Server', icon: '💻', author: 'Coder', description: 'VS Code in the browser. Full IDE running on your NAS, accessible from anywhere.', version: '4.91.1', category: 'development', port: 8443, official: true, installed: false, running: false, image: 'linuxserver/code-server', size: '500 MB' },
   { id: 'drone', name: 'Drone CI', icon: '🤖', author: 'Harness', description: 'Self-service CI/CD platform. Automate testing and deployment with pipelines.', version: '2.24.0', category: 'development', port: 8085, official: true, installed: false, running: false, image: 'drone/drone', size: '80 MB' },
   { id: 'registry', name: 'Docker Registry', icon: '📦', author: 'Docker', description: 'Private Docker image registry. Store and distribute your container images locally.', version: '2.8.3', category: 'development', port: 5000, official: true, installed: false, running: false, image: 'registry:2', size: '25 MB' },
@@ -103,14 +103,35 @@ export default function HomeStorePage() {
     });
   }, [apps, category, search, filter]);
 
-  const handleInstall = useCallback((id: string) => {
+  const handleInstall = useCallback(async (id: string) => {
+    const app = apps.find(a => a.id === id);
+    if (!app) return;
     setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
-    // TODO: POST /api/store/install/:id when Docker API ready
-  }, []);
+    const API = import.meta.env.VITE_API_URL || '/api';
+    try {
+      await fetch(`${API}/store/install/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: app.image, port: app.port, name: app.id }),
+      });
+    } catch {
+      setApps(prev => prev.map(a => a.id === id ? { ...a, installed: false, running: false } : a));
+    }
+  }, [apps]);
 
-  const handleUninstall = useCallback((id: string) => {
+  const handleUninstall = useCallback(async (id: string) => {
     if (!confirm(t('store.uninstall') + '?')) return;
     setApps(prev => prev.map(a => a.id === id ? { ...a, installed: false, running: false } : a));
+    const API = import.meta.env.VITE_API_URL || '/api';
+    try {
+      await fetch(`${API}/store/uninstall/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: id }),
+      });
+    } catch {
+      setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
+    }
   }, []);
 
   const handleOpen = useCallback((id: string) => {
@@ -128,7 +149,7 @@ export default function HomeStorePage() {
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('store.installed')}</p>
           <p className="font-display text-2xl font-bold text-teal">{installedCount}</p>
-          <p className="text-xs text-[var(--text-secondary)]">{runningCount} running</p>
+          <p className="text-xs text-[var(--text-secondary)]">{runningCount} {t('store.running')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('store.available')}</p>
@@ -136,7 +157,7 @@ export default function HomeStorePage() {
           <p className="text-xs text-[var(--text-secondary)]">{t('store.readyToInstall')}</p>
         </GlassCard>
         <GlassCard elevation="mid">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">Search</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('store.searchLabel')}</p>
           <input
             type="text"
             value={search}
@@ -171,7 +192,7 @@ export default function HomeStorePage() {
               filter === f ? 'bg-teal/10 text-teal' : 'text-[var(--text-secondary)] hover:bg-surface-void'
             }`}
           >
-            {f === 'all' ? 'All' : f === 'installed' ? '✓ Installed' : '+ Available'}
+            {f === 'all' ? t('store.all') : f === 'installed' ? `✓ ${t('store.installed')}` : `+ ${t('store.available')}`}
           </button>
         ))}
 

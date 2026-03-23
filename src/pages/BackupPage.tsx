@@ -16,6 +16,21 @@ const MOCK_JOBS: BackupJob[] = [
 ];
 
 const statusGlow = (s: string) => s === 'success' ? 'healthy' as const : s === 'running' || s === 'scheduled' ? 'warning' as const : 'error' as const;
+
+/** Translate English schedule strings like "Daily 02:00", "Every 6h", "Weekly Sun 03:00" */
+function translateSchedule(s: string): string {
+  return s
+    .replace(/^Daily\b/i, t('sched.daily'))
+    .replace(/^Every\b/i, t('sched.every'))
+    .replace(/^Weekly\b/i, t('sched.weekly'))
+    .replace(/\bSun\b/, t('sched.sun'))
+    .replace(/\bMon\b/, t('sched.mon'))
+    .replace(/\bTue\b/, t('sched.tue'))
+    .replace(/\bWed\b/, t('sched.wed'))
+    .replace(/\bThu\b/, t('sched.thu'))
+    .replace(/\bFri\b/, t('sched.fri'))
+    .replace(/\bSat\b/, t('sched.sat'));
+}
 const EMPTY_FORM = { name: '', type: 'incremental' as BackupJob['type'], schedule: '0 2 * * *', destination: '/mnt/backup/' };
 
 export default function BackupPage() {
@@ -105,7 +120,7 @@ export default function BackupPage() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h3 className="font-display text-base font-semibold text-[var(--text-primary)]">{job.name}</h3>
-                <p className="text-xs text-[var(--text-secondary)]">{ts(job.type)} · {job.schedule}</p>
+                <p className="text-xs text-[var(--text-secondary)]">{ts(job.type)} · {translateSchedule(job.schedule)}</p>
               </div>
               <GlowPill status={statusGlow(job.status)} label={ts(job.status)} />
             </div>

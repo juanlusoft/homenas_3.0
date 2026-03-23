@@ -17,6 +17,7 @@ import { settingsRouter } from './routes/settings.js';
 import { sharesRouter } from './routes/shares.js';
 import { backupRouter } from './routes/backup.js';
 import { usersRouter } from './routes/users.js';
+import { storeRouter } from './routes/store.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -44,6 +45,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/shares', sharesRouter);
 app.use('/api/backup', backupRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/store', storeRouter);
 
 // Serve built frontend in production
 if (process.env.NODE_ENV === 'production') {
