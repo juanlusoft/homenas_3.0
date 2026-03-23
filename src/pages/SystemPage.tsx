@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
@@ -34,12 +34,25 @@ function formatUptime(seconds: number): string {
   return `${m}m`;
 }
 
+const goTo = (view: string) => window.dispatchEvent(new CustomEvent('homepinas:navigate', { detail: view }));
+
 export default function SystemPage() {
+  const API = import.meta.env.VITE_API_URL || '/api';
   const fetchInfo = useCallback(() =>
-    fetch(`${import.meta.env.VITE_API_URL || '/api'}/system/info`).then(r => r.json() as Promise<SystemInfo>),
-  []);
+    fetch(`${API}/system/info`).then(r => r.json() as Promise<SystemInfo>),
+  [API]);
   const { data: info, loading: infoLoading } = useAPI<SystemInfo>(fetchInfo);
   const { metrics, isConnected } = useLiveMetrics();
+  const [updating, setUpdating] = useState(false);
+
+  const checkUpdates = useCallback(async () => {
+    setUpdating(true);
+    try {
+      await fetch(`${API}/system/check-updates`, { method: 'POST' });
+    } finally {
+      setUpdating(false);
+    }
+  }, [API]);
 
   return (
     <div className="space-y-8">
@@ -114,9 +127,11 @@ export default function SystemPage() {
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('sys.actions')}</h3>
         <div className="flex flex-wrap gap-3">
           <StitchButton size="sm" variant="ghost" onClick={() => window.alert('Running diagnostics...')}>{t('sys.diagnostics')}</StitchButton>
-          <StitchButton size="sm" variant="ghost">{t('sys.checkUpdates')}</StitchButton>
-          <StitchButton size="sm" variant="ghost" onClick={() => { /* handled by parent nav */ }}>{t('sys.viewLogs')}</StitchButton>
-          <StitchButton size="sm" variant="ghost">{t('sys.configuration')}</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={checkUpdates} disabled={updating}>
+            {updating ? '...' : t('sys.checkUpdates')}
+          </StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={() => goTo('logs')}>{t('sys.viewLogs')}</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={() => goTo('settings')}>{t('sys.configuration')}</StitchButton>
         </div>
       </GlassCard>
     </div>

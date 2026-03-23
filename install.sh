@@ -160,8 +160,7 @@ RestartSec=5
 Environment=NODE_ENV=production
 Environment=PORT=$PORT
 
-# Security hardening
-NoNewPrivileges=true
+# Security hardening (NoNewPrivileges omitted — sudo smartctl needs privilege escalation)
 ProtectSystem=strict
 ReadWritePaths=$INSTALL_DIR/data
 PrivateTmp=true
@@ -169,6 +168,18 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 EOF
+
+# ── Sudoers for smartctl ──────────────────────────────────
+
+SMARTCTL_PATH=$(command -v smartctl 2>/dev/null || echo "/usr/sbin/smartctl")
+SUDOERS_FILE="/etc/sudoers.d/homepinas-smart"
+if [ -x "$SMARTCTL_PATH" ]; then
+    echo "$REAL_USER ALL=(ALL) NOPASSWD: $SMARTCTL_PATH" > "$SUDOERS_FILE"
+    chmod 0440 "$SUDOERS_FILE"
+    ok "Sudoers entry for smartctl created"
+else
+    warn "smartctl not found. Install smartmontools for SMART monitoring: apt install smartmontools"
+fi
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"

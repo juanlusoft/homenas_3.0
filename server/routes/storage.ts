@@ -10,9 +10,14 @@ import si from 'systeminformation';
 export const storageRouter = Router();
 const execFileAsync = promisify(execFile);
 
-/** Read SMART data for a device */
+/**
+ * Read SMART data for a device.
+ * Requires sudoers entry:  homepinas ALL=(ALL) NOPASSWD: /usr/sbin/smartctl
+ * Without it, smartctl will fail and all SMART values will show N/A.
+ */
 async function getSmartData(device: string): Promise<{ temperature: number; powerOnHours: number; badSectors: number; status: string }> {
   try {
+    // Try with sudo first (needed for most USB/SATA devices)
     const { stdout } = await execFileAsync('sudo', ['smartctl', '-A', '-H', device], { timeout: 5000 });
     const temp = stdout.match(/Temperature_Celsius.*?(\d+)\s*$/m)
       || stdout.match(/194\s+.*?(\d+)\s+/m)
@@ -29,7 +34,12 @@ async function getSmartData(device: string): Promise<{ temperature: number; powe
       badSectors: badSectors ? parseInt(badSectors[1], 10) : 0,
       status: healthy ? 'OK' : 'WARN',
     };
-  } catch {
+  } catch (err) {
+    // Log the error so it's diagnosable — most common cause is missing sudoers entry
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('password') || msg.includes('EACCES') || msg.includes('not allowed')) {
+      console.warn(`[SMART] Permission denied for ${device}. Add to sudoers: homepinas ALL=(ALL) NOPASSWD: /usr/sbin/smartctl`);
+    }
     return { temperature: 0, powerOnHours: 0, badSectors: 0, status: 'N/A' };
   }
 }
@@ -40,6 +50,14 @@ function getDiskRole(mount: string): 'cache' | 'data' | 'parity' | 'system' {
   if (mount.includes('/parity')) return 'parity';
   if (mount.startsWith('/mnt/') || mount.includes('/storage') || mount.includes('/disks/')) return 'data';
   return 'system';
+}
+
+/** Score mount points for deduplication: higher = preferred */
+function mountScore(mount: string): number {
+  if (mount.includes('/storage')) return 3;
+  if (mount.startsWith('/mnt/')) return 2;
+  if (mount.includes('/disks/')) return 1;
+  return 0;
 }
 
 /** GET /api/storage/disks — Disk information (filtered, deduplicated) */
@@ -67,8 +85,17 @@ storageRouter.get('/disks', async (_req, res) => {
     const seen = new Map<string, typeof filtered[0]>();
     for (const fs of filtered) {
       const baseDevice = fs.fs.replace(/\d+$/, '').replace('/dev/', '');
-      if (!seen.has(baseDevice) || fs.mount.includes('/storage')) {
-        seen.set(baseDevice, fs);  // prefer /mnt/storage mount
+      const existing = seen.get(baseDevice);
+      if (!existing) {
+        seen.set(baseDevice, fs);
+      } else {
+        // Prefer the mount with the largest partition (most likely the data partition)
+        // and prefer /storage or /mnt mounts over device-named mounts like /data-sdc
+        const existingScore = mountScore(existing.mount);
+        const newScore = mountScore(fs.mount);
+        if (newScore > existingScore) {
+          seen.set(baseDevice, fs);
+        }
       }
     }
 

@@ -35,6 +35,13 @@ export default function DockerComposePage() {
     setEditing(null);
   }, [editing, editorContent]);
 
+  const addStack = useCallback(() => {
+    const id = String(Date.now());
+    const newStack: Stack = { id, name: `new-stack-${id.slice(-4)}`, file: 'version: "3.8"\nservices:\n  app:\n    image: nginx:latest\n    ports:\n      - "8080:80"\n    restart: unless-stopped', status: 'stopped', services: 1, runningServices: 0 };
+    setStacks(prev => [...prev, newStack]);
+    startEdit(newStack);
+  }, [startEdit]);
+
   const toggleStack = useCallback((id: string) => {
     setStacks(prev => prev.map(s => {
       if (s.id !== id) return s;
@@ -92,7 +99,7 @@ export default function DockerComposePage() {
         </GlassCard>
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('stacks.actions')}</p>
-          <StitchButton size="sm" className="mt-1">{t('stacks.newStack')}</StitchButton>
+          <StitchButton size="sm" className="mt-1" onClick={addStack}>{t('stacks.newStack')}</StitchButton>
         </GlassCard>
       </div>
 

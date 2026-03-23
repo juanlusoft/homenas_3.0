@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
 import { t, setLanguage } from '@/i18n';
 import DashboardPage from '@/pages/DashboardPage';
@@ -93,6 +93,16 @@ export default function App() {
     setCurrentView(view);
     setSidebarOpen(false);
   }, []);
+
+  // Allow child pages to navigate via custom event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const view = (e as CustomEvent<View>).detail;
+      if (view) navigate(view);
+    };
+    window.addEventListener('homepinas:navigate', handler);
+    return () => window.removeEventListener('homepinas:navigate', handler);
+  }, [navigate]);
 
   const handleLogout = useCallback(() => {
     setUser(null);

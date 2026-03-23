@@ -45,8 +45,22 @@ export default function SharesPage() {
 
   const handleEdit = useCallback(async () => {
     if (!editShare) return;
+    const API = import.meta.env.VITE_API_URL || '/api';
+    await fetch(`${API}/shares/${editShare.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        sharePath: form.path.trim(),
+        protocol: form.protocol,
+        accessMode: form.accessMode,
+        allowedUsers: form.allowedUsers.split(',').map((u: string) => u.trim()).filter(Boolean),
+      }),
+    });
+    refresh();
     setEditShare(null);
-  }, [editShare, form]);
+    setForm(EMPTY_FORM);
+  }, [editShare, form, refresh]);
 
   const handleToggle = useCallback(async (id: string) => {
     await fetch(`${import.meta.env.VITE_API_URL || '/api'}/shares/${id}/toggle`, { method: 'POST' });

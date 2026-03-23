@@ -33,13 +33,27 @@ export default function BackupPage() {
 
   const handleAdd = useCallback(async () => {
     if (!form.name.trim()) return;
-    setAddOpen(false); setForm(EMPTY_FORM);
-  }, [form]);
+    await fetch(`${API}/backup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    refresh();
+    setAddOpen(false);
+    setForm(EMPTY_FORM);
+  }, [form, API, refresh]);
 
   const handleEdit = useCallback(async () => {
     if (!editJob) return;
+    await fetch(`${API}/backup/${editJob.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    refresh();
     setEditJob(null);
-  }, [editJob, form]);
+    setForm(EMPTY_FORM);
+  }, [editJob, form, API, refresh]);
 
   const handleRunNow = useCallback(async (id: string) => {
     await fetch(`${API}/backup/run/${id}`, { method: 'POST' });

@@ -66,6 +66,17 @@ export default function NetworkPage() {
   const [editIface, setEditIface] = useState<string | null>(null);
   const [netForm, setNetForm] = useState({ mode: 'dhcp', ip: '', netmask: '255.255.255.0', gateway: '', dns: '' });
 
+  const handleSaveNetwork = useCallback(async () => {
+    if (!editIface) return;
+    const API = import.meta.env.VITE_API_URL || '/api';
+    await fetch(`${API}/network/interfaces/${editIface}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(netForm),
+    });
+    setEditIface(null);
+  }, [editIface, netForm]);
+
   const activeCount = interfaces?.filter((i) => i.status === 'up').length || 0;
 
   return (
@@ -103,7 +114,7 @@ export default function NetworkPage() {
 
       {/* Edit Interface Modal */}
       <Modal open={!!editIface} onClose={() => setEditIface(null)} title={`${t('net.edit')}: ${editIface}`}
-        actions={<><StitchButton size="sm" variant="ghost" onClick={() => setEditIface(null)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={() => setEditIface(null)}>{t('common.save')}</StitchButton></>}>
+        actions={<><StitchButton size="sm" variant="ghost" onClick={() => setEditIface(null)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={handleSaveNetwork}>{t('common.save')}</StitchButton></>}>
         <p className="text-xs text-orange mb-3">{t('net.editWarning')}</p>
         <div className="space-y-3">
           <div className="flex gap-2">

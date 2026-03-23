@@ -30,6 +30,7 @@ export default function UsersPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [form, setForm] = useState({ username: '', password: '', confirmPassword: '', role: 'user' as User['role'] });
   const [error, setError] = useState('');
+  const [twoFaEnforced, setTwoFaEnforced] = useState(false);
 
   const adminCount = users.filter(u => u.role === 'admin').length;
   const twoFaCount = users.filter(u => u.twoFactor).length;
@@ -126,7 +127,12 @@ export default function UsersPage() {
               <p className="text-sm text-[var(--text-primary)]">{t('users.require2FA')}</p>
               <p className="text-xs text-[var(--text-secondary)]">{t('users.enforce2FA')}</p>
             </div>
-            <StitchButton size="sm" variant="ghost">{t('users.enable')}</StitchButton>
+            <StitchButton size="sm" variant="ghost" onClick={() => {
+              fetch(`${API}/users/enforce-2fa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enforce: !twoFaEnforced }) });
+              setTwoFaEnforced(v => !v);
+            }}>
+              {twoFaEnforced ? t('users.disable') : t('users.enable')}
+            </StitchButton>
           </div>
           <div className="flex items-center justify-between">
             <div>

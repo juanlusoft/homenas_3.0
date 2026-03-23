@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { api } from '@/api/client';
@@ -76,6 +76,24 @@ function DiskCard({ disk }: { disk: Disk }) {
 export default function StoragePage() {
   const fetchDisks = useCallback(() => api.getDisks(), []);
   const { data: disks, loading, refresh } = useAPI<Disk[]>(fetchDisks, 15000);
+  const [smartRunning, setSmartRunning] = useState(false);
+
+  const runSmartCheck = useCallback(async () => {
+    if (!disks?.length) return;
+    setSmartRunning(true);
+    const API = import.meta.env.VITE_API_URL || '/api';
+    try {
+      await Promise.all(
+        disks.map(d => {
+          const dev = d.device.replace('/dev/', '').replace(/\d+$/, '');
+          return fetch(`${API}/storage/smart-test/${dev}`, { method: 'POST' });
+        })
+      );
+      refresh();
+    } finally {
+      setSmartRunning(false);
+    }
+  }, [disks, refresh]);
 
   const totalSize = disks?.reduce((acc, d) => acc + parseFloat(d.size), 0) || 0;
   const totalUsed = disks?.reduce((acc, d) => acc + parseFloat(d.used), 0) || 0;
@@ -100,7 +118,9 @@ export default function StoragePage() {
             <div>
               <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('storage.actions')}</p>
               <div className="flex gap-2 mt-2">
-                <StitchButton size="sm" variant="ghost">{t('storage.smartCheck')}</StitchButton>
+                <StitchButton size="sm" variant="ghost" onClick={runSmartCheck} disabled={smartRunning}>
+                  {smartRunning ? '...' : t('storage.smartCheck')}
+                </StitchButton>
                 <StitchButton size="sm" variant="ghost" onClick={refresh}>{t('storage.refresh')}</StitchButton>
               </div>
             </div>
