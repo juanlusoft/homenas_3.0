@@ -89,6 +89,41 @@ if ! command -v git &>/dev/null; then
     apt-get install -y git 2>/dev/null || dnf install -y git 2>/dev/null
 fi
 
+# ── Docker + Docker Compose ───────────────────────────────
+
+if ! command -v docker &>/dev/null; then
+    info "Installing Docker..."
+    curl -fsSL https://get.docker.com | sh
+    ok "Docker $(docker --version | awk '{print $3}') installed"
+else
+    ok "Docker $(docker --version | awk '{print $3}') found"
+fi
+
+# Ensure Docker is running and enabled
+systemctl enable --now docker
+
+# Add user to docker group (no sudo needed for docker commands)
+if ! id -nG "$REAL_USER" | grep -qw docker; then
+    usermod -aG docker "$REAL_USER"
+    ok "User $REAL_USER added to docker group"
+fi
+
+# Install Docker Compose plugin if not present
+if ! docker compose version &>/dev/null; then
+    info "Installing Docker Compose plugin..."
+    apt-get install -y docker-compose-plugin 2>/dev/null || {
+        # Fallback: install from GitHub
+        COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+        ARCH=$(uname -m)
+        mkdir -p /usr/local/lib/docker/cli-plugins
+        curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/local/lib/docker/cli-plugins/docker-compose
+        chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+    }
+    ok "Docker Compose $(docker compose version --short 2>/dev/null || echo 'installed')"
+else
+    ok "Docker Compose $(docker compose version --short) found"
+fi
+
 # ── Clone/Update repo ─────────────────────────────────────
 
 STAGING_DIR="${INSTALL_DIR}.staging"
