@@ -104,30 +104,6 @@ export default function HomeStorePage() {
     });
   }, [apps, category, search, filter]);
 
-  const handleInstall = useCallback(async (id: string) => {
-    const app = apps.find(a => a.id === id);
-    if (!app || busy[id]) return;
-    setBusy(prev => ({ ...prev, [id]: 'installing' }));
-    const API = import.meta.env.VITE_API_URL || '/api';
-    try {
-      const res = await fetch(`${API}/store/install/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: app.image, port: app.port, name: app.id }),
-      });
-      if (res.ok) {
-        setApps(prev => prev.map(a => a.id === id ? { ...a, installed: true, running: true } : a));
-      } else {
-        const err = await res.json().catch(() => ({ error: 'Error' }));
-        alert(`${t('store.install')} error: ${err.error}`);
-      }
-    } catch {
-      alert(`${t('store.install')} error: no se pudo conectar con el servidor`);
-    } finally {
-      setBusy(prev => { const n = { ...prev }; delete n[id]; return n; });
-    }
-  }, [apps, busy]);
-
   const handleUninstall = useCallback(async (id: string) => {
     if (!confirm(t('store.uninstall') + '?') || busy[id]) return;
     setBusy(prev => ({ ...prev, [id]: 'uninstalling' }));
@@ -296,7 +272,6 @@ export default function HomeStorePage() {
             key={app.id}
             app={app}
             busy={busy[app.id]}
-            onInstall={handleInstall}
             onUninstall={handleUninstall}
             onOpen={handleOpen}
             onConfigure={handleConfigure}
