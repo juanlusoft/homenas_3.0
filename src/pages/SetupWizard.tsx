@@ -16,7 +16,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     language: 'es', hostname: 'homepinas', username: 'admin',
     password: '', passwordConfirm: '', networkMode: 'dhcp',
     staticIp: '', gateway: '', dns: '8.8.8.8',
-    poolMode: 'single', poolFs: 'ext4', selectedDisks: [],
+    poolMode: 'snapraid', poolFs: 'ext4', selectedDisks: [],
   });
   const [error, setError] = useState('');
 

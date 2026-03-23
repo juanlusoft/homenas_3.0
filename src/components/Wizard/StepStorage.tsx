@@ -16,9 +16,9 @@ interface DetectedDisk {
 }
 
 const POOL_MODES = [
-  { id: 'single' as const, label: 'Single', desc: 'No redundancy, max capacity', minDisks: 1, icon: '💾' },
+  { id: 'snapraid' as const, label: 'SnapRAID + MergerFS', desc: 'Mixed disk sizes, parity protection, best for media', minDisks: 2, icon: '🛡️' },
+  { id: 'single' as const, label: 'Single (JBOD)', desc: 'No redundancy, max capacity', minDisks: 1, icon: '💾' },
   { id: 'mirror' as const, label: 'Mirror (RAID1)', desc: '1 disk can fail, 50% capacity', minDisks: 2, icon: '🪞' },
-  { id: 'stripe' as const, label: 'Stripe (RAID0)', desc: 'Max speed, no redundancy', minDisks: 2, icon: '⚡' },
   { id: 'raidz' as const, label: 'RAID-Z', desc: '1 disk can fail, good capacity', minDisks: 3, icon: '🛡️' },
 ];
 
@@ -186,7 +186,7 @@ function DiskRow({ disk, selected, onToggle }: { disk: DetectedDisk; selected: b
           </span>
         </div>
         <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
-          {disk.vendor} {disk.model}
+          {disk.vendor !== disk.model && !disk.model.includes(disk.vendor) ? `${disk.vendor} · ${disk.model}` : disk.model}
         </p>
         <p className="text-xs text-[var(--text-disabled)] font-mono">{disk.device} · {disk.temperature}°C</p>
       </div>

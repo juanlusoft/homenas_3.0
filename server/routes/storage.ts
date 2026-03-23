@@ -3,7 +3,23 @@
  */
 
 import { Router } from 'express';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import si from 'systeminformation';
+
+const execFileAsync = promisify(execFile);
+
+/** Read disk temperature via smartctl (fallback to 0) */
+async function getDiskTemp(device: string): Promise<number> {
+  try {
+    const { stdout } = await execFileAsync('sudo', ['smartctl', '-A', device], { timeout: 5000 });
+    // Look for "Temperature_Celsius" or "194" (SMART attr)
+    const match = stdout.match(/Temperature_Celsius.*?(\d+)\s*$/m)
+      || stdout.match(/194\s+.*?(\d+)\s+/m)
+      || stdout.match(/Current Temperature:\s+(\d+)/m);
+    return match ? parseInt(match[1], 10) : 0;
+  } catch { return 0; }
+}
 
 export const storageRouter = Router();
 
@@ -87,8 +103,8 @@ storageRouter.get('/detect-disks', async (_req, res) => {
       let cleanModel = modelStr;
       let cleanVendor = vendorStr;
       if (isNvmeByBridge) {
-        cleanModel = 'NVMe (JMB585 Bridge)';
-        cleanVendor = 'NVMe';
+        cleanModel = `${d.size ? formatBytes(d.size) : 'Unknown'} NVMe`;
+        cleanVendor = 'JMB585 Bridge';
       }
 
       const type = isNvme ? 'nvme' as const : isSsd ? 'ssd' as const : 'hdd' as const;
@@ -104,12 +120,23 @@ storageRouter.get('/detect-disks', async (_req, res) => {
         type,
         bay,
         serial: d.serialNum || '',
-        temperature: d.temperature ?? 0,
+        temperatureRaw: d.temperature ?? 0,
         connected: true,
       };
     });
 
-    res.json(result);
+    // Read real temperatures in parallel
+    const temps = await Promise.all(
+      result.map(d => getDiskTemp(d.device))
+    );
+    const withTemps = result.map((d, i) => ({
+      ...d,
+      temperature: temps[i] || d.temperatureRaw,
+    }));
+    // Remove temperatureRaw from response
+    const final = withTemps.map(({ temperatureRaw: _, ...rest }) => rest);
+
+    res.json(final);
   } catch {
     res.json([]);
   }
