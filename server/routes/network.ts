@@ -22,7 +22,7 @@ networkRouter.get('/interfaces', async (_req, res) => {
     const statsList = Array.isArray(stats) ? stats : [stats];
 
     const result = ifaceList
-      .filter(i => !i.internal)
+      .filter(i => !i.internal && !i.iface.startsWith('veth') && !i.iface.startsWith('docker') && !i.iface.startsWith('br-'))
       .map(i => {
         const stat = statsList.find(s => s.iface === i.iface);
         return {

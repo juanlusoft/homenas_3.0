@@ -46,8 +46,7 @@ interface PendingAgent {
 const devices = new Map<string, Device>();
 const pendingAgents = new Map<string, PendingAgent>();
 
-// Seed demo data
-seedDemoData();
+// No demo data — start clean
 
 /** GET /agent/download — Redirect to latest agent release */
 activeBackupRouter.get('/agent/download', (_req, res) => {

@@ -11,12 +11,14 @@ const execFileAsync = promisify(execFile);
 
 // Allowed commands whitelist for security
 const ALLOWED_COMMANDS = new Set([
-  'ls', 'cat', 'head', 'tail', 'df', 'du', 'free', 'uptime', 'hostname',
+  'ls', 'cat', 'head', 'tail', 'df', 'du', 'free', 'uptime', 'hostname', 'cd', 'wc', 'grep', 'find', 'which', 'echo', 'sort', 'uniq',
   'whoami', 'uname', 'date', 'id', 'pwd', 'env', 'ip', 'ss', 'ps',
   'top', 'htop', 'docker', 'systemctl', 'journalctl', 'smartctl',
   'lsblk', 'blkid', 'mount', 'findmnt', 'samba', 'nmcli', 'ping',
   'traceroute', 'dig', 'nslookup', 'curl', 'wget', 'netstat',
 ]);
+
+let cwd = '/home';
 
 /** POST /api/terminal/exec — Execute a command */
 terminalRouter.post('/exec', async (req, res) => {
@@ -48,6 +50,17 @@ terminalRouter.post('/exec', async (req, res) => {
   }
 
   if (cmd === 'clear') return res.json({ output: '', exitCode: 0, clear: true });
+  if (cmd === 'cd') {
+    const target = args[0] || '/home';
+    const path = require('path');
+    const fs = require('fs');
+    const newDir = path.resolve(cwd, target);
+    if (fs.existsSync(newDir) && fs.statSync(newDir).isDirectory()) {
+      cwd = newDir;
+      return res.json({ output: '', exitCode: 0, cwd });
+    }
+    return res.json({ output: 'bash: cd: ' + target + ': No existe el directorio', exitCode: 1 });
+  }
   if (cmd === 'help') {
     return res.json({
       output: `Comandos disponibles:\n${Array.from(ALLOWED_COMMANDS).sort().join('\n')}`,
@@ -58,6 +71,7 @@ terminalRouter.post('/exec', async (req, res) => {
   try {
     const { stdout, stderr } = await execFileAsync(cmd, args, {
       timeout: 15000,
+      cwd,
       maxBuffer: 1024 * 1024,
       env: { ...process.env, TERM: 'dumb', COLUMNS: '120' },
     });

@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 
-interface Task { id: string; name: string; schedule: string; command: string; enabled: boolean; lastRun: string; lastResult: 'success' | 'failed' | 'never'; }
+interface Task { id: string; name: string; schedule: string; command: string; enabled: boolean; lastRun: string; lastResult: 'success' | 'failed' | 'never'; lastOutput?: string; }
 
 const API = import.meta.env.VITE_API_URL || '/api';
 
@@ -11,6 +11,9 @@ export default function SchedulerPage() {
   const fetchTasks = useCallback(() => fetch(`${API}/scheduler`).then(r => r.json()), []);
   const { data: tasks, refresh } = useAPI<Task[]>(fetchTasks, 5000);
   const [addOpen, setAddOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logContent, setLogContent] = useState('');
   const [form, setForm] = useState({ name: '', schedule: '0 * * * *', command: '' });
 
   const handleAdd = useCallback(async () => {
@@ -26,6 +29,12 @@ export default function SchedulerPage() {
   const handleToggle = useCallback(async (task: Task) => {
     await fetch(`${API}/scheduler/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !task.enabled }) }); refresh();
   }, [refresh]);
+
+  const handleEdit = useCallback(async () => {
+    if (!editTask) return;
+    await fetch(`${API}/scheduler/${editTask.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+    setEditTask(null); refresh();
+  }, [editTask, form, refresh]);
 
   const handleDelete = useCallback(async (id: string) => {
     await fetch(`${API}/scheduler/${id}`, { method: 'DELETE' }); refresh();
@@ -71,6 +80,8 @@ export default function SchedulerPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <GlowPill status={task.lastResult === 'success' ? 'healthy' : task.lastResult === 'failed' ? 'error' : 'warning'} label={task.lastResult === 'never' ? t('sched.never') : ts(task.lastResult)} />
+                  <StitchButton size="sm" variant="ghost" onClick={() => { setForm({ name: task.name, schedule: task.schedule, command: task.command }); setEditTask(task); }}>✏️</StitchButton>
+                  {task.lastOutput && <StitchButton size="sm" variant="ghost" onClick={() => { setLogContent(task.lastOutput || ''); setLogOpen(true); }}>📋</StitchButton>}
                   <StitchButton size="sm" variant="ghost" onClick={() => handleRun(task.id)}>▶</StitchButton>
                   <StitchButton size="sm" variant="ghost" onClick={() => handleToggle(task)}>{task.enabled ? '⏸' : '▶'}</StitchButton>
                   <StitchButton size="sm" variant="ghost" onClick={() => handleDelete(task.id)}>🗑️</StitchButton>

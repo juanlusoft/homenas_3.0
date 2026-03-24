@@ -1,6 +1,6 @@
 import { t, ts } from '@/i18n';
-import { useCallback } from 'react';
-import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
+import { useState, useCallback } from 'react';
+import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { api } from '@/api/client';
 import type { DockerContainer, SystemdService } from '@/api/client';
@@ -35,17 +35,18 @@ function ContainerCard({ container }: { container: DockerContainer }) {
 
       <div className="flex gap-2 mb-3">
         <StitchButton size="sm" variant="ghost" onClick={async () => {
-          const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/docker/${container.id}/logs?lines=50`);
+          const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/docker/\${container.id}/logs?lines=50\`);
           const data = await res.json();
-          alert(data.logs || 'Sin logs');
+          setLogContent(data.logs || 'Sin logs'); setLogOpen(true);
         }}>{t('svc.logs')}</StitchButton>
         <StitchButton size="sm" variant="ghost" onClick={async () => {
           await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/docker/${container.id}/restart`, { method: 'POST' });
         }}>{t('svc.restart')}</StitchButton>
+        <StitchButton size="sm" variant="ghost" onClick={async () => { await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/stop/${container.name}`, { method: 'POST' }); }}>{t('svc.stop')}</StitchButton>
       </div>
       {container.ports.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {container.ports.map((port) => (
+          {[...new Set(container.ports)].map((port) => (
             <span key={port} className="font-mono text-xs px-2 py-0.5 rounded bg-surface-void text-[var(--text-secondary)]">
               {port}
             </span>
@@ -75,6 +76,9 @@ function ServiceRow({ service, onToggle }: { service: SystemdService; onToggle: 
           {isRunning ? t('svc.stop') : t('svc.start')}
         </StitchButton>
       </div>
+      <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Container Logs">
+        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-[60vh] overflow-auto whitespace-pre-wrap">{logContent}</pre>
+      </Modal>
     </div>
   );
 }
@@ -86,11 +90,15 @@ export default function ServicesPage() {
   const { data: containers, loading: dockerLoading } = useAPI<DockerContainer[]>(fetchDocker, 5000);
   const { data: services, loading: systemdLoading, refresh: refreshSvc } = useAPI<SystemdService[]>(fetchSystemd, 10000);
 
-  const API = import.meta.env.VITE_API_URL || '/api';
   const handleToggleService = useCallback(async (name: string, start: boolean) => {
-    await fetch(`${API}/services/${start ? 'start' : 'stop'}/${name}`, { method: 'POST' });
+    const base = import.meta.env.VITE_API_URL || '/api';
+    const action = start ? 'start' : 'stop';
+    await fetch(base + '/services/' + action + '/' + name, { method: 'POST' });
     refreshSvc();
-  }, [API, refreshSvc]);
+  }, [refreshSvc]);
+
+  const [logOpen, setLogOpen] = useState(false);
+  const [logContent, setLogContent] = useState('');
 
   const runningContainers = containers?.filter((c) => c.status === 'running').length || 0;
   const activeServices = services?.filter((s) => s.status === 'active').length || 0;
@@ -138,6 +146,9 @@ export default function ServicesPage() {
           </div>
         )}
       </GlassCard>
+      <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Container Logs">
+        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-[60vh] overflow-auto whitespace-pre-wrap">{logContent}</pre>
+      </Modal>
     </div>
   );
 }

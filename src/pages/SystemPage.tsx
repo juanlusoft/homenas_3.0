@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { useCallback, useState } from 'react';
+import { useState, useCallback, useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
@@ -38,6 +38,10 @@ const goTo = (view: string) => window.dispatchEvent(new CustomEvent('homepinas:n
 
 export default function SystemPage() {
   const API = import.meta.env.VITE_API_URL || '/api';
+  const [diagResult, setDiagResult] = useState<string>('');
+  const [updatesResult, setUpdatesResult] = useState<string>('');
+  const API = import.meta.env.VITE_API_URL || '/api';
+
   const fetchInfo = useCallback(() =>
     fetch(`${API}/system/info`).then(r => r.json() as Promise<SystemInfo>),
   [API]);
@@ -134,6 +138,22 @@ export default function SystemPage() {
           <StitchButton size="sm" variant="ghost" onClick={() => goTo('settings')}>{t('sys.configuration')}</StitchButton>
         </div>
       </GlassCard>
+
+      {diagResult && (
+        <GlassCard elevation="low">
+          <h3 className="font-display text-sm font-semibold text-teal mb-2">📊 Diagnóstico</h3>
+          <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-60 overflow-auto">{diagResult}</pre>
+          <StitchButton size="sm" variant="ghost" className="mt-2" onClick={() => setDiagResult('')}>Cerrar</StitchButton>
+        </GlassCard>
+      )}
+
+      {updatesResult && (
+        <GlassCard elevation="low">
+          <h3 className="font-display text-sm font-semibold text-teal mb-2">🔄 Actualizaciones</h3>
+          <p className="text-sm text-[var(--text-primary)]">{updatesResult}</p>
+          <StitchButton size="sm" variant="ghost" className="mt-2" onClick={() => setUpdatesResult('')}>Cerrar</StitchButton>
+        </GlassCard>
+      )}
 
       {/* Power */}
       <GlassCard elevation="low">

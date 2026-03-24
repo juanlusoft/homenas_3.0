@@ -95,6 +95,20 @@ servicesRouter.get('/docker/:id/logs', async (req, res) => {
   }
 });
 
+/** POST /api/services/docker/:id/stop — Stop container */
+servicesRouter.post('/docker/:id/stop', async (req, res) => {
+  const id = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify: p } = await import('util');
+    const exec = p(ef);
+    await exec('docker', ['stop', id], { timeout: 30000 });
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false });
+  }
+});
+
 /** POST /api/services/docker/:id/restart — Restart container */
 servicesRouter.post('/docker/:id/restart', async (req, res) => {
   const id = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');

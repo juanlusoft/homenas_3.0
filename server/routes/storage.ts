@@ -75,9 +75,22 @@ async function trySmartctl(args: string[]): Promise<{ temperature: number; power
 
 /** Determine disk role by mount path */
 function getDiskRole(mount: string): 'cache' | 'data' | 'parity' | 'system' {
-  if (mount.includes('/cache')) return 'cache';
+  // Check wizard config first
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const settingsFile = path.join(process.cwd(), 'data', 'settings.json');
+    const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+    // If wizard assigned roles, use those
+    if (settings.diskRoles) {
+      for (const [device, role] of Object.entries(settings.diskRoles)) {
+        if (mount.includes(device as string)) return role as 'cache' | 'data' | 'parity';
+      }
+    }
+  } catch {}
+  // Fallback: detect by mount path
   if (mount.includes('/parity')) return 'parity';
-  if (mount.startsWith('/mnt/') || mount.includes('/storage') || mount.includes('/disks/')) return 'data';
+  if (mount.startsWith('/mnt/') || mount.includes('/storage') || mount.includes('/disks/') || mount.includes('/cache')) return 'data';
   return 'system';
 }
 

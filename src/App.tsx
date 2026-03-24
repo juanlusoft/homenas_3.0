@@ -94,6 +94,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [setupDone, setSetupDone] = useState(() => localStorage.getItem('homepinas-setup') === 'done');
   const [user, setUser] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const { notifications, markRead, clearAll } = useNotifications();
   const ViewComponent = viewComponents[currentView];
 
@@ -125,6 +126,7 @@ export default function App() {
       setLanguage(data.language);
       setSetupDone(true);
       setUser(data.username);
+      if (data.role) setUserRole(data.role);
     }} />;
   }
 
@@ -158,7 +160,12 @@ export default function App() {
         </div>
 
         <nav className="flex-1 px-3 overflow-y-auto">
-          {getNavItems().map((item) => (
+          {getNavItems().filter(item => {
+            // Hide admin-only pages from non-admin users
+            const adminOnly = ['terminal', 'stacks', 'vpn', 'scheduler', 'users', 'settings'];
+            if (userRole !== 'admin' && adminOnly.includes(item.id)) return false;
+            return true;
+          }).map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(item.id)}

@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { GlassCard, StitchButton, Modal } from '@/components/UI';
 
 interface FileEntry {
@@ -112,7 +112,7 @@ export default function FilesPage() {
   }, [currentPath, fetchFiles]);
 
   // Initial load
-  useState(() => { fetchFiles('/'); });
+  useEffect(() => { fetchFiles('/'); }, [fetchFiles]);
 
   const breadcrumbs = ['Home', ...currentPath.split('/').filter(Boolean)];
 

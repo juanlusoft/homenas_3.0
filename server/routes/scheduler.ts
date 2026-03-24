@@ -21,6 +21,7 @@ interface ScheduledTask {
   enabled: boolean;
   lastRun: string;
   lastResult: 'success' | 'failed' | 'never';
+  lastOutput?: string;
 }
 
 function loadTasks(): ScheduledTask[] {
@@ -105,11 +106,15 @@ schedulerRouter.post('/:id/run', async (req, res) => {
 
   try {
     const parts = task.command.split(' ');
-    await execFileAsync(parts[0], parts.slice(1), { timeout: 60000 });
+    let stdout = '';
+    const result = await execFileAsync(parts[0], parts.slice(1), { timeout: 60000 });
+    stdout = result.stdout;
     task.lastRun = new Date().toISOString().slice(0, 16).replace('T', ' ');
     task.lastResult = 'success';
+    task.lastOutput = stdout.slice(0, 2000);
   } catch {
     task.lastResult = 'failed';
+    task.lastOutput = 'Error de ejecución';
   }
   saveTasks(tasks);
   res.json(task);
