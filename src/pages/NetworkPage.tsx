@@ -3,7 +3,7 @@ import { useState, useCallback, lazy, Suspense } from 'react';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
-import { api } from '@/api/client';
+import { api, fetchAPI } from '@/api/client';
 import type { NetworkInterface } from '@/api/client';
 
 const NetworkChart = lazy(() => import('@/components/Charts/NetworkChart').then(m => ({ default: m.NetworkChart })));
@@ -78,39 +78,25 @@ export default function NetworkPage() {
   const [vpnSaving, setVpnSaving] = useState(false);
   const [vpnStatus, setVpnStatus] = useState<string | null>(null);
 
-  const API = import.meta.env.VITE_API_URL || '/api';
-
   const handleSaveNetwork = useCallback(async () => {
     if (!editIface) return;
-    await fetch(`${API}/network/interfaces/${editIface}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(netForm),
-    });
+    await fetchAPI.put(`/network/interfaces/${editIface}`, netForm);
     setEditIface(null);
-  }, [editIface, netForm, API]);
+  }, [editIface, netForm]);
 
   const handleSaveVpn = useCallback(async () => {
     setVpnSaving(true);
     try {
-      const res = await fetch(`${API}/network/vpn/wireguard`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(vpnForm),
-      });
-      if (res.ok) {
-        setVpnStatus('WireGuard configured successfully');
-        setVpnOpen(false);
-      } else {
-        setVpnStatus('Failed to configure WireGuard');
-      }
+      await fetchAPI.post('/network/vpn/wireguard', vpnForm);
+      setVpnStatus('WireGuard configured successfully');
+      setVpnOpen(false);
     } catch {
-      setVpnStatus('Connection error');
+      setVpnStatus('Failed to configure WireGuard');
     } finally {
       setVpnSaving(false);
       setTimeout(() => setVpnStatus(null), 3000);
     }
-  }, [vpnForm, API]);
+  }, [vpnForm]);
 
   const activeCount = interfaces?.filter((i) => i.status === 'up').length || 0;
 

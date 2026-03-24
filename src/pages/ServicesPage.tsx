@@ -2,20 +2,18 @@ import { t, ts } from '@/i18n';
 import { useState, useCallback } from 'react';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
-import { api } from '@/api/client';
+import { api, fetchAPI } from '@/api/client';
 import type { DockerContainer, SystemdService } from '@/api/client';
-
-const BASE = import.meta.env.VITE_API_URL || '/api';
 
 function ContainerCard({ container, onLogs }: { container: DockerContainer; onLogs: (id: string) => void }) {
   const status = container.status === 'running' ? 'healthy' : container.status === 'paused' ? 'warning' : 'error';
 
   const handleRestart = async () => {
-    await fetch(BASE + '/services/docker/' + container.id + '/restart', { method: 'POST' });
+    await fetchAPI.post('/services/docker/' + container.id + '/restart');
   };
 
   const handleStop = async () => {
-    await fetch(BASE + '/services/docker/' + container.id + '/stop', { method: 'POST' });
+    await fetchAPI.post('/services/docker/' + container.id + '/stop');
   };
 
   return (
@@ -103,21 +101,16 @@ export default function ServicesPage() {
     setLogContent('Loading logs...');
     setLogOpen(true);
     try {
-      const res = await fetch(BASE + '/services/docker/' + containerId + '/logs?lines=100');
-      if (res.ok) {
-        const data = await res.json();
-        setLogContent(data.logs || 'No logs available');
-      } else {
-        setLogContent('Failed to fetch logs');
-      }
+      const data = await fetchAPI<{ logs?: string }>('/services/docker/' + containerId + '/logs?lines=100');
+      setLogContent(data.logs || 'No logs available');
     } catch {
-      setLogContent('Failed to connect to server');
+      setLogContent('Failed to fetch logs');
     }
   }, []);
 
   const handleToggleService = useCallback(async (name: string, start: boolean) => {
     const action = start ? 'start' : 'stop';
-    await fetch(BASE + '/services/' + action + '/' + name, { method: 'POST' });
+    await fetchAPI.post('/services/' + action + '/' + name);
     refreshSvc();
   }, [refreshSvc]);
 
