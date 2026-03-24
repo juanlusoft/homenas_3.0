@@ -34,7 +34,7 @@ function ContainerCard({ container, onLogs }: { container: DockerContainer; onLo
           <p className="text-xs text-[var(--text-secondary)]">{t('svc.cpu')}</p>
         </div>
         <div>
-          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{container.memory > 0 ? container.memory + 'MB' : '—'}</p>
+          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{container.memory > 0 ? `${container.memory} MB` : '—'}</p>
           <p className="text-xs text-[var(--text-secondary)]">{t('svc.memory')}</p>
         </div>
         <div>
@@ -43,14 +43,8 @@ function ContainerCard({ container, onLogs }: { container: DockerContainer; onLo
         </div>
       </div>
 
-      <div className="flex gap-2 mb-3">
-        <StitchButton size="sm" variant="ghost" onClick={() => onLogs(container.id)}>{t('svc.logs')}</StitchButton>
-        <StitchButton size="sm" variant="ghost" onClick={handleRestart}>{t('svc.restart')}</StitchButton>
-        <StitchButton size="sm" variant="ghost" onClick={handleStop}>{t('svc.stop')}</StitchButton>
-      </div>
-
       {container.ports.length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 mb-3">
           {[...new Set(container.ports)].map((port) => (
             <span key={port} className="font-mono text-xs px-2 py-0.5 rounded bg-surface-void text-[var(--text-secondary)]">
               {port}
@@ -58,6 +52,14 @@ function ContainerCard({ container, onLogs }: { container: DockerContainer; onLo
           ))}
         </div>
       )}
+
+      <div className="flex gap-2">
+        <StitchButton size="sm" variant="ghost" onClick={() => onLogs(container.id)}>{t('svc.logs')}</StitchButton>
+        <StitchButton size="sm" variant="ghost" onClick={handleRestart}>{t('svc.restart')}</StitchButton>
+        {container.status === 'running' && (
+          <StitchButton size="sm" variant="ghost" onClick={handleStop}>{t('svc.stop')}</StitchButton>
+        )}
+      </div>
     </GlassCard>
   );
 }
@@ -89,24 +91,35 @@ export default function ServicesPage() {
   const fetchDocker = useCallback(() => api.getDocker(), []);
   const fetchSystemd = useCallback(() => api.getSystemd(), []);
 
-  const { data: containers, loading: dockerLoading } = useAPI<DockerContainer[]>(fetchDocker, 5000);
+  const { data: containers, loading: dockerLoading, refresh: refreshDocker } = useAPI<DockerContainer[]>(fetchDocker, 5000);
   const { data: services, loading: systemdLoading, refresh: refreshSvc } = useAPI<SystemdService[]>(fetchSystemd, 10000);
 
   const [logOpen, setLogOpen] = useState(false);
   const [logContent, setLogContent] = useState('');
+  const [logContainer, setLogContainer] = useState('');
+
+  const handleViewLogs = useCallback(async (containerId: string) => {
+    setLogContainer(containerId);
+    setLogContent('Loading logs...');
+    setLogOpen(true);
+    try {
+      const res = await fetch(BASE + '/services/docker/' + containerId + '/logs?lines=100');
+      if (res.ok) {
+        const data = await res.json();
+        setLogContent(data.logs || 'No logs available');
+      } else {
+        setLogContent('Failed to fetch logs');
+      }
+    } catch {
+      setLogContent('Failed to connect to server');
+    }
+  }, []);
 
   const handleToggleService = useCallback(async (name: string, start: boolean) => {
     const action = start ? 'start' : 'stop';
     await fetch(BASE + '/services/' + action + '/' + name, { method: 'POST' });
     refreshSvc();
   }, [refreshSvc]);
-
-  const handleViewLogs = useCallback(async (containerId: string) => {
-    const res = await fetch(BASE + '/services/docker/' + containerId + '/logs?lines=100');
-    const data = await res.json();
-    setLogContent(data.logs || 'Sin logs disponibles');
-    setLogOpen(true);
-  }, []);
 
   const runningContainers = containers?.filter((c) => c.status === 'running').length || 0;
   const activeServices = services?.filter((s) => s.status === 'active').length || 0;
@@ -152,10 +165,11 @@ export default function ServicesPage() {
         )}
       </GlassCard>
 
-      <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Container Logs">
-        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-[60vh] overflow-auto whitespace-pre-wrap">
-          {logContent}
-        </pre>
+      {/* Logs Modal */}
+      <Modal open={logOpen} onClose={() => setLogOpen(false)} title={`Logs: ${logContainer}`}>
+        <div className="bg-[#0a0a0a] rounded-lg p-4 max-h-[60vh] overflow-auto">
+          <pre className="font-mono text-xs text-green-400 whitespace-pre-wrap break-all">{logContent}</pre>
+        </div>
       </Modal>
     </div>
   );

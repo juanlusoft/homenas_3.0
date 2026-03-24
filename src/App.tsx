@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
 import { t, setLanguage } from '@/i18n';
 import DashboardPage from '@/pages/DashboardPage';
@@ -25,8 +25,8 @@ import { useNotifications } from '@/hooks/useNotifications';
 
 type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'homestore' | 'network' | 'logs' | 'terminal' | 'vpn' | 'scheduler' | 'system' | 'settings' | 'users';
 
-function getNavItems(): { id: View; label: string; icon: string }[] {
-  return [
+function getNavItems(role: 'admin' | 'user'): { id: View; label: string; icon: string }[] {
+  const items: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
   { id: 'files', label: t('nav.files'), icon: '📂' },
   { id: 'shares', label: t('nav.shares'), icon: '🔗' },
@@ -42,9 +42,15 @@ function getNavItems(): { id: View; label: string; icon: string }[] {
   { id: 'vpn', label: 'VPN', icon: '🔐' },
   { id: 'scheduler', label: t('sched.title'), icon: '⏰' },
   { id: 'system', label: t('nav.system'), icon: '⚙️' },
-  { id: 'settings', label: t('nav.settings'), icon: '🔧' },
-  { id: 'users', label: t('nav.users'), icon: '👤' },
-];
+  ];
+
+  // Terminal and Users only visible for admin role
+  if (role === 'admin') {
+    items.push({ id: 'terminal', label: t('nav.terminal'), icon: '💻' });
+    items.push({ id: 'users', label: t('nav.users'), icon: '👤' });
+  }
+
+  return items;
 }
 
 function getSubtitles(): Record<View, string> {
@@ -97,6 +103,7 @@ export default function App() {
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const { notifications, markRead, clearAll } = useNotifications();
   const ViewComponent = viewComponents[currentView];
+  const navItems = useMemo(() => getNavItems(userRole), [userRole]);
 
   const navigate = useCallback((view: View) => {
     setCurrentView(view);
@@ -132,7 +139,15 @@ export default function App() {
 
   // Show login if not authenticated
   if (!user) {
-    return <LoginPage onLogin={(username: string) => { setUser(username); }} />;
+    return <LoginPage onLogin={(username: string, role?: 'admin' | 'user') => {
+      setUser(username);
+      setUserRole(role || 'admin');
+    }} />;
+  }
+
+  // Prevent non-admin access to admin-only views
+  if (userRole !== 'admin' && (currentView === 'terminal' || currentView === 'users')) {
+    setCurrentView('dashboard');
   }
 
   return (
@@ -160,7 +175,7 @@ export default function App() {
         </div>
 
         <nav className="flex-1 px-3 overflow-y-auto">
-          {getNavItems().filter(item => {
+          {getNavItems(userRole).filter(item => {
             // Hide admin-only pages from non-admin users
             const adminOnly = ['terminal', 'stacks', 'vpn', 'scheduler', 'users', 'settings'];
             if (userRole !== 'admin' && adminOnly.includes(item.id)) return false;

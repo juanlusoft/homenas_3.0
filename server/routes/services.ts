@@ -11,20 +11,41 @@ export const servicesRouter = Router();
 /** GET /api/services/docker — Docker containers */
 servicesRouter.get('/docker', async (_req, res) => {
   try {
-    const containers = await si.dockerContainers(true);
+    const [containers, dockerStats] = await Promise.all([
+      si.dockerContainers(true),
+      si.dockerContainerStats('*').catch(() => []),
+    ]);
 
-    const result = containers.map(c => ({
-      id: c.id.slice(0, 12),
-      name: c.name,
-      image: c.image,
-      status: c.state === 'running' ? 'running' as const
-        : c.state === 'paused' ? 'paused' as const
-        : 'stopped' as const,
-      uptime: c.started ? timeSince(new Date(c.started * 1000)) : '',
-      ports: c.ports.map(p => `${p.PrivatePort}/${p.Type}`),
-      cpu: '0',
-      memory: 0,
-    }));
+    const statsMap = new Map<string, { cpu: number; memory: number }>();
+    const statsList = Array.isArray(dockerStats) ? dockerStats : [dockerStats];
+    for (const s of statsList) {
+      if (s && s.id) {
+        statsMap.set(s.id.slice(0, 12), {
+          cpu: Math.round((s.cpuPercent || 0) * 10) / 10,
+          memory: Math.round((s.memUsage || 0) / 1024 / 1024),
+        });
+      }
+    }
+
+    const result = containers.map(c => {
+      const id = c.id.slice(0, 12);
+      const stats = statsMap.get(id);
+      // Deduplicate ports
+      const uniquePorts = [...new Set(c.ports.map(p => `${p.PrivatePort}/${p.Type}`))];
+
+      return {
+        id,
+        name: c.name,
+        image: c.image,
+        status: c.state === 'running' ? 'running' as const
+          : c.state === 'paused' ? 'paused' as const
+          : 'stopped' as const,
+        uptime: c.started ? timeSince(new Date(c.started * 1000)) : '',
+        ports: uniquePorts,
+        cpu: stats ? String(stats.cpu) : '0',
+        memory: stats?.memory ?? 0,
+      };
+    });
 
     res.json(result);
   } catch {
@@ -49,6 +70,48 @@ servicesRouter.get('/systemd', async (_req, res) => {
     res.json(result);
   } catch {
     res.status(500).json({ error: 'Failed to read services' });
+  }
+});
+
+/** GET /api/services/docker/:name/logs — Container logs */
+servicesRouter.get('/docker/:name/logs', async (req, res) => {
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(ef);
+    const { stdout } = await execFileAsync('docker', ['logs', '--tail', '100', name], { timeout: 10000 });
+    res.json({ logs: stdout });
+  } catch (e) {
+    res.json({ logs: `Failed to fetch logs for ${name}` });
+  }
+});
+
+/** POST /api/services/docker/:name/stop — Stop container */
+servicesRouter.post('/docker/:name/stop', async (req, res) => {
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(ef);
+    await execFileAsync('docker', ['stop', name], { timeout: 30000 });
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, error: `Failed to stop ${name}` });
+  }
+});
+
+/** POST /api/services/docker/:name/restart — Restart container */
+servicesRouter.post('/docker/:name/restart', async (req, res) => {
+  const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(ef);
+    await execFileAsync('docker', ['restart', name], { timeout: 30000 });
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, error: `Failed to restart ${name}` });
   }
 });
 

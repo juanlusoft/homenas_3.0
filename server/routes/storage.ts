@@ -73,24 +73,33 @@ async function trySmartctl(args: string[]): Promise<{ temperature: number; power
   }
 }
 
-/** Determine disk role by mount path */
-function getDiskRole(mount: string): 'cache' | 'data' | 'parity' | 'system' {
+/** Determine disk role — checks saved wizard config first, then falls back to mount path */
+function getDiskRole(mount: string, device: string): 'cache' | 'data' | 'parity' | 'system' {
   // Check wizard config first
   try {
     const fs = require('fs');
     const path = require('path');
     const settingsFile = path.join(process.cwd(), 'data', 'settings.json');
-    const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
-    // If wizard assigned roles, use those
-    if (settings.diskRoles) {
-      for (const [device, role] of Object.entries(settings.diskRoles)) {
-        if (mount.includes(device as string)) return role as 'cache' | 'data' | 'parity';
+    if (fs.existsSync(settingsFile)) {
+      const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+      // Check explicit diskRoles map from wizard
+      if (settings.diskRoles) {
+        for (const [dev, role] of Object.entries(settings.diskRoles)) {
+          if (mount.includes(dev as string)) return role as 'cache' | 'data' | 'parity';
+        }
       }
+      // Check role arrays (dataDisks, parityDisks, cacheDisks)
+      const baseDev = device.replace('/dev/', '').replace(/\d+$/, '');
+      if (settings.dataDisks?.some((d: string) => d.includes(baseDev))) return 'data';
+      if (settings.parityDisks?.some((d: string) => d.includes(baseDev))) return 'parity';
+      if (settings.cacheDisks?.some((d: string) => d.includes(baseDev))) return 'cache';
     }
-  } catch {}
+  } catch { /* fall through to path-based detection */ }
+
   // Fallback: detect by mount path
   if (mount.includes('/parity')) return 'parity';
-  if (mount.startsWith('/mnt/') || mount.includes('/storage') || mount.includes('/disks/') || mount.includes('/cache')) return 'data';
+  if (mount.includes('/cache')) return 'cache';
+  if (mount.startsWith('/mnt/') || mount.includes('/storage') || mount.includes('/disks/')) return 'data';
   return 'system';
 }
 
@@ -150,7 +159,7 @@ storageRouter.get('/disks', async (_req, res) => {
     const result = entries.map((fs, i) => {
       const block = blockDevs.find(d => fs.fs.includes(d.name));
       const smart = smartResults[i];
-      const role = getDiskRole(fs.mount);
+      const role = getDiskRole(fs.mount, fs.fs);
 
       return {
         device: fs.fs,

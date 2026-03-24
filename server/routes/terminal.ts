@@ -37,12 +37,6 @@ terminalRouter.post('/exec', async (req, res) => {
 
   // Security: check whitelist
   if (!ALLOWED_COMMANDS.has(cmd) && cmd !== 'clear' && cmd !== 'help') {
-    if (cmd === 'help') {
-      return res.json({
-        output: `Comandos disponibles: ${Array.from(ALLOWED_COMMANDS).sort().join(', ')}`,
-        exitCode: 0,
-      });
-    }
     return res.json({
       output: `bash: ${cmd}: comando no permitido. Escribe "help" para ver comandos disponibles.`,
       exitCode: 127,

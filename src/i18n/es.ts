@@ -212,6 +212,9 @@ export const es: Record<string, string> = {
   'sys.checkUpdates': '🔄 Buscar Actualizaciones',
   'sys.viewLogs': '📝 Ver Registros',
   'sys.configuration': '⚙️ Configuración',
+  'sys.updatesAvailable': 'actualizaciones disponibles',
+  'sys.upToDate': 'El sistema está actualizado',
+  'sys.updateCheckFailed': 'Error al buscar actualizaciones',
 
   // Settings
   'set.general': 'General',
@@ -418,6 +421,8 @@ export const es: Record<string, string> = {
   'svc.start': '▶ Iniciar',
   'svc.stop': '⏹ Parar',
   'svc.startStop': 'Iniciar/Parar',
+  'svc.viewLogs': 'Ver Logs',
+  'svc.restart': 'Reiniciar',
 
   // Network edit
   'net.edit': 'Editar',
@@ -430,6 +435,7 @@ export const es: Record<string, string> = {
   'net.dnsSecondary': 'DNS Secundario',
   'net.save': 'Guardar',
   'net.cancel': 'Cancelar',
+  'net.configure': 'Configurar',
 
   // Telegram
   'set.telegram': 'Telegram',

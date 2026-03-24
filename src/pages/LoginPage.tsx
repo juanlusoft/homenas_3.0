@@ -3,7 +3,7 @@ import { t } from '@/i18n';
 import { StitchButton } from '@/components/UI';
 
 interface LoginPageProps {
-  onLogin: (username: string) => void;
+  onLogin: (username: string, role?: 'admin' | 'user') => void;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -25,7 +25,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       const data = await res.json();
       if (res.ok && data.success) {
         localStorage.setItem('homepinas-token', data.token);
-        onLogin(data.user.username);
+        onLogin(data.user.username, data.user.role || 'admin');
       } else {
         setError(data.error || t('login.invalidCredentials'));
       }

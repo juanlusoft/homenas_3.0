@@ -47,13 +47,81 @@ export default function SystemPage() {
   const { data: info, loading: infoLoading } = useAPI<SystemInfo>(fetchInfo);
   const { metrics, isConnected } = useLiveMetrics();
   const [updating, setUpdating] = useState(false);
+  const [updateResult, setUpdateResult] = useState<string | null>(null);
+  const [diagRunning, setDiagRunning] = useState(false);
 
   const checkUpdates = useCallback(async () => {
     setUpdating(true);
+    setUpdateResult(null);
     try {
-      await fetch(`${API}/system/check-updates`, { method: 'POST' });
+      const res = await fetch(`${API}/system/updates`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.count > 0) {
+          setUpdateResult(`${data.count} ${t('sys.updatesAvailable')}: ${data.packages.slice(0, 5).join(', ')}${data.count > 5 ? '...' : ''}`);
+          setUpdatesResult(`${data.count} ${t('sys.updatesAvailable')}: ${data.packages.slice(0, 5).join(', ')}${data.count > 5 ? '...' : ''}`);
+        } else {
+          setUpdateResult(t('sys.upToDate'));
+          setUpdatesResult(t('sys.upToDate'));
+        }
+      } else {
+        setUpdateResult(t('sys.updateCheckFailed'));
+        setUpdatesResult(t('sys.updateCheckFailed'));
+      }
+    } catch {
+      setUpdateResult(t('sys.updateCheckFailed'));
+      setUpdatesResult(t('sys.updateCheckFailed'));
     } finally {
       setUpdating(false);
+    }
+  }, [API]);
+
+  const runDiagnostics = useCallback(async () => {
+    setDiagRunning(true);
+    setDiagResult('Running diagnostics...');
+    try {
+      const res = await fetch(`${API}/system/diagnostics`);
+      if (res.ok) {
+        const data = await res.json();
+        const lines = [
+          `=== System Diagnostics ===`,
+          `Timestamp: ${data.timestamp || new Date().toISOString()}`,
+          ``,
+          `--- OS ---`,
+          `Distro: ${data.os?.distro || 'N/A'} ${data.os?.release || ''}`,
+          `Kernel: ${data.os?.kernel || 'N/A'}`,
+          `Arch: ${data.os?.arch || 'N/A'}`,
+          ``,
+          `--- CPU ---`,
+          `Model: ${data.cpu?.brand || 'N/A'}`,
+          `Cores: ${data.cpu?.cores || 'N/A'}`,
+          `Speed: ${data.cpu?.speed || 'N/A'} GHz`,
+          ``,
+          `--- Memory ---`,
+          `Total: ${data.memory?.total || 0} GB`,
+          `Used: ${data.memory?.used || 0} GB`,
+          `Free: ${data.memory?.free || 0} GB`,
+          ``,
+          `--- Docker ---`,
+          `Containers: ${data.docker?.containers || 0} (${data.docker?.running || 0} running)`,
+          `Images: ${data.docker?.images || 0}`,
+          ``,
+          `--- Disks ---`,
+          ...(data.disks || []).map((d: { mount: string; use: number }) => `  ${d.mount}: ${d.use}% used`),
+          ``,
+          `--- Network ---`,
+          ...(data.network || []).map((n: { name: string; ip: string; status: string }) => `  ${n.name}: ${n.ip} (${n.status})`),
+          ``,
+          `Status: All checks complete`,
+        ];
+        setDiagResult(lines.join('\n'));
+      } else {
+        setDiagResult('Diagnostics failed: server error');
+      }
+    } catch {
+      setDiagResult('Diagnostics failed: connection error');
+    } finally {
+      setDiagRunning(false);
     }
   }, [API]);
 
@@ -129,43 +197,48 @@ export default function SystemPage() {
       <GlassCard elevation="low">
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">{t('sys.actions')}</h3>
         <div className="flex flex-wrap gap-3">
-          <StitchButton size="sm" variant="ghost" onClick={() => window.alert('Running diagnostics...')}>{t('sys.diagnostics')}</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={runDiagnostics} disabled={diagRunning}>
+            {diagRunning ? '...' : t('sys.diagnostics')}
+          </StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={checkUpdates} disabled={updating}>
             {updating ? '...' : t('sys.checkUpdates')}
           </StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={() => goTo('logs')}>{t('sys.viewLogs')}</StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={() => goTo('settings')}>{t('sys.configuration')}</StitchButton>
         </div>
+        {updateResult && (
+          <p className="mt-3 text-sm text-[var(--text-primary)] font-mono">{updateResult}</p>
+        )}
       </GlassCard>
 
       {diagResult && (
         <GlassCard elevation="low">
-          <h3 className="font-display text-sm font-semibold text-teal mb-2">📊 Diagnóstico</h3>
+          <h3 className="font-display text-sm font-semibold text-teal mb-2">Diagnostics</h3>
           <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-60 overflow-auto">{diagResult}</pre>
-          <StitchButton size="sm" variant="ghost" className="mt-2" onClick={() => setDiagResult('')}>Cerrar</StitchButton>
+          <StitchButton size="sm" variant="ghost" className="mt-2" onClick={() => setDiagResult('')}>Close</StitchButton>
         </GlassCard>
       )}
 
       {updatesResult && (
         <GlassCard elevation="low">
-          <h3 className="font-display text-sm font-semibold text-teal mb-2">🔄 Actualizaciones</h3>
+          <h3 className="font-display text-sm font-semibold text-teal mb-2">Updates</h3>
           <p className="text-sm text-[var(--text-primary)]">{updatesResult}</p>
-          <StitchButton size="sm" variant="ghost" className="mt-2" onClick={() => setUpdatesResult('')}>Cerrar</StitchButton>
+          <StitchButton size="sm" variant="ghost" className="mt-2" onClick={() => setUpdatesResult('')}>Close</StitchButton>
         </GlassCard>
       )}
 
       {/* Power */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">⚡ Control de Energía</h3>
+        <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">Power Control</h3>
         <div className="flex gap-3">
           <StitchButton size="sm" variant="ghost" onClick={async () => {
-            if (!confirm('¿Reiniciar el NAS?')) return;
+            if (!confirm('Reboot NAS?')) return;
             await fetch((import.meta.env.VITE_API_URL || '/api') + '/system/reboot', { method: 'POST' });
-          }}>🔄 Reiniciar</StitchButton>
+          }}>Reboot</StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={async () => {
-            if (!confirm('¿Apagar el NAS? Necesitarás encenderlo físicamente.')) return;
+            if (!confirm('Shutdown NAS? You will need to power it on physically.')) return;
             await fetch((import.meta.env.VITE_API_URL || '/api') + '/system/shutdown', { method: 'POST' });
-          }}>⏻ Apagar</StitchButton>
+          }}>Shutdown</StitchButton>
         </div>
       </GlassCard>
     </div>

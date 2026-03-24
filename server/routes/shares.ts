@@ -114,7 +114,16 @@ async function applySambaConfig(activeShares: Share[]): Promise<void> {
       const marker = existing.indexOf('\n# HomePiNAS Managed Shares');
       base = marker > 0 ? existing.substring(0, marker) : existing;
     } catch {
-      base = '[global]\n  workgroup = WORKGROUP\n  server string = HomePiNAS\n  security = user\n';
+      base = `[global]
+  workgroup = WORKGROUP
+  server string = HomePiNAS
+  security = user
+  map to guest = Bad User
+  server signing = auto
+  server min protocol = SMB2
+  client ipc signing = auto
+  ntlm auth = ntlmv2-only
+`;
     }
 
     const shareConfigs = activeShares.map(s => `

@@ -3,6 +3,8 @@ import { useState, useCallback } from 'react';
 import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+
 interface BackupJob {
   id: string; name: string; type: 'full' | 'incremental' | 'snapshot';
   schedule: string; lastRun: string; nextRun: string;
@@ -42,6 +44,9 @@ export default function BackupPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editJob, setEditJob] = useState<BackupJob | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logContent, setLogContent] = useState('');
+  const [logJobName, setLogJobName] = useState('');
 
   const successCount = jobs.filter(j => j.status === 'success').length;
   const totalSize = jobs.reduce((acc, j) => acc + parseFloat(j.size), 0);
@@ -130,9 +135,20 @@ export default function BackupPage() {
               <div className="flex justify-between"><span className="text-[var(--text-secondary)]">{t('backup.size')}</span><span className="font-mono text-teal">{job.size}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-secondary)]">{t('backup.destination')}</span><span className="font-mono text-xs text-[var(--text-primary)]">{job.destination}</span></div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <StitchButton size="sm" variant="ghost" onClick={() => handleRunNow(job.id)}>{t('backup.runNow')}</StitchButton>
+            <div className="flex gap-2 mt-4 flex-wrap">
+              <StitchButton size="sm" variant="ghost" onClick={() => handleRunNow(job.id)}>▶ {t('backup.runNow')}</StitchButton>
               <StitchButton size="sm" variant="ghost" onClick={() => openEdit(job)}>{t('backup.configure')}</StitchButton>
+              {job.status === 'failed' && (
+                <StitchButton size="sm" variant="ghost" onClick={async () => {
+                  const res = await fetch(`${API_URL}/backup/${job.id}/logs`);
+                  if (res.ok) {
+                    const data = await res.json();
+                    setLogContent(data.log || 'No logs available');
+                    setLogJobName(job.name);
+                    setLogOpen(true);
+                  }
+                }}>📋 Log</StitchButton>
+              )}
             </div>
           </GlassCard>
         ))}
@@ -146,6 +162,14 @@ export default function BackupPage() {
       <Modal open={!!editJob} onClose={() => setEditJob(null)} title={`${t('backup.configure')}: ${editJob?.name}`}
         actions={<><StitchButton size="sm" variant="ghost" onClick={() => setEditJob(null)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={handleEdit}>{t('common.save')}</StitchButton></>}>
         <JobForm />
+      </Modal>
+
+      {/* Execution Log Modal */}
+      <Modal open={logOpen} onClose={() => setLogOpen(false)} title={`Log: ${logJobName}`}
+        actions={<StitchButton size="sm" variant="ghost" onClick={() => setLogOpen(false)}>{t('common.cancel')}</StitchButton>}>
+        <div className="bg-[#0a0a0a] rounded-lg p-4 max-h-[60vh] overflow-auto">
+          <pre className="font-mono text-xs text-green-400 whitespace-pre-wrap break-all">{logContent}</pre>
+        </div>
       </Modal>
     </div>
   );

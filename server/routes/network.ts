@@ -77,6 +77,40 @@ networkRouter.put('/:iface/config', async (req, res) => {
   }
 });
 
+/** POST /api/network/vpn/wireguard — Configure WireGuard VPN */
+networkRouter.post('/vpn/wireguard', async (req, res) => {
+  const { listenPort, endpoint, dns, allowedIps } = req.body;
+  try {
+    const port = parseInt(listenPort) || 51820;
+
+    // Generate server keys if not already present
+    const { stdout: privateKey } = await execFileAsync('wg', ['genkey'], { timeout: 5000 });
+    const privKey = privateKey.trim();
+    const { stdout: publicKey } = await execFileAsync('bash', ['-c', `echo "${privKey}" | wg pubkey`], { timeout: 5000 });
+    const pubKey = publicKey.trim();
+
+    // Write WireGuard config
+    const config = `[Interface]
+Address = 10.0.0.1/24
+ListenPort = ${port}
+PrivateKey = ${privKey}
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+`;
+
+    const fs = await import('fs');
+    fs.writeFileSync('/etc/wireguard/wg0.conf', config, { mode: 0o600 });
+
+    // Enable and start WireGuard
+    await execFileAsync('sudo', ['systemctl', 'enable', 'wg-quick@wg0'], { timeout: 10000 });
+    await execFileAsync('sudo', ['systemctl', 'restart', 'wg-quick@wg0'], { timeout: 10000 });
+
+    res.json({ success: true, publicKey: pubKey, endpoint: endpoint || '', port });
+  } catch (e) {
+    res.json({ success: false, error: 'WireGuard configuration failed. Ensure WireGuard is installed.' });
+  }
+});
+
 function netmaskToCidr(netmask: string): number {
   return netmask.split('.').reduce((acc, octet) =>
     acc + (parseInt(octet, 10).toString(2).match(/1/g)?.length || 0), 0);

@@ -14,45 +14,53 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1e3).toFixed(1)} KB`;
 }
 
-function InterfaceCard({ iface }: { iface: NetworkInterface }) {
+function InterfaceCard({ iface, onConfigure }: { iface: NetworkInterface; onConfigure: (name: string) => void }) {
   const status = iface.status === 'up' ? 'healthy' : 'error';
 
   return (
     <GlassCard elevation="mid" className="hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="font-display text-lg font-semibold text-[var(--text-primary)]">{iface.name}</h3>
+          <h3 className="font-display text-base font-semibold text-[var(--text-primary)]">{iface.name}</h3>
           <p className="font-mono text-sm text-teal">{iface.ip}</p>
         </div>
         <GlowPill status={status} label={ts(iface.status)} />
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 text-sm">
         <div className="flex justify-between">
-          <span className="text-sm text-[var(--text-secondary)]">{t('net.speed')}</span>
-          <span className="font-mono text-sm text-[var(--text-primary)]">{iface.speed}</span>
+          <span className="text-[var(--text-secondary)]">{t('net.speed')}</span>
+          <span className="font-mono text-[var(--text-primary)]">{iface.speed}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-sm text-[var(--text-secondary)]">{t('net.netmask')}</span>
-          <span className="font-mono text-sm text-[var(--text-primary)]">{iface.netmask}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-sm text-[var(--text-secondary)]">{t('net.gateway')}</span>
-          <span className="font-mono text-sm text-[var(--text-primary)]">{iface.gateway}</span>
-        </div>
+        {iface.netmask && (
+          <div className="flex justify-between">
+            <span className="text-[var(--text-secondary)]">{t('net.netmask')}</span>
+            <span className="font-mono text-[var(--text-primary)]">{iface.netmask}</span>
+          </div>
+        )}
+        {iface.gateway && (
+          <div className="flex justify-between">
+            <span className="text-[var(--text-secondary)]">{t('net.gateway')}</span>
+            <span className="font-mono text-[var(--text-primary)]">{iface.gateway}</span>
+          </div>
+        )}
 
         <div className="h-px bg-[var(--outline-variant)]" />
 
-        <div className="grid grid-cols-2 gap-5 text-center">
+        <div className="grid grid-cols-2 gap-3 text-center">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">{t('net.received')}</p>
-            <p className="font-mono text-lg font-bold text-teal">{formatBytes(iface.rx_bytes)}</p>
+            <p className="font-mono text-base font-bold text-teal">{formatBytes(iface.rx_bytes)}</p>
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">{t('net.sent')}</p>
-            <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{formatBytes(iface.tx_bytes)}</p>
+            <p className="font-mono text-base font-bold text-[var(--text-primary)]">{formatBytes(iface.tx_bytes)}</p>
           </div>
         </div>
+
+        <StitchButton size="sm" variant="ghost" className="w-full mt-2" onClick={() => onConfigure(iface.name)}>
+          {t('net.configure')} (DHCP / {t('wiz.static')})
+        </StitchButton>
       </div>
     </GlassCard>
   );
@@ -65,17 +73,44 @@ export default function NetworkPage() {
 
   const [editIface, setEditIface] = useState<string | null>(null);
   const [netForm, setNetForm] = useState({ mode: 'dhcp', ip: '', netmask: '255.255.255.0', gateway: '', dns: '' });
+  const [vpnOpen, setVpnOpen] = useState(false);
+  const [vpnForm, setVpnForm] = useState({ listenPort: '51820', endpoint: '', dns: '1.1.1.1', allowedIps: '0.0.0.0/0' });
+  const [vpnSaving, setVpnSaving] = useState(false);
+  const [vpnStatus, setVpnStatus] = useState<string | null>(null);
+
+  const API = import.meta.env.VITE_API_URL || '/api';
 
   const handleSaveNetwork = useCallback(async () => {
     if (!editIface) return;
-    const API = import.meta.env.VITE_API_URL || '/api';
     await fetch(`${API}/network/interfaces/${editIface}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(netForm),
     });
     setEditIface(null);
-  }, [editIface, netForm]);
+  }, [editIface, netForm, API]);
+
+  const handleSaveVpn = useCallback(async () => {
+    setVpnSaving(true);
+    try {
+      const res = await fetch(`${API}/network/vpn/wireguard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vpnForm),
+      });
+      if (res.ok) {
+        setVpnStatus('WireGuard configured successfully');
+        setVpnOpen(false);
+      } else {
+        setVpnStatus('Failed to configure WireGuard');
+      }
+    } catch {
+      setVpnStatus('Connection error');
+    } finally {
+      setVpnSaving(false);
+      setTimeout(() => setVpnStatus(null), 3000);
+    }
+  }, [vpnForm, API]);
 
   const activeCount = interfaces?.filter((i) => i.status === 'up').length || 0;
 
@@ -108,9 +143,49 @@ export default function NetworkPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {interfaces?.map((iface) => <InterfaceCard key={iface.name} iface={iface} />)}
+          {interfaces?.map((iface) => <InterfaceCard key={iface.name} iface={iface} onConfigure={(name) => {
+            setNetForm({ mode: 'dhcp', ip: iface.ip || '', netmask: iface.netmask || '255.255.255.0', gateway: iface.gateway || '', dns: '' });
+            setEditIface(name);
+          }} />)}
         </div>
       )}
+
+      {/* VPN Section */}
+      <GlassCard elevation="low">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-display text-base font-semibold text-[var(--text-primary)]">VPN (WireGuard)</h3>
+            <p className="text-xs text-[var(--text-secondary)]">Secure remote access to your NAS</p>
+          </div>
+          <StitchButton size="sm" onClick={() => setVpnOpen(true)}>
+            {t('net.configure')} WireGuard
+          </StitchButton>
+        </div>
+        {vpnStatus && <p className="mt-2 text-sm text-teal font-mono">{vpnStatus}</p>}
+      </GlassCard>
+
+      {/* WireGuard Config Modal */}
+      <Modal open={vpnOpen} onClose={() => setVpnOpen(false)} title="WireGuard VPN"
+        actions={<><StitchButton size="sm" variant="ghost" onClick={() => setVpnOpen(false)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={handleSaveVpn} disabled={vpnSaving}>{vpnSaving ? '...' : t('common.save')}</StitchButton></>}>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Listen Port</label>
+            <input value={vpnForm.listenPort} onChange={e => setVpnForm(f => ({ ...f, listenPort: e.target.value }))} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Endpoint (public IP or domain)</label>
+            <input value={vpnForm.endpoint} onChange={e => setVpnForm(f => ({ ...f, endpoint: e.target.value }))} placeholder="vpn.example.com" className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">DNS</label>
+            <input value={vpnForm.dns} onChange={e => setVpnForm(f => ({ ...f, dns: e.target.value }))} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+          </div>
+          <div>
+            <label className="block text-xs text-[var(--text-secondary)] mb-1">Allowed IPs</label>
+            <input value={vpnForm.allowedIps} onChange={e => setVpnForm(f => ({ ...f, allowedIps: e.target.value }))} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
+          </div>
+        </div>
+      </Modal>
 
       {/* Edit Interface Modal */}
       <Modal open={!!editIface} onClose={() => setEditIface(null)} title={`${t('net.edit')}: ${editIface}`}

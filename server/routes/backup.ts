@@ -31,6 +31,21 @@ function saveJobs(jobs: BackupJob[]): void {
   fs.writeFileSync(BACKUP_FILE, JSON.stringify(jobs, null, 2));
 }
 
+const BACKUP_LOGS_DIR = path.join(process.cwd(), 'data', 'backup-logs');
+
+function saveBackupLog(jobId: string, log: string): void {
+  fs.mkdirSync(BACKUP_LOGS_DIR, { recursive: true });
+  const logFile = path.join(BACKUP_LOGS_DIR, `${jobId}.log`);
+  fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${log}\n`);
+}
+
+function getBackupLog(jobId: string): string {
+  try {
+    const logFile = path.join(BACKUP_LOGS_DIR, `${jobId}.log`);
+    return fs.readFileSync(logFile, 'utf-8');
+  } catch { return 'No logs available'; }
+}
+
 /** GET /api/backup — List all jobs */
 backupRouter.get('/', (_req, res) => {
   res.json(loadJobs());
@@ -79,6 +94,7 @@ backupRouter.post('/run/:id', async (req, res) => {
   saveJobs(jobs);
 
   // Run backup asynchronously
+  saveBackupLog(job.id, `Starting ${job.type} backup: ${job.name}`);
   runBackup(job).then(() => {
     const updated = loadJobs();
     const j = updated.find(x => x.id === job.id);
@@ -87,12 +103,17 @@ backupRouter.post('/run/:id', async (req, res) => {
       alerts.backupComplete(j.name, j.size);
       j.lastRun = new Date().toISOString().slice(0, 16).replace('T', ' ');
       saveJobs(updated);
+      saveBackupLog(job.id, 'Backup completed successfully');
     }
-  }).catch(() => {
+  }).catch((err) => {
     const updated = loadJobs();
     const j = updated.find(x => x.id === job.id);
-    if (j) { j.status = 'failed'; saveJobs(updated);
-    alerts.backupFailed(job.name, 'Execution error'); }
+    if (j) {
+      j.status = 'failed';
+      saveJobs(updated);
+      alerts.backupFailed(job.name, 'Execution error');
+    }
+    saveBackupLog(job.id, `Backup failed: ${err instanceof Error ? err.message : String(err)}`);
   });
 
   res.json({ success: true, message: 'Backup started' });
@@ -122,6 +143,12 @@ backupRouter.post('/run-all', (_req, res) => {
     });
   }
   res.json({ success: true, message: `${jobs.length} backups started` });
+});
+
+/** GET /api/backup/:id/logs — Get execution log for a job */
+backupRouter.get('/:id/logs', (req, res) => {
+  const log = getBackupLog(req.params.id);
+  res.json({ log });
 });
 
 async function runBackup(job: BackupJob): Promise<void> {

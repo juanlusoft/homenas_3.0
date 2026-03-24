@@ -30,4 +30,15 @@ export const en: Record<string, string> = {
   'store.running': 'running',
   'store.stopped': 'stopped',
   'store.searchLabel': 'Search',
+  // Services
+  'svc.viewLogs': 'View Logs',
+  'svc.restart': 'Restart',
+  'svc.stop': 'Stop',
+  'svc.start': 'Start',
+  // System
+  'sys.updatesAvailable': 'updates available',
+  'sys.upToDate': 'System is up to date',
+  'sys.updateCheckFailed': 'Failed to check for updates',
+  // Network
+  'net.configure': 'Configure',
 };
