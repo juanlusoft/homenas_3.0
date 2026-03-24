@@ -12,11 +12,7 @@ interface User {
   status: 'active' | 'locked';
 }
 
-const INITIAL_USERS: User[] = [
-  { id: 1, username: 'admin', role: 'admin', lastLogin: '2026-03-23 10:30', twoFactor: true, status: 'active' },
-  { id: 2, username: 'juanlu', role: 'admin', lastLogin: '2026-03-23 09:15', twoFactor: true, status: 'active' },
-  { id: 3, username: 'backup-agent', role: 'user', lastLogin: '2026-03-22 02:00', twoFactor: false, status: 'active' },
-];
+// No mock data — empty state until API responds
 
 const ROLE_COLORS: Record<string, string> = { admin: 'text-teal', user: 'text-[var(--text-primary)]', readonly: 'text-[var(--text-secondary)]' };
 
@@ -25,7 +21,7 @@ export default function UsersPage() {
   const fetchUsers = useCallback(() =>
     fetch(`${API}/users`).then(r => r.json()), [API]);
   const { data: usersData, refresh } = useAPI<User[]>(fetchUsers, 10000);
-  const users = usersData || INITIAL_USERS;
+  const users = usersData || [];
   const [addOpen, setAddOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [form, setForm] = useState({ username: '', password: '', confirmPassword: '', role: 'user' as User['role'] });

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
 import { t, setLanguage } from '@/i18n';
+import { useLiveMetrics } from '@/hooks/useLiveMetrics';
 import DashboardPage from '@/pages/DashboardPage';
 import StoragePage from '@/pages/StoragePage';
 import ServicesPage from '@/pages/ServicesPage';
@@ -99,10 +100,21 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [setupDone, setSetupDone] = useState(() => localStorage.getItem('homepinas-setup') === 'done');
+  const [setupChecked, setSetupChecked] = useState(false);
   const [user, setUser] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const { notifications, markRead, clearAll } = useNotifications();
+  const { metrics, isConnected } = useLiveMetrics();
   const ViewComponent = viewComponents[currentView];
+
+  // Compute real system health from live metrics
+  const systemHealth = (() => {
+    if (!isConnected || !metrics) return { status: 'error' as const, label: 'Offline' };
+    const cpuHigh = parseFloat(metrics.cpu || '0') > 90;
+    const tempHigh = (metrics.temperature ?? 0) > 80;
+    if (cpuHigh || tempHigh) return { status: 'warning' as const, label: t('header.warning') };
+    return { status: 'healthy' as const, label: t('header.allSystems') };
+  })();
 
   const navigate = useCallback((view: View) => {
     setCurrentView(view);
@@ -119,20 +131,53 @@ export default function App() {
     return () => window.removeEventListener('homepinas:navigate', handler);
   }, [navigate]);
 
+  // Check backend setup status on mount
+  useEffect(() => {
+    const API = import.meta.env.VITE_API_URL || '/api';
+    fetch(`${API}/setup/status`).then(r => r.json()).then(data => {
+      if (data.setupCompleted) {
+        setSetupDone(true);
+        localStorage.setItem('homepinas-setup', 'done');
+      }
+      setSetupChecked(true);
+    }).catch(() => {
+      // If backend unreachable, trust localStorage
+      setSetupChecked(true);
+    });
+  }, []);
+
   const handleLogout = useCallback(() => {
     setUser(null);
     setCurrentView('dashboard');
   }, []);
 
+  // Wait for setup check before rendering
+  if (!setupChecked) return null;
+
   // Show setup wizard on first run
   if (!setupDone) {
-    return <SetupWizard onComplete={(data) => {
+    return <SetupWizard onComplete={async (data) => {
+      const API = import.meta.env.VITE_API_URL || '/api';
+      try {
+        const res = await fetch(`${API}/setup/apply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Setup failed' }));
+          throw new Error(err.error || 'Setup failed');
+        }
+      } catch (e) {
+        // Log but continue — allow setup to complete even if backend partially fails
+        console.error('Setup apply error:', e);
+      }
       localStorage.setItem('homepinas-setup', 'done');
       localStorage.setItem('homepinas-hostname', data.hostname);
       setLanguage(data.language);
       setSetupDone(true);
       setUser(data.username);
-      setUserRole('admin'); // wizard creates admin
+      setUserRole('admin');
     }} />;
   }
 
@@ -237,7 +282,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2 lg:gap-3">
               <NotificationBell notifications={notifications} onMarkRead={markRead} onClearAll={clearAll} />
-              <GlowPill status="healthy" label={t('header.allSystems')} />
+              <GlowPill status={systemHealth.status} label={systemHealth.label} />
               <StitchButton size="sm" className="hidden sm:inline-flex" onClick={() => navigate('settings')}>
                 Settings
               </StitchButton>

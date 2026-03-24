@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { t } from '@/i18n';
 import { GlassCard, StitchButton, Modal } from '@/components/UI';
 import { AppCard } from '@/components/HomeStore';
@@ -92,6 +92,19 @@ export default function HomeStorePage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'installed' | 'available'>('all');
   const [busy, setBusy] = useState<Record<string, 'installing' | 'uninstalling'>>({});
+
+  // Sync installed/running state from real Docker containers on mount
+  useEffect(() => {
+    const API = import.meta.env.VITE_API_URL || '/api';
+    fetch(`${API}/store/status`).then(r => r.json()).then(data => {
+      if (data.running && Array.isArray(data.running)) {
+        setApps(prev => prev.map(app => {
+          const isRunning = data.running.some((name: string) => name === app.id || name.includes(app.id));
+          return isRunning ? { ...app, installed: true, running: true } : app;
+        }));
+      }
+    }).catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     return apps.filter(app => {

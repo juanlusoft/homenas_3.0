@@ -9,6 +9,7 @@ export interface LiveMetrics {
   cpu: string;
   memory: { used: number; total: number };
   temperature: number;
+  uptime: number;
   network: { rx: number; tx: number } | null;
   timestamp: string;
 }

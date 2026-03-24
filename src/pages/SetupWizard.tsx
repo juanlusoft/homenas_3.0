@@ -6,7 +6,7 @@ import type { SetupData, StepProps } from "@/components/Wizard/types";
 
 
 interface SetupWizardProps {
-  onComplete: (data: SetupData) => void;
+  onComplete: (data: SetupData) => Promise<void> | void;
 }
 
 function getSteps() {
@@ -22,6 +22,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
     poolMode: 'snapraid', poolFs: 'ext4', selectedDisks: [], parityDisks: [], dataDisks: [], cacheDisks: [],
   });
   const [error, setError] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [applyStatus, setApplyStatus] = useState('');
   const [, setLangTick] = useState(0); // force re-render on language change
   const STEPS = getSteps();
 
@@ -108,8 +110,17 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 {t('wiz.next')}
               </StitchButton>
             ) : (
-              <StitchButton onClick={() => onComplete(data)}>
-                🚀 Start HomePiNAS
+              <StitchButton onClick={async () => {
+                setApplying(true);
+                setApplyStatus(t('wiz.applyingSettings'));
+                try {
+                  await onComplete(data);
+                } catch (e) {
+                  setApplyStatus(e instanceof Error ? e.message : 'Error');
+                  setApplying(false);
+                }
+              }} disabled={applying}>
+                {applying ? applyStatus : '🚀 Start HomePiNAS'}
               </StitchButton>
             )}
           </div>

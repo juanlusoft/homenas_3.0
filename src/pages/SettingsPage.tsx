@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
 interface SettingsState {
@@ -72,6 +72,18 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 export default function SettingsPage() {
   const [settings, setSettings] = useState(INITIAL);
   const [saved, setSaved] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load real settings from backend on mount
+  useEffect(() => {
+    const API = import.meta.env.VITE_API_URL || '/api';
+    fetch(`${API}/settings`).then(r => r.json()).then(data => {
+      if (data && typeof data === 'object') {
+        setSettings(prev => ({ ...prev, ...data }));
+      }
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, []);
 
   const update = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));

@@ -11,11 +11,7 @@ interface BackupJob {
   status: 'success' | 'running' | 'failed' | 'scheduled'; size: string; destination: string;
 }
 
-const MOCK_JOBS: BackupJob[] = [
-  { id: '1', name: 'System Backup', type: 'full', schedule: 'Daily 02:00', lastRun: '2026-03-23 02:00', nextRun: '2026-03-24 02:00', status: 'success', size: '4.2 GB', destination: '/mnt/backup/system' },
-  { id: '2', name: 'User Data', type: 'incremental', schedule: 'Every 6h', lastRun: '2026-03-23 06:00', nextRun: '2026-03-23 12:00', status: 'success', size: '12.8 GB', destination: '/mnt/backup/data' },
-  { id: '3', name: 'Docker Volumes', type: 'snapshot', schedule: 'Weekly Sun 03:00', lastRun: '2026-03-16 03:00', nextRun: '2026-03-23 03:00', status: 'scheduled', size: '2.1 GB', destination: '/mnt/backup/docker' },
-];
+// No mock data — empty state until API responds
 
 const statusGlow = (s: string) => s === 'success' ? 'healthy' as const : s === 'running' || s === 'scheduled' ? 'warning' as const : 'error' as const;
 
@@ -40,7 +36,7 @@ export default function BackupPage() {
   const fetchJobs = useCallback(() =>
     fetch(`${API}/backup`).then(r => r.json()), [API]);
   const { data: jobsData, refresh } = useAPI<BackupJob[]>(fetchJobs, 5000);
-  const jobs = jobsData || MOCK_JOBS;
+  const jobs = jobsData || [];
   const [addOpen, setAddOpen] = useState(false);
   const [editJob, setEditJob] = useState<BackupJob | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);

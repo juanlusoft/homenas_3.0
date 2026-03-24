@@ -198,8 +198,10 @@ usersRouter.post('/login', (req, res) => {
   const { username, password } = req.body;
   const users = loadUsers();
   const user = users.find(u => u.username === username && u.passwordHash === hashPassword(password));
-  if (!user) alerts.loginFailed(username, req.ip || 'unknown');
-  return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user) {
+    alerts.loginFailed(username, req.ip || 'unknown');
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
   if (user.status === 'locked') return res.status(403).json({ error: 'Account locked' });
 
   user.lastLogin = new Date().toISOString().slice(0, 16).replace('T', ' ');

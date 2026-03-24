@@ -15,6 +15,7 @@ export const en: Record<string, string> = {
   'nav.settings': 'Settings',
   'nav.users': 'Users',
   'header.allSystems': 'All Systems',
+  'header.warning': 'Warning',
   'header.settings': 'Settings',
   // Schedule
   'sched.daily': 'Daily',

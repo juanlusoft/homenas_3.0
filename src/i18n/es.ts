@@ -18,6 +18,7 @@ export const es: Record<string, string> = {
 
   // Header
   'header.allSystems': 'Todo OK',
+  'header.warning': 'Atención',
   'header.settings': 'Ajustes',
 
   // Subtitles
@@ -305,6 +306,7 @@ export const es: Record<string, string> = {
   'wiz.readyToGo': '🚀 ¡Listo para Empezar!',
   'wiz.startHomePiNAS': '🚀 Iniciar HomePiNAS',
   'wiz.applySettings': 'Pulsa "Iniciar HomePiNAS" para aplicar los ajustes.',
+  'wiz.applyingSettings': 'Aplicando configuración...',
   'wiz.step': 'Paso',
   'wiz.of': 'de',
   'wiz.back': '← Atrás',

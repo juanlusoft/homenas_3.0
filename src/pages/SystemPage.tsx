@@ -187,7 +187,7 @@ export default function SystemPage() {
             <div className="divide-y divide-[var(--outline-variant)]">
               <InfoRow label={t('sys.cpu')} value={info.cpu} />
               <InfoRow label={t('sys.cores')} value={info.cores} />
-              <InfoRow label={t('sys.uptime')} value={metrics ? formatUptime(0) : '—'} />
+              <InfoRow label={t('sys.uptime')} value={metrics?.uptime ? formatUptime(metrics.uptime) : '—'} />
             </div>
           ) : null}
         </GlassCard>

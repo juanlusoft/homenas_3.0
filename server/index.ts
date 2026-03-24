@@ -24,6 +24,7 @@ import { ddnsRouter } from './routes/ddns.js';
 import { vpnRouter } from './routes/vpn.js';
 import { schedulerRouter } from './routes/scheduler.js';
 import { storeRouter } from './routes/store.js';
+import { setupRouter } from './routes/setup.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
 import { startHealthMonitor } from './realtime/health-monitor.js';
 
@@ -59,6 +60,7 @@ app.use('/api/ddns', ddnsRouter);
 app.use('/api/vpn', vpnRouter);
 app.use('/api/scheduler', schedulerRouter);
 app.use('/api/store', storeRouter);
+app.use('/api/setup', setupRouter);
 
 // Serve built frontend in production
 if (process.env.NODE_ENV === 'production') {

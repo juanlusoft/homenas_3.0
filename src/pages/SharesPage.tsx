@@ -14,12 +14,7 @@ interface Share {
   connectedClients: number;
 }
 
-const MOCK_SHARES: Share[] = [
-  { id: '1', name: 'Media', path: '/mnt/storage/media', protocol: 'smb', status: 'active', accessMode: 'read-only', allowedUsers: ['everyone'], connectedClients: 3 },
-  { id: '2', name: 'Documents', path: '/mnt/storage/documents', protocol: 'smb', status: 'active', accessMode: 'read-write', allowedUsers: ['juanlu', 'admin'], connectedClients: 1 },
-  { id: '3', name: 'Backups', path: '/mnt/storage/backups', protocol: 'nfs', status: 'active', accessMode: 'read-write', allowedUsers: ['192.168.1.0/24'], connectedClients: 0 },
-  { id: '4', name: 'Public', path: '/mnt/storage/public', protocol: 'smb', status: 'inactive', accessMode: 'read-write', allowedUsers: ['guest'], connectedClients: 0 },
-];
+// No mock data — empty state until API responds
 
 const EMPTY_FORM: { name: string; path: string; protocol: 'smb' | 'nfs'; accessMode: 'read-write' | 'read-only'; allowedUsers: string } = { name: '', path: '/mnt/storage/', protocol: 'smb', accessMode: 'read-write', allowedUsers: '' };
 
@@ -27,7 +22,7 @@ export default function SharesPage() {
   const fetchShares = useCallback(() =>
     fetch(`${import.meta.env.VITE_API_URL || '/api'}/shares`).then(r => r.json()), []);
   const { data: sharesData, refresh } = useAPI<Share[]>(fetchShares, 10000);
-  const shares = sharesData || MOCK_SHARES;
+  const shares = sharesData || [];
   const [addOpen, setAddOpen] = useState(false);
   const [editShare, setEditShare] = useState<Share | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
