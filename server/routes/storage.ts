@@ -6,6 +6,8 @@ import { Router } from 'express';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
 import si from 'systeminformation';
 
 export const storageRouter = Router();
@@ -78,8 +80,6 @@ async function trySmartctl(args: string[]): Promise<{ temperature: number; power
 function getDiskRole(mount: string, device: string): 'cache' | 'data' | 'parity' | 'system' {
   // Check wizard config first
   try {
-    const fs = require('fs');
-    const path = require('path');
     const settingsFile = path.join(process.cwd(), 'data', 'settings.json');
     if (fs.existsSync(settingsFile)) {
       const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
