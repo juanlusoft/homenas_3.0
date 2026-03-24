@@ -72,7 +72,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 export default function SettingsPage() {
   const [settings, setSettings] = useState(INITIAL);
   const [saved, setSaved] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [, setLoaded] = useState(false);
 
   // Load real settings from backend on mount
   useEffect(() => {
