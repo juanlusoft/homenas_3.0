@@ -5,15 +5,16 @@ import { useAPI } from '@/hooks/useAPI';
 import { api, fetchAPI } from '@/api/client';
 import type { DockerContainer, SystemdService } from '@/api/client';
 
+
 function ContainerCard({ container, onLogs }: { container: DockerContainer; onLogs: (id: string) => void }) {
   const status = container.status === 'running' ? 'healthy' : container.status === 'paused' ? 'warning' : 'error';
 
   const handleRestart = async () => {
-    await fetchAPI.post('/services/docker/' + container.id + '/restart');
+    await fetchAPI(`/services/docker/${container.id}/restart`, { method: 'POST' });
   };
 
   const handleStop = async () => {
-    await fetchAPI.post('/services/docker/' + container.id + '/stop');
+    await fetchAPI(`/services/docker/${container.id}/stop`, { method: 'POST' });
   };
 
   return (
@@ -101,16 +102,16 @@ export default function ServicesPage() {
     setLogContent('Loading logs...');
     setLogOpen(true);
     try {
-      const data = await fetchAPI<{ logs?: string }>('/services/docker/' + containerId + '/logs?lines=100');
+      const data = await fetchAPI<{ logs?: string }>(`/services/docker/${containerId}/logs?lines=100`);
       setLogContent(data.logs || 'No logs available');
     } catch {
-      setLogContent('Failed to fetch logs');
+      setLogContent('Failed to connect to server');
     }
   }, []);
 
   const handleToggleService = useCallback(async (name: string, start: boolean) => {
     const action = start ? 'start' : 'stop';
-    await fetchAPI.post('/services/' + action + '/' + name);
+    await fetchAPI(`/services/${action}/${name}`, { method: 'POST' });
     refreshSvc();
   }, [refreshSvc]);
 

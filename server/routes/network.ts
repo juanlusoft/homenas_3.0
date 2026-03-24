@@ -4,12 +4,40 @@
 
 import { Router } from 'express';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
 import si from 'systeminformation';
 
 export const networkRouter = Router();
 const execFileAsync = promisify(execFile);
+
+function generateWireGuardPublicKey(privateKey: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('wg', ['pubkey'], { stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve(stdout.trim());
+      } else {
+        reject(new Error(stderr.trim() || `wg pubkey exited with code ${code}`));
+      }
+    });
+
+    child.stdin.write(privateKey.trim() + '\n');
+    child.stdin.end();
+  });
+}
 
 /** GET /api/network/interfaces — Network interfaces (dynamic) */
 networkRouter.get('/interfaces', requireAuth, async (_req, res) => {
@@ -84,21 +112,12 @@ networkRouter.post('/vpn/wireguard', requireAdmin, async (req, res) => {
   try {
     const port = parseInt(listenPort) || 51820;
 
-    // Generate server keys without shell
+    // Generate server keys if not already present
     const { stdout: privateKey } = await execFileAsync('wg', ['genkey'], { timeout: 5000 });
     const privKey = privateKey.trim();
-    // Pipe private key to wg pubkey via stdin (no shell needed)
-    const pubKey = await new Promise<string>((resolve, reject) => {
-      const proc = execFile('wg', ['pubkey'], { timeout: 5000 },
-        (err, stdout) => {
-          if (err) reject(err);
-          else resolve((stdout || '').trim());
-        });
-      proc.stdin?.write(privKey + '\n');
-      proc.stdin?.end();
-    });
+    const pubKey = await generateWireGuardPublicKey(privKey);
 
-    // Write WireGuard config
+    // Write WireGuard config via temp file + sudo cp (no shell)
     const config = `[Interface]
 Address = 10.0.0.1/24
 ListenPort = ${port}
@@ -107,14 +126,12 @@ PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
 `;
 
-    const fs = await import('fs');
-    const path = await import('path');
-    const tmpFile = path.join(process.cwd(), 'data', 'wg0.conf.tmp');
-    fs.writeFileSync(tmpFile, config, { mode: 0o600 });
-    await execFileAsync('sudo', ['mkdir', '-p', '/etc/wireguard'], { timeout: 5000 });
-    await execFileAsync('sudo', ['cp', tmpFile, '/etc/wireguard/wg0.conf'], { timeout: 5000 });
+    const tmpConfig = path.join(process.cwd(), 'data', 'wg0.conf.tmp');
+    fs.mkdirSync(path.dirname(tmpConfig), { recursive: true });
+    fs.writeFileSync(tmpConfig, config, { mode: 0o600 });
+    await execFileAsync('sudo', ['cp', tmpConfig, '/etc/wireguard/wg0.conf'], { timeout: 5000 });
     await execFileAsync('sudo', ['chmod', '600', '/etc/wireguard/wg0.conf'], { timeout: 5000 });
-    fs.unlinkSync(tmpFile);
+    try { fs.unlinkSync(tmpConfig); } catch {}
 
     // Enable and start WireGuard
     await execFileAsync('sudo', ['systemctl', 'enable', 'wg-quick@wg0'], { timeout: 10000 });

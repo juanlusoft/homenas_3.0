@@ -2,15 +2,15 @@
  * System metrics REST endpoints
  */
 
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import si from 'systeminformation';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { audit } from '../middleware/audit.js';
-import si from 'systeminformation';
 
 export const metricsRouter = Router();
 
 /** GET /api/system/metrics — Current system metrics */
-metricsRouter.get('/metrics', requireAuth, async (_req: Request, res: Response) => {
+metricsRouter.get('/metrics', requireAuth, async (_req, res) => {
   try {
     const [cpu, mem, temp, time, load] = await Promise.all([
       si.currentLoad(),
@@ -42,7 +42,7 @@ metricsRouter.get('/metrics', requireAuth, async (_req: Request, res: Response) 
 });
 
 /** GET /api/system/diagnostics — System diagnostics */
-metricsRouter.get('/diagnostics', requireAuth, async (_req: Request, res: Response) => {
+metricsRouter.get('/diagnostics', requireAuth, async (_req, res) => {
   try {
     const [cpu, mem, os, disk, net, docker] = await Promise.all([
       si.cpu(), si.mem(), si.osInfo(), si.fsSize(),
@@ -64,7 +64,7 @@ metricsRouter.get('/diagnostics', requireAuth, async (_req: Request, res: Respon
 });
 
 /** GET /api/system/updates — Check for package updates */
-metricsRouter.get('/updates', requireAuth, async (_req: Request, res: Response) => {
+metricsRouter.get('/updates', requireAuth, async (_req, res) => {
   try {
     const { execFile: ef } = await import('child_process');
     const { promisify: p } = await import('util');
@@ -81,8 +81,8 @@ metricsRouter.get('/updates', requireAuth, async (_req: Request, res: Response) 
 });
 
 /** POST /api/system/reboot — Reboot the NAS */
-metricsRouter.post('/reboot', requireAdmin, async (req: Request, res: Response) => {
-  audit('service_action', { user: req.user?.username, details: 'System reboot initiated' });
+metricsRouter.post('/reboot', requireAdmin, async (req, res) => {
+  audit('service_action', { user: req.user?.username, details: 'System reboot requested' });
   res.json({ success: true, message: 'Rebooting in 5 seconds...' });
   setTimeout(async () => {
     try {
@@ -95,8 +95,8 @@ metricsRouter.post('/reboot', requireAdmin, async (req: Request, res: Response) 
 });
 
 /** POST /api/system/shutdown — Shutdown the NAS */
-metricsRouter.post('/shutdown', requireAdmin, async (req: Request, res: Response) => {
-  audit('service_action', { user: req.user?.username, details: 'System shutdown initiated' });
+metricsRouter.post('/shutdown', requireAdmin, async (req, res) => {
+  audit('service_action', { user: req.user?.username, details: 'System shutdown requested' });
   res.json({ success: true, message: 'Shutting down in 5 seconds...' });
   setTimeout(async () => {
     try {
@@ -109,7 +109,7 @@ metricsRouter.post('/shutdown', requireAdmin, async (req: Request, res: Response
 });
 
 /** GET /api/system/info — Static system info */
-metricsRouter.get('/info', requireAuth, async (_req: Request, res: Response) => {
+metricsRouter.get('/info', requireAuth, async (_req, res) => {
   try {
     const [system, os, cpu] = await Promise.all([
       si.system(),

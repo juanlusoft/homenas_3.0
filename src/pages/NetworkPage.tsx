@@ -80,18 +80,28 @@ export default function NetworkPage() {
 
   const handleSaveNetwork = useCallback(async () => {
     if (!editIface) return;
-    await fetchAPI.put(`/network/interfaces/${editIface}`, netForm);
+    await fetchAPI(`/network/interfaces/${editIface}`, {
+      method: 'PUT',
+      body: JSON.stringify(netForm),
+    });
     setEditIface(null);
   }, [editIface, netForm]);
 
   const handleSaveVpn = useCallback(async () => {
     setVpnSaving(true);
     try {
-      await fetchAPI.post('/network/vpn/wireguard', vpnForm);
-      setVpnStatus('WireGuard configured successfully');
-      setVpnOpen(false);
+      const res = await fetchAPI<{ success: boolean }>(`/network/vpn/wireguard`, {
+        method: 'POST',
+        body: JSON.stringify(vpnForm),
+      });
+      if (res.success) {
+        setVpnStatus('WireGuard configured successfully');
+        setVpnOpen(false);
+      } else {
+        setVpnStatus('Failed to configure WireGuard');
+      }
     } catch {
-      setVpnStatus('Failed to configure WireGuard');
+      setVpnStatus('Connection error');
     } finally {
       setVpnSaving(false);
       setTimeout(() => setVpnStatus(null), 3000);
