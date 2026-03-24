@@ -91,7 +91,7 @@ export default function ServicesPage() {
   const fetchDocker = useCallback(() => api.getDocker(), []);
   const fetchSystemd = useCallback(() => api.getSystemd(), []);
 
-  const { data: containers, loading: dockerLoading, refresh: refreshDocker } = useAPI<DockerContainer[]>(fetchDocker, 5000);
+  const { data: containers, loading: dockerLoading } = useAPI<DockerContainer[]>(fetchDocker, 5000);
   const { data: services, loading: systemdLoading, refresh: refreshSvc } = useAPI<SystemdService[]>(fetchSystemd, 10000);
 
   const [logOpen, setLogOpen] = useState(false);

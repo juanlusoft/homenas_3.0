@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
 import { t, setLanguage } from '@/i18n';
 import DashboardPage from '@/pages/DashboardPage';
@@ -25,7 +25,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 
 type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-backup' | 'services' | 'stacks' | 'homestore' | 'network' | 'logs' | 'terminal' | 'vpn' | 'scheduler' | 'system' | 'settings' | 'users';
 
-function getNavItems(role: 'admin' | 'user'): { id: View; label: string; icon: string }[] {
+function getNavItems(role: 'admin' | 'user' | 'readonly'): { id: View; label: string; icon: string }[] {
   const items: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
   { id: 'files', label: t('nav.files'), icon: '📂' },
@@ -103,7 +103,6 @@ export default function App() {
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const { notifications, markRead, clearAll } = useNotifications();
   const ViewComponent = viewComponents[currentView];
-  const navItems = useMemo(() => getNavItems(userRole), [userRole]);
 
   const navigate = useCallback((view: View) => {
     setCurrentView(view);

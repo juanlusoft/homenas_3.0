@@ -497,7 +497,4 @@ export const es: Record<string, string> = {
   'smtp.test': 'Enviar Prueba',
   'smtp.enabled': 'Notificaciones por email',
 
-  // Docker logs
-  'svc.logs': 'Ver Logs',
-  'svc.restart': 'Reiniciar',
 };
