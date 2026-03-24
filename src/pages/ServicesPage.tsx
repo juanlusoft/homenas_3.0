@@ -5,8 +5,18 @@ import { useAPI } from '@/hooks/useAPI';
 import { api } from '@/api/client';
 import type { DockerContainer, SystemdService } from '@/api/client';
 
-function ContainerCard({ container }: { container: DockerContainer }) {
+const BASE = import.meta.env.VITE_API_URL || '/api';
+
+function ContainerCard({ container, onLogs }: { container: DockerContainer; onLogs: (id: string) => void }) {
   const status = container.status === 'running' ? 'healthy' : container.status === 'paused' ? 'warning' : 'error';
+
+  const handleRestart = async () => {
+    await fetch(BASE + '/services/docker/' + container.id + '/restart', { method: 'POST' });
+  };
+
+  const handleStop = async () => {
+    await fetch(BASE + '/services/docker/' + container.id + '/stop', { method: 'POST' });
+  };
 
   return (
     <GlassCard elevation="mid" className="hover:shadow-lg transition-shadow">
@@ -24,7 +34,7 @@ function ContainerCard({ container }: { container: DockerContainer }) {
           <p className="text-xs text-[var(--text-secondary)]">{t('svc.cpu')}</p>
         </div>
         <div>
-          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{container.memory > 0 ? `${container.memory}MB` : '—'}</p>
+          <p className="font-mono text-lg font-bold text-[var(--text-primary)]">{container.memory > 0 ? container.memory + 'MB' : '—'}</p>
           <p className="text-xs text-[var(--text-secondary)]">{t('svc.memory')}</p>
         </div>
         <div>
@@ -34,16 +44,11 @@ function ContainerCard({ container }: { container: DockerContainer }) {
       </div>
 
       <div className="flex gap-2 mb-3">
-        <StitchButton size="sm" variant="ghost" onClick={async () => {
-          const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/docker/\${container.id}/logs?lines=50\`);
-          const data = await res.json();
-          setLogContent(data.logs || 'Sin logs'); setLogOpen(true);
-        }}>{t('svc.logs')}</StitchButton>
-        <StitchButton size="sm" variant="ghost" onClick={async () => {
-          await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/docker/${container.id}/restart`, { method: 'POST' });
-        }}>{t('svc.restart')}</StitchButton>
-        <StitchButton size="sm" variant="ghost" onClick={async () => { await fetch(`${import.meta.env.VITE_API_URL || '/api'}/services/stop/${container.name}`, { method: 'POST' }); }}>{t('svc.stop')}</StitchButton>
+        <StitchButton size="sm" variant="ghost" onClick={() => onLogs(container.id)}>{t('svc.logs')}</StitchButton>
+        <StitchButton size="sm" variant="ghost" onClick={handleRestart}>{t('svc.restart')}</StitchButton>
+        <StitchButton size="sm" variant="ghost" onClick={handleStop}>{t('svc.stop')}</StitchButton>
       </div>
+
       {container.ports.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {[...new Set(container.ports)].map((port) => (
@@ -76,9 +81,6 @@ function ServiceRow({ service, onToggle }: { service: SystemdService; onToggle: 
           {isRunning ? t('svc.stop') : t('svc.start')}
         </StitchButton>
       </div>
-      <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Container Logs">
-        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-[60vh] overflow-auto whitespace-pre-wrap">{logContent}</pre>
-      </Modal>
     </div>
   );
 }
@@ -90,22 +92,27 @@ export default function ServicesPage() {
   const { data: containers, loading: dockerLoading } = useAPI<DockerContainer[]>(fetchDocker, 5000);
   const { data: services, loading: systemdLoading, refresh: refreshSvc } = useAPI<SystemdService[]>(fetchSystemd, 10000);
 
+  const [logOpen, setLogOpen] = useState(false);
+  const [logContent, setLogContent] = useState('');
+
   const handleToggleService = useCallback(async (name: string, start: boolean) => {
-    const base = import.meta.env.VITE_API_URL || '/api';
     const action = start ? 'start' : 'stop';
-    await fetch(base + '/services/' + action + '/' + name, { method: 'POST' });
+    await fetch(BASE + '/services/' + action + '/' + name, { method: 'POST' });
     refreshSvc();
   }, [refreshSvc]);
 
-  const [logOpen, setLogOpen] = useState(false);
-  const [logContent, setLogContent] = useState('');
+  const handleViewLogs = useCallback(async (containerId: string) => {
+    const res = await fetch(BASE + '/services/docker/' + containerId + '/logs?lines=100');
+    const data = await res.json();
+    setLogContent(data.logs || 'Sin logs disponibles');
+    setLogOpen(true);
+  }, []);
 
   const runningContainers = containers?.filter((c) => c.status === 'running').length || 0;
   const activeServices = services?.filter((s) => s.status === 'active').length || 0;
 
   return (
     <div className="space-y-8">
-      {/* Summary */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <GlassCard elevation="mid">
           <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">{t('svc.containers')}</p>
@@ -119,7 +126,6 @@ export default function ServicesPage() {
         </GlassCard>
       </div>
 
-      {/* Docker containers */}
       <div>
         <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">{t('svc.containers')}</h2>
         {dockerLoading ? (
@@ -128,12 +134,11 @@ export default function ServicesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {containers?.map((c) => <ContainerCard key={c.id} container={c} />)}
+            {containers?.map((c) => <ContainerCard key={c.id} container={c} onLogs={handleViewLogs} />)}
           </div>
         )}
       </div>
 
-      {/* Systemd services */}
       <GlassCard elevation="low">
         <h2 className="mb-5 font-display text-lg font-semibold text-[var(--text-primary)]">{t('svc.systemServices')}</h2>
         {systemdLoading ? (
@@ -146,8 +151,11 @@ export default function ServicesPage() {
           </div>
         )}
       </GlassCard>
+
       <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Container Logs">
-        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-[60vh] overflow-auto whitespace-pre-wrap">{logContent}</pre>
+        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-[60vh] overflow-auto whitespace-pre-wrap">
+          {logContent}
+        </pre>
       </Modal>
     </div>
   );

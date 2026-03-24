@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { useState, useCallback, useState } from 'react';
+import { useState, useCallback } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
@@ -40,7 +40,6 @@ export default function SystemPage() {
   const API = import.meta.env.VITE_API_URL || '/api';
   const [diagResult, setDiagResult] = useState<string>('');
   const [updatesResult, setUpdatesResult] = useState<string>('');
-  const API = import.meta.env.VITE_API_URL || '/api';
 
   const fetchInfo = useCallback(() =>
     fetch(`${API}/system/info`).then(r => r.json() as Promise<SystemInfo>),

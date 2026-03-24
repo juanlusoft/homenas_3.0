@@ -101,6 +101,18 @@ export default function SchedulerPage() {
           <p className="text-xs text-[var(--text-disabled)]">Ejemplos: <code>0 2 * * *</code> (diario 2am), <code>*/5 * * * *</code> (cada 5min)</p>
         </div>
       </Modal>
+      <Modal open={!!editTask} onClose={() => setEditTask(null)} title="Editar Tarea"
+        actions={<><StitchButton size="sm" variant="ghost" onClick={() => setEditTask(null)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={handleEdit}>{t('common.save')}</StitchButton></>}>
+        <div className="space-y-3">
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('sched.name')} className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
+          <input value={form.schedule} onChange={e => setForm(f => ({ ...f, schedule: e.target.value }))} placeholder={t('sched.schedule')} className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
+          <input value={form.command} onChange={e => setForm(f => ({ ...f, command: e.target.value }))} placeholder={t('sched.command')} className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
+        </div>
+      </Modal>
+
+      <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Log de Ejecución">
+        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-[60vh] overflow-auto whitespace-pre-wrap">{logContent}</pre>
+      </Modal>
     </div>
   );
 }

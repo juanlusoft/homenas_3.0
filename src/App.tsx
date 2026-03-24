@@ -126,13 +126,13 @@ export default function App() {
       setLanguage(data.language);
       setSetupDone(true);
       setUser(data.username);
-      if (data.role) setUserRole(data.role);
+      setUserRole('admin'); // wizard creates admin
     }} />;
   }
 
   // Show login if not authenticated
   if (!user) {
-    return <LoginPage onLogin={setUser} />;
+    return <LoginPage onLogin={(username: string) => { setUser(username); }} />;
   }
 
   return (
