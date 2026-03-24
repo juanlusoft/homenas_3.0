@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import si from 'systeminformation';
@@ -112,7 +113,7 @@ function mountScore(mount: string): number {
 }
 
 /** GET /api/storage/disks — Disk information (filtered, deduplicated) */
-storageRouter.get('/disks', async (_req, res) => {
+storageRouter.get('/disks', requireAuth, async (_req, res) => {
   try {
     const [blockDevs, fsSize] = await Promise.all([
       si.blockDevices(),
@@ -189,14 +190,14 @@ storageRouter.get('/disks', async (_req, res) => {
 });
 
 /** GET /api/storage/smart/:device — SMART data for a specific device */
-storageRouter.get('/smart/:device', async (req, res) => {
+storageRouter.get('/smart/:device', requireAuth, async (req, res) => {
   const device = `/dev/${req.params.device.replace(/[^a-zA-Z0-9]/g, '')}`;
   const data = await getSmartData(device);
   res.json(data);
 });
 
 /** POST /api/storage/smart-test/:device — Run short SMART test */
-storageRouter.post('/smart-test/:device', async (req, res) => {
+storageRouter.post('/smart-test/:device', requireAdmin, async (req, res) => {
   const device = `/dev/${req.params.device.replace(/[^a-zA-Z0-9]/g, '')}`;
   try {
     const { stdout } = await execFileAsync('sudo', ['smartctl', '-t', 'short', device], { timeout: 10000 });
@@ -207,7 +208,7 @@ storageRouter.post('/smart-test/:device', async (req, res) => {
 });
 
 /** GET /api/storage/detect-disks — Raw disk detection for wizard */
-storageRouter.get('/detect-disks', async (_req, res) => {
+storageRouter.get('/detect-disks', requireAuth, async (_req, res) => {
   try {
     const layout = await si.diskLayout();
 

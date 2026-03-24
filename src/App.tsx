@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
 import { t, setLanguage } from '@/i18n';
 import { useLiveMetrics } from '@/hooks/useLiveMetrics';
+import { clearToken, getToken, getStoredUser } from './api/client';
 import DashboardPage from '@/pages/DashboardPage';
 import StoragePage from '@/pages/StoragePage';
 import ServicesPage from '@/pages/ServicesPage';
@@ -28,21 +29,20 @@ type View = 'dashboard' | 'files' | 'shares' | 'storage' | 'backup' | 'active-ba
 
 function getNavItems(role: 'admin' | 'user' | 'readonly'): { id: View; label: string; icon: string }[] {
   const items: { id: View; label: string; icon: string }[] = [
-  { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
-  { id: 'files', label: t('nav.files'), icon: '📂' },
-  { id: 'shares', label: t('nav.shares'), icon: '🔗' },
-  { id: 'storage', label: t('nav.storage'), icon: '💾' },
-  { id: 'backup', label: t('nav.backup'), icon: '📦' },
-  { id: 'active-backup', label: t('nav.active-backup'), icon: '🖥️' },
-  { id: 'services', label: t('nav.services'), icon: '🐳' },
-  { id: 'stacks', label: t('nav.stacks'), icon: '🏗️' },
-  { id: 'homestore', label: t('nav.homestore'), icon: '🏪' },
-  { id: 'network', label: t('nav.network'), icon: '🌐' },
-  { id: 'logs', label: t('nav.logs'), icon: '📋' },
-  { id: 'terminal', label: t('nav.terminal'), icon: '🖥️' },
-  { id: 'vpn', label: 'VPN', icon: '🔐' },
-  { id: 'scheduler', label: t('sched.title'), icon: '⏰' },
-  { id: 'system', label: t('nav.system'), icon: '⚙️' },
+    { id: 'dashboard', label: t('nav.dashboard'), icon: '📊' },
+    { id: 'files', label: t('nav.files'), icon: '📂' },
+    { id: 'shares', label: t('nav.shares'), icon: '🔗' },
+    { id: 'storage', label: t('nav.storage'), icon: '💾' },
+    { id: 'backup', label: t('nav.backup'), icon: '📦' },
+    { id: 'active-backup', label: t('nav.active-backup'), icon: '🖥️' },
+    { id: 'services', label: t('nav.services'), icon: '🐳' },
+    { id: 'stacks', label: t('nav.stacks'), icon: '🏗️' },
+    { id: 'homestore', label: t('nav.homestore'), icon: '🏪' },
+    { id: 'network', label: t('nav.network'), icon: '🌐' },
+    { id: 'logs', label: t('nav.logs'), icon: '📋' },
+    { id: 'vpn', label: 'VPN', icon: '🔐' },
+    { id: 'scheduler', label: t('sched.title'), icon: '⏰' },
+    { id: 'system', label: t('nav.system'), icon: '⚙️' },
   ];
 
   // Terminal and Users only visible for admin role
@@ -56,24 +56,24 @@ function getNavItems(role: 'admin' | 'user' | 'readonly'): { id: View; label: st
 
 function getSubtitles(): Record<View, string> {
   return {
-  dashboard: t('sub.dashboard'),
-  files: t('sub.files'),
-  shares: t('sub.shares'),
-  storage: t('sub.storage'),
-  backup: t('sub.backup'),
-  'active-backup': t('sub.active-backup'),
-  services: t('sub.services'),
-  network: t('sub.network'),
-  stacks: t('sub.stacks'),
-  homestore: t('sub.homestore'),
-  logs: t('sub.logs'),
-  terminal: t('sub.terminal'),
-  vpn: t('vpn.title'),
-  scheduler: t('sched.title'),
-  system: t('sub.system'),
-  settings: t('sub.settings'),
-  users: t('sub.users'),
-};
+    dashboard: t('sub.dashboard'),
+    files: t('sub.files'),
+    shares: t('sub.shares'),
+    storage: t('sub.storage'),
+    backup: t('sub.backup'),
+    'active-backup': t('sub.active-backup'),
+    services: t('sub.services'),
+    network: t('sub.network'),
+    stacks: t('sub.stacks'),
+    homestore: t('sub.homestore'),
+    logs: t('sub.logs'),
+    terminal: t('sub.terminal'),
+    vpn: t('vpn.title'),
+    scheduler: t('sched.title'),
+    system: t('sub.system'),
+    settings: t('sub.settings'),
+    users: t('sub.users'),
+  };
 }
 
 const viewComponents: Record<View, React.FC> = {
@@ -101,7 +101,8 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [setupDone, setSetupDone] = useState(() => localStorage.getItem('homepinas-setup') === 'done');
   const [setupChecked, setSetupChecked] = useState(false);
-  const [user, setUser] = useState<string | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const { notifications, markRead, clearAll } = useNotifications();
   const { metrics, isConnected } = useLiveMetrics();
@@ -131,6 +132,39 @@ export default function App() {
     return () => window.removeEventListener('homepinas:navigate', handler);
   }, [navigate]);
 
+  // Listen for auth:expired events from fetchAPI
+  useEffect(() => {
+    const handleExpired = () => {
+      setLoggedIn(false);
+      setUsername('');
+      setUserRole('user');
+    };
+    window.addEventListener('auth:expired', handleExpired);
+    return () => window.removeEventListener('auth:expired', handleExpired);
+  }, []);
+
+  // Rehydrate session from stored token on mount
+  useEffect(() => {
+    const token = getToken();
+    const storedUser = getStoredUser();
+    if (token && storedUser) {
+      // Verify token is still valid
+      const API = import.meta.env.VITE_API_URL || '/api';
+      fetch(`${API}/users/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Token expired');
+      }).then(user => {
+        setLoggedIn(true);
+        setUsername(user.username);
+        setUserRole(user.role);
+      }).catch(() => {
+        clearToken();
+      });
+    }
+  }, []);
+
   // Check backend setup status on mount
   useEffect(() => {
     const API = import.meta.env.VITE_API_URL || '/api';
@@ -146,8 +180,18 @@ export default function App() {
     });
   }, []);
 
+  // Role-based redirect: prevent non-admin access to admin-only views
+  useEffect(() => {
+    if (userRole !== 'admin' && (currentView === 'terminal' || currentView === 'users')) {
+      setCurrentView('dashboard');
+    }
+  }, [userRole, currentView]);
+
   const handleLogout = useCallback(() => {
-    setUser(null);
+    clearToken();
+    setLoggedIn(false);
+    setUsername('');
+    setUserRole('user');
     setCurrentView('dashboard');
   }, []);
 
@@ -164,34 +208,35 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Setup failed' }));
-          throw new Error(err.error || 'Setup failed');
+        const result = await res.json().catch(() => ({ success: false, error: 'Setup failed' }));
+        if (!res.ok || !result.success) {
+          const errMsg = result.error || 'Setup failed';
+          console.error('Setup apply error:', errMsg);
+          // Do NOT mark as done if setup returned errors
+          return;
         }
       } catch (e) {
-        // Log but continue — allow setup to complete even if backend partially fails
         console.error('Setup apply error:', e);
+        // Do NOT mark as done if request failed
+        return;
       }
       localStorage.setItem('homepinas-setup', 'done');
       localStorage.setItem('homepinas-hostname', data.hostname);
       setLanguage(data.language);
       setSetupDone(true);
-      setUser(data.username);
+      setLoggedIn(true);
+      setUsername(data.username);
       setUserRole('admin');
     }} />;
   }
 
   // Show login if not authenticated
-  if (!user) {
-    return <LoginPage onLogin={(username: string, role?: 'admin' | 'user') => {
-      setUser(username);
-      setUserRole(role || 'admin');
+  if (!loggedIn) {
+    return <LoginPage onLogin={(u: string, role: string) => {
+      setLoggedIn(true);
+      setUsername(u);
+      setUserRole((role as 'admin' | 'user' | 'readonly') || 'admin');
     }} />;
-  }
-
-  // Prevent non-admin access to admin-only views
-  if (userRole !== 'admin' && (currentView === 'terminal' || currentView === 'users')) {
-    setCurrentView('dashboard');
   }
 
   return (
@@ -245,9 +290,9 @@ export default function App() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-teal/20 flex items-center justify-center text-xs font-bold text-teal">
-                {user[0].toUpperCase()}
+                {username[0]?.toUpperCase() || '?'}
               </div>
-              <span className="text-sm text-[var(--text-primary)]">{user}</span>
+              <span className="text-sm text-[var(--text-primary)]">{username}</span>
             </div>
             <button onClick={handleLogout} className="text-xs text-[var(--text-disabled)] hover:text-[var(--error)]">
               Logout

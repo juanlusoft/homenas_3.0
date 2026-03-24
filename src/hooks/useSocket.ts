@@ -1,77 +1,68 @@
-import { io, type Socket } from "socket.io-client";
-import { useEffect, useState, useCallback } from "react";
+/**
+ * Socket.io hook — creates authenticated connection
+ * Used internally by SocketProvider. Pages should use useSocketContext().
+ */
+
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { getToken } from '../api/client';
 
 export interface UseSocketReturn {
   socket: Socket | null;
-  isConnected: boolean;
-  connectionError: string | null;
-  reconnectAttempts: number;
+  connected: boolean;
+  error: string | null;
 }
 
-/**
- * Core Socket.io connection hook.
- * Manages a single socket instance with automatic reconnection,
- * connection state tracking, and proper cleanup on unmount.
- *
- * @param url - Socket.io server URL (defaults to localhost:3001)
- */
-export function useSocket(
-  url: string = import.meta.env.VITE_WS_URL || window.location.origin,
-): UseSocketReturn {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+export function useSocket(url?: string): UseSocketReturn {
+  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
-  const handleConnect = useCallback(() => {
-    setIsConnected(true);
-    setConnectionError(null);
-    setReconnectAttempts(0);
-  }, []);
+  const connect = useCallback(() => {
+    if (socketRef.current?.connected) return;
 
-  const handleDisconnect = useCallback(() => {
-    setIsConnected(false);
-  }, []);
+    const socketUrl = url || (import.meta.env.VITE_API_URL
+      ? new URL(import.meta.env.VITE_API_URL).origin
+      : window.location.origin);
 
-  const handleConnectError = useCallback((error: Error) => {
-    setConnectionError(error.message);
-  }, []);
+    const token = getToken();
 
-  const handleReconnectAttempt = useCallback((attempt: number) => {
-    setReconnectAttempts(attempt);
-  }, []);
-
-  useEffect(() => {
-    const newSocket = io(url, {
-      transports: ["websocket", "polling"],
-      timeout: 20_000,
-      reconnectionDelay: 1_000,
-      reconnectionDelayMax: 10_000,
-      forceNew: true,
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 2000,
+      reconnectionAttempts: 10,
+      auth: { token },  // Send JWT for server-side validation
     });
 
-    newSocket.on("connect", handleConnect);
-    newSocket.on("disconnect", handleDisconnect);
-    newSocket.on("connect_error", handleConnectError);
-    newSocket.io.on("reconnect_attempt", handleReconnectAttempt);
+    socket.on('connect', () => {
+      setConnected(true);
+      setError(null);
+    });
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- socket must be initialized in effect
-    setSocket(newSocket);
+    socket.on('disconnect', () => {
+      setConnected(false);
+    });
+
+    socket.on('connect_error', (err) => {
+      setError(err.message);
+      setConnected(false);
+    });
+
+    socketRef.current = socket;
+  }, [url]);
+
+  useEffect(() => {
+    connect();
 
     return () => {
-      newSocket.off("connect", handleConnect);
-      newSocket.off("disconnect", handleDisconnect);
-      newSocket.off("connect_error", handleConnectError);
-      newSocket.io.off("reconnect_attempt", handleReconnectAttempt);
-      newSocket.disconnect();
-      setSocket(null);
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
     };
-  }, [url, handleConnect, handleDisconnect, handleConnectError, handleReconnectAttempt]);
+  }, [connect]);
 
-  return {
-    socket,
-    isConnected,
-    connectionError,
-    reconnectAttempts,
-  };
+  return { socket: socketRef.current, connected, error };
 }

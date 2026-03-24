@@ -27,22 +27,41 @@ import { storeRouter } from './routes/store.js';
 import { setupRouter } from './routes/setup.js';
 import { startMetricsEmitter } from './realtime/metrics-emitter.js';
 import { startHealthMonitor } from './realtime/health-monitor.js';
+import { authenticateSocket } from './middleware/auth.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
-const HOST = process.env.HOST || '127.0.0.1';  // Only listen on localhost — nginx handles external
+const HOST = process.env.HOST || '127.0.0.1';
 const app = express();
 const httpServer = createServer(app);
 
+// CORS: restrict to known origins
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',     // Vite dev
+  'http://localhost:3000',     // Alt dev
+  `http://localhost:${PORT}`,  // Self
+  `http://127.0.0.1:${PORT}`,
+];
+// Allow configured origin from env
+if (process.env.CORS_ORIGIN) {
+  ALLOWED_ORIGINS.push(process.env.CORS_ORIGIN);
+}
+
 const io = new Server(httpServer, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] },
   transports: ['websocket', 'polling'],
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
+app.use(express.json({ limit: '1mb' }));
 
-// REST API routes
+// ── Public routes (no auth required) ──────────────────────────────────
+// Login and setup status are public by design.
+// Auth is enforced INSIDE each router via middleware.
+app.use('/api/users', usersRouter);     // login is public; CRUD is admin-protected inside
+app.use('/api/setup', setupRouter);     // status is public; apply is protected inside
+
+// ── Protected routes (auth enforced inside each router) ───────────────
 app.use('/api/system', metricsRouter);
 app.use('/api/storage', storageRouter);
 app.use('/api/network', networkRouter);
@@ -52,7 +71,6 @@ app.use('/api/files', filesRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/shares', sharesRouter);
 app.use('/api/backup', backupRouter);
-app.use('/api/users', usersRouter);
 app.use('/api/stacks', stacksRouter);
 app.use('/api/logs', logsRouter);
 app.use('/api/terminal', terminalRouter);
@@ -60,26 +78,35 @@ app.use('/api/ddns', ddnsRouter);
 app.use('/api/vpn', vpnRouter);
 app.use('/api/scheduler', schedulerRouter);
 app.use('/api/store', storeRouter);
-app.use('/api/setup', setupRouter);
 
 // Serve built frontend in production
 if (process.env.NODE_ENV === 'production') {
   const distPath = new URL('../dist', import.meta.url).pathname;
   app.use(express.static(distPath));
-  // SPA fallback — serve index.html for all non-API routes
   app.get(/^\/(?!api|socket\.io).*/, (_req, res) => {
     res.sendFile('index.html', { root: distPath });
   });
 }
 
-// Health check
+// Health check (public)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
-// Socket.io connection
+// Socket.io: authenticate on handshake
+io.use((socket, next) => {
+  const user = authenticateSocket(socket.handshake);
+  if (!user) {
+    return next(new Error('Authentication required'));
+  }
+  // Attach user info to socket
+  (socket as unknown as { user: typeof user }).user = user;
+  next();
+});
+
 io.on('connection', (socket) => {
-  console.log(`[ws] Client connected: ${socket.id}`);
+  const user = (socket as unknown as { user: { username: string } }).user;
+  console.log(`[ws] Client connected: ${socket.id} (${user.username})`);
 
   socket.on('disconnect', (reason) => {
     console.log(`[ws] Client disconnected: ${socket.id} (${reason})`);
@@ -94,5 +121,5 @@ startHealthMonitor();
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`[server] HomePiNAS API running on http://${HOST}:${PORT}`);
-  console.log(`[server] Socket.io ready for real-time connections`);
+  console.log(`[server] Socket.io ready (authenticated connections only)`);
 });

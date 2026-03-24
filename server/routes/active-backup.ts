@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import crypto from 'crypto';
 
 export const activeBackupRouter = Router();
@@ -49,12 +50,12 @@ const pendingAgents = new Map<string, PendingAgent>();
 // No demo data — start clean
 
 /** GET /agent/download — Redirect to latest agent release */
-activeBackupRouter.get('/agent/download', (_req, res) => {
+activeBackupRouter.get('/agent/download', requireAuth, (_req, res) => {
   res.redirect('https://github.com/juanlusoft/homenas_3.0/releases/latest/download/homepinas-agent');
 });
 
 /** POST /agent/register — Agent self-registration */
-activeBackupRouter.post('/agent/register', (req, res) => {
+activeBackupRouter.post('/agent/register', requireAdmin, (req, res) => {
   const { hostname, os } = req.body;
   if (!hostname) return res.status(400).json({ error: 'hostname required' });
 
@@ -70,7 +71,7 @@ activeBackupRouter.post('/agent/register', (req, res) => {
 });
 
 /** GET /agent/poll/:id — Agent polls for config */
-activeBackupRouter.get('/agent/poll/:id', (req, res) => {
+activeBackupRouter.get('/agent/poll/:id', requireAuth, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
 
@@ -86,7 +87,7 @@ activeBackupRouter.get('/agent/poll/:id', (req, res) => {
 });
 
 /** POST /agent/report/:id — Agent reports backup result */
-activeBackupRouter.post('/agent/report/:id', (req, res) => {
+activeBackupRouter.post('/agent/report/:id', requireAdmin, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
 
@@ -109,19 +110,19 @@ activeBackupRouter.post('/agent/report/:id', (req, res) => {
 });
 
 /** GET /devices — List all registered devices */
-activeBackupRouter.get('/devices', (_req, res) => {
+activeBackupRouter.get('/devices', requireAuth, (_req, res) => {
   res.json(Array.from(devices.values()));
 });
 
 /** GET /devices/:id — Single device detail */
-activeBackupRouter.get('/devices/:id', (req, res) => {
+activeBackupRouter.get('/devices/:id', requireAuth, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
   res.json(device);
 });
 
 /** POST /devices — Manually add device */
-activeBackupRouter.post('/devices', (req, res) => {
+activeBackupRouter.post('/devices', requireAdmin, (req, res) => {
   const { name, hostname, os, backupType, backupPaths, schedule } = req.body;
   const id = crypto.randomUUID().slice(0, 8);
   const token = crypto.randomBytes(32).toString('hex');
@@ -139,13 +140,13 @@ activeBackupRouter.post('/devices', (req, res) => {
 });
 
 /** DELETE /devices/:id — Remove device */
-activeBackupRouter.delete('/devices/:id', (req, res) => {
+activeBackupRouter.delete('/devices/:id', requireAdmin, (req, res) => {
   devices.delete(req.params.id);
   res.json({ success: true });
 });
 
 /** POST /devices/:id/backup — Trigger manual backup */
-activeBackupRouter.post('/devices/:id/backup', (req, res) => {
+activeBackupRouter.post('/devices/:id/backup', requireAdmin, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
   device.status = 'backing-up';
@@ -153,19 +154,19 @@ activeBackupRouter.post('/devices/:id/backup', (req, res) => {
 });
 
 /** GET /devices/:id/versions — List backup versions */
-activeBackupRouter.get('/devices/:id/versions', (req, res) => {
+activeBackupRouter.get('/devices/:id/versions', requireAuth, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
   res.json(device.versions);
 });
 
 /** GET /pending — List pending agent registrations */
-activeBackupRouter.get('/pending', (_req, res) => {
+activeBackupRouter.get('/pending', requireAuth, (_req, res) => {
   res.json(Array.from(pendingAgents.values()));
 });
 
 /** POST /pending/:id/approve — Approve pending agent */
-activeBackupRouter.post('/pending/:id/approve', (req, res) => {
+activeBackupRouter.post('/pending/:id/approve', requireAdmin, (req, res) => {
   const pending = pendingAgents.get(req.params.id);
   if (!pending) return res.status(404).json({ error: 'Pending agent not found' });
 
@@ -184,7 +185,7 @@ activeBackupRouter.post('/pending/:id/approve', (req, res) => {
 });
 
 /** POST /pending/:id/reject — Reject pending agent */
-activeBackupRouter.post('/pending/:id/reject', (req, res) => {
+activeBackupRouter.post('/pending/:id/reject', requireAdmin, (req, res) => {
   pendingAgents.delete(req.params.id);
   res.json({ success: true });
 });

@@ -1,32 +1,18 @@
 import { GlowPill } from "@/components/UI/GlowPill";
 import type { UseSocketReturn } from "@/hooks/useSocket";
 
-type ConnectionStatusProps = Pick<
-  UseSocketReturn,
-  "isConnected" | "connectionError" | "reconnectAttempts"
->;
+type ConnectionStatusProps = Pick<UseSocketReturn, "connected" | "error">;
 
 /**
  * Visual indicator for the Socket.io connection state.
- * Uses GlowPill to show healthy / warning / error status
- * and displays reconnect attempt count when applicable.
+ * Uses GlowPill to show healthy / warning / error status.
  */
 export function ConnectionStatus({
-  isConnected,
-  connectionError,
-  reconnectAttempts,
+  connected,
+  error: connectionError,
 }: ConnectionStatusProps) {
-  if (isConnected) {
+  if (connected) {
     return <GlowPill status="healthy" label="Connected" />;
-  }
-
-  if (reconnectAttempts > 0) {
-    return (
-      <GlowPill
-        status="warning"
-        label={`Reconnecting (${reconnectAttempts})`}
-      />
-    );
   }
 
   if (connectionError) {

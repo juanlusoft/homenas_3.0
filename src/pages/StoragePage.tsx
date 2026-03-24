@@ -13,7 +13,7 @@ const ROLE_BADGE: Record<string, { color: string; label: string }> = {
 
 function DiskCard({ disk }: { disk: Disk }) {
   const status = disk.health === 'healthy' ? 'healthy' : disk.health === 'warning' ? 'warning' : 'error';
-  const barColor = disk.usage > 90 ? 'bg-red-500' : disk.usage > 75 ? 'bg-amber-500' : 'bg-teal';
+  const barColor = (disk.usage ?? 0) > 90 ? 'bg-red-500' : (disk.usage ?? 0) > 75 ? 'bg-amber-500' : 'bg-teal';
   const badge = disk.role ? ROLE_BADGE[disk.role] : null;
 
   return (
@@ -44,7 +44,7 @@ function DiskCard({ disk }: { disk: Disk }) {
         </div>
         <div className="flex justify-between mt-1">
           <span className="font-mono text-xs text-[var(--text-disabled)]">{disk.size} total</span>
-          <span className={`font-mono text-sm font-bold ${disk.usage > 90 ? 'text-red-400' : 'text-teal'}`}>{disk.usage}%</span>
+          <span className={`font-mono text-sm font-bold ${(disk.usage ?? 0) > 90 ? 'text-red-400' : 'text-teal'}`}>{disk.usage ?? 0}%</span>
         </div>
       </div>
 
@@ -52,19 +52,19 @@ function DiskCard({ disk }: { disk: Disk }) {
       <div className="grid grid-cols-3 gap-3 text-center">
         <div>
           <p className="font-mono text-lg font-bold text-[var(--text-primary)]">
-            {disk.temperature > 0 ? `${disk.temperature}°C` : 'N/A'}
+            {(disk.temperature ?? 0) > 0 ? `${disk.temperature}°C` : 'N/A'}
           </p>
           <p className="text-xs text-[var(--text-secondary)]">{t('storage.temp')}</p>
         </div>
         <div>
           <p className="font-mono text-lg font-bold text-[var(--text-primary)]">
-            {disk.smart.powerOnHours > 0 ? `${Math.floor(disk.smart.powerOnHours / 24)}d` : 'N/A'}
+            {(disk.smart?.powerOnHours ?? 0) > 0 ? `${Math.floor((disk.smart?.powerOnHours ?? 0) / 24)}d` : 'N/A'}
           </p>
           <p className="text-xs text-[var(--text-secondary)]">{t('storage.powerOn')}</p>
         </div>
         <div>
-          <p className={`font-mono text-lg font-bold ${disk.smart.badSectors > 0 ? 'text-red-400' : 'text-teal'}`}>
-            {disk.smart.status === 'N/A' ? 'N/A' : disk.smart.badSectors}
+          <p className={`font-mono text-lg font-bold ${(disk.smart?.badSectors ?? 0) > 0 ? 'text-red-400' : 'text-teal'}`}>
+            {disk.smart?.status === 'N/A' ? 'N/A' : disk.smart?.badSectors ?? 0}
           </p>
           <p className="text-xs text-[var(--text-secondary)]">{t('storage.badSectors')}</p>
         </div>
@@ -95,8 +95,8 @@ export default function StoragePage() {
     }
   }, [disks, refresh]);
 
-  const totalSize = disks?.reduce((acc, d) => acc + parseFloat(d.size), 0) || 0;
-  const totalUsed = disks?.reduce((acc, d) => acc + parseFloat(d.used), 0) || 0;
+  const totalSize = disks?.reduce((acc, d) => acc + parseFloat(String(d.size)), 0) || 0;
+  const totalUsed = disks?.reduce((acc, d) => acc + parseFloat(String(d.used)), 0) || 0;
   const healthyCount = disks?.filter((d) => d.health === 'healthy').length || 0;
 
   return (

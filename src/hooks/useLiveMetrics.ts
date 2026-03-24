@@ -23,7 +23,7 @@ export interface UseLiveMetricsReturn {
 const MAX_HISTORY = 60; // 2 minutes at 2s intervals
 
 export function useLiveMetrics(): UseLiveMetricsReturn {
-  const { socket, isConnected } = useSocket();
+  const { socket, connected: isConnected } = useSocket();
   const [metrics, setMetrics] = useState<LiveMetrics | null>(null);
   const [history, setHistory] = useState<LiveMetrics[]>([]);
 

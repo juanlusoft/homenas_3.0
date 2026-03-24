@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { alerts } from '../utils/notify.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -47,12 +48,12 @@ function getBackupLog(jobId: string): string {
 }
 
 /** GET /api/backup — List all jobs */
-backupRouter.get('/', (_req, res) => {
+backupRouter.get('/', requireAuth, (_req, res) => {
   res.json(loadJobs());
 });
 
 /** POST /api/backup — Create new job */
-backupRouter.post('/', (req, res) => {
+backupRouter.post('/', requireAdmin, (req, res) => {
   const { name, type, schedule, destination } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   const jobs = loadJobs();
@@ -67,7 +68,7 @@ backupRouter.post('/', (req, res) => {
 });
 
 /** PUT /api/backup/:id — Update job */
-backupRouter.put('/:id', (req, res) => {
+backupRouter.put('/:id', requireAdmin, (req, res) => {
   const jobs = loadJobs();
   const idx = jobs.findIndex(j => j.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Job not found' });
@@ -77,7 +78,7 @@ backupRouter.put('/:id', (req, res) => {
 });
 
 /** DELETE /api/backup/:id — Delete job */
-backupRouter.delete('/:id', (req, res) => {
+backupRouter.delete('/:id', requireAdmin, (req, res) => {
   let jobs = loadJobs();
   jobs = jobs.filter(j => j.id !== req.params.id);
   saveJobs(jobs);
@@ -85,7 +86,7 @@ backupRouter.delete('/:id', (req, res) => {
 });
 
 /** POST /api/backup/run/:id — Execute a backup job */
-backupRouter.post('/run/:id', async (req, res) => {
+backupRouter.post('/run/:id', requireAdmin, async (req, res) => {
   const jobs = loadJobs();
   const job = jobs.find(j => j.id === req.params.id);
   if (!job) return res.status(404).json({ error: 'Job not found' });
@@ -120,7 +121,7 @@ backupRouter.post('/run/:id', async (req, res) => {
 });
 
 /** POST /api/backup/run-all — Run all jobs */
-backupRouter.post('/run-all', (_req, res) => {
+backupRouter.post('/run-all', requireAdmin, (_req, res) => {
   const jobs = loadJobs();
   for (const job of jobs) {
     job.status = 'running';
@@ -146,7 +147,7 @@ backupRouter.post('/run-all', (_req, res) => {
 });
 
 /** GET /api/backup/:id/logs — Get execution log for a job */
-backupRouter.get('/:id/logs', (req, res) => {
+backupRouter.get('/:id/logs', requireAuth, (req, res) => {
   const log = getBackupLog(req.params.id);
   res.json({ log });
 });

@@ -25,7 +25,7 @@ export interface UseSystemMetricsReturn {
 export function useSystemMetrics(
   url?: string,
 ): UseSystemMetricsReturn {
-  const { socket, isConnected } = useSocket(url);
+  const { socket, connected: isConnected } = useSocket(url);
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
 
   useEffect(() => {

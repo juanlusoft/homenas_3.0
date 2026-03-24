@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import si from 'systeminformation';
@@ -11,7 +12,7 @@ export const networkRouter = Router();
 const execFileAsync = promisify(execFile);
 
 /** GET /api/network/interfaces — Network interfaces (dynamic) */
-networkRouter.get('/interfaces', async (_req, res) => {
+networkRouter.get('/interfaces', requireAuth, async (_req, res) => {
   try {
     const [ifaces, stats] = await Promise.all([
       si.networkInterfaces(),
@@ -44,7 +45,7 @@ networkRouter.get('/interfaces', async (_req, res) => {
 });
 
 /** PUT /api/network/:interface/config — Configure network interface */
-networkRouter.put('/:iface/config', async (req, res) => {
+networkRouter.put('/:iface/config', requireAdmin, async (req, res) => {
   const ifaceName = req.params.iface.replace(/[^a-zA-Z0-9]/g, '');
   const { mode, ip, netmask, gateway, dns } = req.body;
 
@@ -78,7 +79,7 @@ networkRouter.put('/:iface/config', async (req, res) => {
 });
 
 /** POST /api/network/vpn/wireguard — Configure WireGuard VPN */
-networkRouter.post('/vpn/wireguard', async (req, res) => {
+networkRouter.post('/vpn/wireguard', requireAdmin, async (req, res) => {
   const { listenPort, endpoint, dns, allowedIps } = req.body;
   try {
     const port = parseInt(listenPort) || 51820;

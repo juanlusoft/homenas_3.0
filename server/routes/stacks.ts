@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -14,7 +15,7 @@ const execFileAsync = promisify(execFile);
 const STACKS_DIR = process.env.STACKS_DIR || '/opt/homepinas-v3/stacks';
 
 /** GET /api/stacks — List all stacks */
-stacksRouter.get('/', async (_req, res) => {
+stacksRouter.get('/', requireAuth, async (_req, res) => {
   try {
     fs.mkdirSync(STACKS_DIR, { recursive: true });
     const dirs = fs.readdirSync(STACKS_DIR, { withFileTypes: true })
@@ -48,7 +49,7 @@ stacksRouter.get('/', async (_req, res) => {
 });
 
 /** POST /api/stacks — Create new stack */
-stacksRouter.post('/', (req, res) => {
+stacksRouter.post('/', requireAdmin, (req, res) => {
   const { name, file } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -59,7 +60,7 @@ stacksRouter.post('/', (req, res) => {
 });
 
 /** PUT /api/stacks/:id — Update stack file */
-stacksRouter.put('/:id', (req, res) => {
+stacksRouter.put('/:id', requireAdmin, (req, res) => {
   const stackDir = path.join(STACKS_DIR, req.params.id.replace(/[^a-zA-Z0-9_-]/g, ''));
   if (!fs.existsSync(stackDir)) return res.status(404).json({ error: 'Stack not found' });
   fs.writeFileSync(path.join(stackDir, 'docker-compose.yml'), req.body.file || '');
@@ -67,7 +68,7 @@ stacksRouter.put('/:id', (req, res) => {
 });
 
 /** POST /api/stacks/:id/up — Start stack */
-stacksRouter.post('/:id/up', async (req, res) => {
+stacksRouter.post('/:id/up', requireAdmin, async (req, res) => {
   const stackDir = path.join(STACKS_DIR, req.params.id.replace(/[^a-zA-Z0-9_-]/g, ''));
   try {
     await execFileAsync('docker', ['compose', '-f', path.join(stackDir, 'docker-compose.yml'), 'up', '-d'], { timeout: 120000, cwd: stackDir });
@@ -78,7 +79,7 @@ stacksRouter.post('/:id/up', async (req, res) => {
 });
 
 /** POST /api/stacks/:id/down — Stop stack */
-stacksRouter.post('/:id/down', async (req, res) => {
+stacksRouter.post('/:id/down', requireAdmin, async (req, res) => {
   const stackDir = path.join(STACKS_DIR, req.params.id.replace(/[^a-zA-Z0-9_-]/g, ''));
   try {
     await execFileAsync('docker', ['compose', '-f', path.join(stackDir, 'docker-compose.yml'), 'down'], { timeout: 60000, cwd: stackDir });
@@ -89,7 +90,7 @@ stacksRouter.post('/:id/down', async (req, res) => {
 });
 
 /** DELETE /api/stacks/:id — Remove stack */
-stacksRouter.delete('/:id', async (req, res) => {
+stacksRouter.delete('/:id', requireAdmin, async (req, res) => {
   const stackDir = path.join(STACKS_DIR, req.params.id.replace(/[^a-zA-Z0-9_-]/g, ''));
   try {
     await execFileAsync('docker', ['compose', '-f', path.join(stackDir, 'docker-compose.yml'), 'down', '-v'], { timeout: 60000, cwd: stackDir }).catch(() => {});

@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -31,19 +32,19 @@ function saveDdns(config: DdnsConfig): void {
 }
 
 /** GET /api/ddns — Get DDNS config */
-ddnsRouter.get('/', (_req, res) => {
+ddnsRouter.get('/', requireAuth, (_req, res) => {
   res.json(loadDdns());
 });
 
 /** POST /api/ddns — Save DDNS config */
-ddnsRouter.post('/', (req, res) => {
+ddnsRouter.post('/', requireAdmin, (req, res) => {
   const config = { ...loadDdns(), ...req.body };
   saveDdns(config);
   res.json({ success: true });
 });
 
 /** POST /api/ddns/update — Force DDNS update now */
-ddnsRouter.post('/update', async (req, res) => {
+ddnsRouter.post('/update', requireAdmin, async (req, res) => {
   const config = loadDdns();
   if (!config.enabled || !config.domain || !config.token) {
     return res.json({ success: false, error: 'DDNS not configured' });

@@ -50,11 +50,11 @@ function InterfaceCard({ iface, onConfigure }: { iface: NetworkInterface; onConf
         <div className="grid grid-cols-2 gap-3 text-center">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">{t('net.received')}</p>
-            <p className="font-mono text-base font-bold text-teal">{formatBytes(iface.rx_bytes)}</p>
+            <p className="font-mono text-base font-bold text-teal">{formatBytes(iface.rx_bytes ?? 0)}</p>
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] mb-1">{t('net.sent')}</p>
-            <p className="font-mono text-base font-bold text-[var(--text-primary)]">{formatBytes(iface.tx_bytes)}</p>
+            <p className="font-mono text-base font-bold text-[var(--text-primary)]">{formatBytes(iface.tx_bytes ?? 0)}</p>
           </div>
         </div>
 

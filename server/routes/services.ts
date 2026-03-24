@@ -3,13 +3,14 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { alerts } from '../utils/notify.js';
 import si from 'systeminformation';
 
 export const servicesRouter = Router();
 
 /** GET /api/services/docker — Docker containers */
-servicesRouter.get('/docker', async (_req, res) => {
+servicesRouter.get('/docker', requireAuth, async (_req, res) => {
   try {
     const [containers, dockerStats] = await Promise.all([
       si.dockerContainers(true),
@@ -55,7 +56,7 @@ servicesRouter.get('/docker', async (_req, res) => {
 });
 
 /** GET /api/services/systemd — Key system services */
-servicesRouter.get('/systemd', async (_req, res) => {
+servicesRouter.get('/systemd', requireAuth, async (_req, res) => {
   try {
     const services = await si.services('sshd,nginx,smbd,nmbd,docker,homepinas');
 
@@ -74,7 +75,7 @@ servicesRouter.get('/systemd', async (_req, res) => {
 });
 
 /** GET /api/services/docker/:name/logs — Container logs */
-servicesRouter.get('/docker/:name/logs', async (req, res) => {
+servicesRouter.get('/docker/:name/logs', requireAuth, async (req, res) => {
   const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
   try {
     const { execFile: ef } = await import('child_process');
@@ -88,7 +89,7 @@ servicesRouter.get('/docker/:name/logs', async (req, res) => {
 });
 
 /** POST /api/services/docker/:name/stop — Stop container */
-servicesRouter.post('/docker/:name/stop', async (req, res) => {
+servicesRouter.post('/docker/:name/stop', requireAdmin, async (req, res) => {
   const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
   try {
     const { execFile: ef } = await import('child_process');
@@ -102,7 +103,7 @@ servicesRouter.post('/docker/:name/stop', async (req, res) => {
 });
 
 /** POST /api/services/docker/:name/restart — Restart container */
-servicesRouter.post('/docker/:name/restart', async (req, res) => {
+servicesRouter.post('/docker/:name/restart', requireAdmin, async (req, res) => {
   const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
   try {
     const { execFile: ef } = await import('child_process');
@@ -116,7 +117,7 @@ servicesRouter.post('/docker/:name/restart', async (req, res) => {
 });
 
 /** POST /api/services/start/:name — Start a service */
-servicesRouter.post('/start/:name', async (req, res) => {
+servicesRouter.post('/start/:name', requireAdmin, async (req, res) => {
   const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
   try {
     const { execFile: ef } = await import('child_process');
@@ -130,7 +131,7 @@ servicesRouter.post('/start/:name', async (req, res) => {
 });
 
 /** POST /api/services/stop/:name — Stop a service */
-servicesRouter.post('/stop/:name', async (req, res) => {
+servicesRouter.post('/stop/:name', requireAdmin, async (req, res) => {
   const name = req.params.name.replace(/[^a-zA-Z0-9_-]/g, '');
   try {
     const { execFile: ef } = await import('child_process');
@@ -144,7 +145,7 @@ servicesRouter.post('/stop/:name', async (req, res) => {
 });
 
 /** GET /api/services/docker/:id/logs — Container logs */
-servicesRouter.get('/docker/:id/logs', async (req, res) => {
+servicesRouter.get('/docker/:id/logs', requireAuth, async (req, res) => {
   const id = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
   const lines = parseInt(req.query.lines as string) || 100;
   try {
@@ -159,7 +160,7 @@ servicesRouter.get('/docker/:id/logs', async (req, res) => {
 });
 
 /** POST /api/services/docker/:id/stop — Stop container */
-servicesRouter.post('/docker/:id/stop', async (req, res) => {
+servicesRouter.post('/docker/:id/stop', requireAdmin, async (req, res) => {
   const id = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
   try {
     const { execFile: ef } = await import('child_process');
@@ -173,7 +174,7 @@ servicesRouter.post('/docker/:id/stop', async (req, res) => {
 });
 
 /** POST /api/services/docker/:id/restart — Restart container */
-servicesRouter.post('/docker/:id/restart', async (req, res) => {
+servicesRouter.post('/docker/:id/restart', requireAdmin, async (req, res) => {
   const id = req.params.id.replace(/[^a-zA-Z0-9_-]/g, '');
   try {
     const { execFile: ef } = await import('child_process');

@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
@@ -10,7 +11,7 @@ export const logsRouter = Router();
 const execFileAsync = promisify(execFile);
 
 /** GET /api/logs?lines=100&unit=&priority= — Read system logs */
-logsRouter.get('/', async (req, res) => {
+logsRouter.get('/', requireAuth, async (req, res) => {
   const lines = parseInt(req.query.lines as string) || 100;
   const unit = (req.query.unit as string) || '';
   const priority = (req.query.priority as string) || '';
@@ -57,7 +58,7 @@ logsRouter.get('/', async (req, res) => {
 });
 
 /** GET /api/logs/units — List available units */
-logsRouter.get('/units', async (_req, res) => {
+logsRouter.get('/units', requireAuth, async (_req, res) => {
   try {
     const { stdout } = await execFileAsync('journalctl', ['--field=_SYSTEMD_UNIT', '--no-pager'], { timeout: 5000 });
     const units = stdout.trim().split('\n').filter(Boolean).map(u => u.replace('.service', '')).slice(0, 50);

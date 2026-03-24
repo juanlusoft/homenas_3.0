@@ -1,41 +1,37 @@
-import {
-  createContext,
-  useContext,
-  type ReactNode,
-} from "react";
-import { useSocket, type UseSocketReturn } from "@/hooks/useSocket";
+/**
+ * Socket.io Context — single shared connection for the entire app
+ */
 
-const SocketContext = createContext<UseSocketReturn | undefined>(undefined);
+import React, { createContext, useContext, useMemo } from 'react';
+import { Socket } from 'socket.io-client';
+import { useSocket } from '../hooks/useSocket';
 
-interface SocketProviderProps {
-  children: ReactNode;
-  /** Socket.io server URL. Defaults to http://localhost:3001 */
-  url?: string;
+interface SocketContextValue {
+  socket: Socket | null;
+  connected: boolean;
+  error: string | null;
 }
 
-/**
- * Provides a shared Socket.io connection to the component tree.
- * Wrap your app (or a subtree) with this provider, then consume
- * with `useSocketContext()` in child components.
- */
-export function SocketProvider({ children, url }: SocketProviderProps) {
-  const socketState = useSocket(url);
+const SocketContext = createContext<SocketContextValue>({
+  socket: null,
+  connected: false,
+  error: null,
+});
+
+export function SocketProvider({ children }: { children: React.ReactNode }) {
+  const { socket, connected, error } = useSocket();
+
+  const value = useMemo(() => ({ socket, connected, error }), [socket, connected, error]);
 
   return (
-    <SocketContext.Provider value={socketState}>
+    <SocketContext.Provider value={value}>
       {children}
     </SocketContext.Provider>
   );
 }
 
-/**
- * Consume the shared Socket.io connection from the nearest `SocketProvider`.
- * Throws if used outside the provider boundary.
- */
-export function useSocketContext(): UseSocketReturn {
-  const context = useContext(SocketContext);
-  if (context === undefined) {
-    throw new Error("useSocketContext must be used within a SocketProvider");
-  }
-  return context;
+export function useSocketContext(): SocketContextValue {
+  return useContext(SocketContext);
 }
+
+export default SocketContext;

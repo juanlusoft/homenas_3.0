@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
@@ -10,7 +11,7 @@ export const storeRouter = Router();
 const execFileAsync = promisify(execFile);
 
 /** POST /api/store/install/:id — Pull and run a Docker container */
-storeRouter.post('/install/:id', async (req, res) => {
+storeRouter.post('/install/:id', requireAdmin, async (req, res) => {
   const { image, port, name, env, volumes } = req.body as {
     image: string; port?: number; name?: string;
     env?: string[]; volumes?: string[];
@@ -51,7 +52,7 @@ storeRouter.post('/install/:id', async (req, res) => {
 });
 
 /** POST /api/store/uninstall/:id — Stop and remove a Docker container */
-storeRouter.post('/uninstall/:id', async (req, res) => {
+storeRouter.post('/uninstall/:id', requireAdmin, async (req, res) => {
   const containerName = req.body.name || req.params.id;
 
   try {
@@ -67,7 +68,7 @@ storeRouter.post('/uninstall/:id', async (req, res) => {
 });
 
 /** PUT /api/store/update/:id — Recreate container with new config */
-storeRouter.put('/update/:id', async (req, res) => {
+storeRouter.put('/update/:id', requireAdmin, async (req, res) => {
   const { image, port, env, volumes } = req.body as {
     image: string; port?: number;
     env?: string[]; volumes?: string[];
@@ -101,7 +102,7 @@ storeRouter.put('/update/:id', async (req, res) => {
 });
 
 /** GET /api/store/status — Check running containers */
-storeRouter.get('/status', async (_req, res) => {
+storeRouter.get('/status', requireAuth, async (_req, res) => {
   try {
     const { stdout } = await execFileAsync('docker', ['ps', '--format', '{{.Names}}'], { timeout: 10000 });
     const running = stdout.trim().split('\n').filter(Boolean);

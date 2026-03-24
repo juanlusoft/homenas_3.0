@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -43,13 +44,13 @@ function saveVpn(config: VpnConfig): void {
 }
 
 /** GET /api/vpn — Get VPN config */
-vpnRouter.get('/', (_req, res) => {
+vpnRouter.get('/', requireAuth, (_req, res) => {
   const config = loadVpn();
   res.json({ ...config, privateKey: config.privateKey ? '***' : '' });
 });
 
 /** POST /api/vpn/setup — Initial WireGuard setup */
-vpnRouter.post('/setup', async (_req, res) => {
+vpnRouter.post('/setup', requireAdmin, async (_req, res) => {
   try {
     // Generate server keys
     const { stdout: privKey } = await execFileAsync('wg', ['genkey'], { timeout: 5000 });
@@ -71,7 +72,7 @@ vpnRouter.post('/setup', async (_req, res) => {
 });
 
 /** POST /api/vpn/peers — Add peer */
-vpnRouter.post('/peers', async (req, res) => {
+vpnRouter.post('/peers', requireAdmin, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
 
@@ -112,7 +113,7 @@ PersistentKeepalive = 25`;
 });
 
 /** DELETE /api/vpn/peers/:id — Remove peer */
-vpnRouter.delete('/peers/:id', async (req, res) => {
+vpnRouter.delete('/peers/:id', requireAdmin, async (req, res) => {
   const config = loadVpn();
   config.peers = config.peers.filter(p => p.id !== req.params.id);
   saveVpn(config);

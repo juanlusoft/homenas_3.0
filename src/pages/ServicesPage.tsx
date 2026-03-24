@@ -78,7 +78,7 @@ function ServiceRow({ service, onToggle }: { service: SystemdService; onToggle: 
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <GlowPill status={status} label={ts(service.state)} />
+        <GlowPill status={status} label={ts(service.state ?? service.status)} />
         <StitchButton size="sm" variant="ghost" onClick={() => onToggle(service.name, !isRunning)}>
           {isRunning ? t('svc.stop') : t('svc.start')}
         </StitchButton>

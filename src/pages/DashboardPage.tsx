@@ -36,7 +36,7 @@ const ROLE_BORDERS: Record<string, string> = {
 
 function DiskRow({ disk }: { disk: Disk }) {
   const status = disk.health === 'healthy' ? 'healthy' : disk.health === 'warning' ? 'warning' : 'error';
-  const barColor = disk.usage > 90 ? 'bg-red-500' : disk.usage > 75 ? 'bg-amber-500' : 'bg-teal';
+  const barColor = (disk.usage ?? 0) > 90 ? 'bg-red-500' : (disk.usage ?? 0) > 75 ? 'bg-amber-500' : 'bg-teal';
   const roleBorder = ROLE_BORDERS[disk.role || ''] || '';
 
   return (
@@ -45,8 +45,8 @@ function DiskRow({ disk }: { disk: Disk }) {
         <span className="font-mono text-sm text-[var(--text-primary)]">{disk.name}</span>
         <span className="text-xs text-[var(--text-secondary)]">
           {disk.device} · {disk.type}
-          {disk.temperature > 0 ? ` · ${disk.temperature}°C` : ''}
-          {disk.smart?.powerOnHours > 0 ? ` · ${Math.floor(disk.smart.powerOnHours / 24)}d` : ''}
+          {(disk.temperature ?? 0) > 0 ? ` · ${disk.temperature}°C` : ''}
+          {(disk.smart?.powerOnHours ?? 0) > 0 ? ` · ${Math.floor((disk.smart?.powerOnHours ?? 0) / 24)}d` : ''}
         </span>
       </div>
       <div className="flex items-center gap-4">
@@ -123,9 +123,9 @@ export default function DashboardPage() {
             <div className="h-9 w-20 animate-pulse rounded bg-surface-void" />
           ) : (
             <MetricValue
-              value={mainDisk.usage}
+              value={mainDisk.usage ?? 0}
               unit={`% · ${mainDisk.free}`}
-              color={mainDisk.usage > 90 ? 'text-red-400' : 'text-teal'}
+              color={(mainDisk.usage ?? 0) > 90 ? 'text-red-400' : 'text-teal'}
             />
           )}
         </GlassCard>
