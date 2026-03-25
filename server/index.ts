@@ -35,24 +35,17 @@ const app = express();
 const httpServer = createServer(app);
 
 // CORS: restrict to known origins
-const ALLOWED_ORIGINS = [
-  'http://localhost:5173',     // Vite dev
-  'http://localhost:3000',     // Alt dev
-  `http://localhost:${PORT}`,  // Self
-  `http://127.0.0.1:${PORT}`,
-];
-// Allow configured origin from env
-if (process.env.CORS_ORIGIN) {
-  ALLOWED_ORIGINS.push(process.env.CORS_ORIGIN);
-}
+// Allow all origins — NAS dashboard is accessed from any device on the network
+const ALLOWED_ORIGINS = true; // cors: true = allow all origins
+// CORS is open — NAS is accessed from any device on the local network
 
 const io = new Server(httpServer, {
-  cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] },
+  cors: { origin: true, methods: ['GET', 'POST'] },
   transports: ['websocket', 'polling'],
 });
 
 // Middleware
-app.use(cors({ origin: ALLOWED_ORIGINS, credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 
 // ── Public routes (no auth required) ──────────────────────────────────
