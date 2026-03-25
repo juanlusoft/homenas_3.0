@@ -37,6 +37,11 @@ echo -e "${NC}"
 
 [ "$(id -u)" -ne 0 ] && error "Run as root: sudo bash install.sh"
 
+# ── System update ──────────────────────────────────────────
+info "Updating system packages..."
+apt-get update -qq && apt-get upgrade -y -qq
+ok "System updated"
+
 # Detect real user (for ownership)
 REAL_USER="${SUDO_USER:-$USER}"
 REAL_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
