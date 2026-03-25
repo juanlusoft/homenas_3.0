@@ -71,12 +71,22 @@ function saveSettings(data: Record<string, unknown>): void {
 
 interface StepResult { step: string; status: 'ok' | 'error'; message: string; }
 
+// Global progress tracker for frontend polling
+let setupProgress: { step: string; message: string; done: boolean; results: StepResult[] } = { step: '', message: '', done: true, results: [] };
+
+export function getSetupProgress() { return setupProgress; }
+
 async function runStep(name: string, fn: () => Promise<string>): Promise<StepResult> {
+  setupProgress.step = name;
+  setupProgress.message = 'Ejecutando: ' + name + '...';
   try {
     const message = await fn();
+    setupProgress.results.push({ step: name, status: 'ok', message });
     return { step: name, status: 'ok', message };
   } catch (err: unknown) {
-    return { step: name, status: 'error', message: err instanceof Error ? err.message : String(err) };
+    const errMsg = err instanceof Error ? err.message : String(err);
+    setupProgress.results.push({ step: name, status: 'error', message: errMsg });
+    return { step: name, status: 'error', message: errMsg };
   }
 }
 
@@ -110,6 +120,11 @@ interface SetupBody {
 }
 
 /** GET /api/setup/status — public (needed before login) */
+/** GET /api/setup/progress — Poll setup progress */
+setupRouter.get('/progress', (_req: Request, res: Response) => {
+  res.json(getSetupProgress());
+});
+
 setupRouter.get('/status', (_req: Request, res: Response) => {
   const settings = loadSettings();
   res.json({ setupCompleted: !!settings.setupCompleted });
@@ -139,6 +154,7 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
   }
 
   const body = req.body as SetupBody;
+  setupProgress = { step: 'starting', message: 'Iniciando configuración...', done: false, results: [] };
   const results: StepResult[] = [];
 
   audit('setup_started', { user: req.user?.username || body.username, ip: req.ip || 'unknown' });

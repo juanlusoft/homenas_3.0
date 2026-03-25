@@ -23,6 +23,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   });
   const [error, setError] = useState('');
   const [applying, setApplying] = useState(false);
+  const [applySteps, setApplySteps] = useState<Array<{step: string; status: string; message: string}>>([]);
   const [applyStatus, setApplyStatus] = useState('');
   const [, setLangTick] = useState(0); // force re-render on language change
   const STEPS = getSteps();
@@ -100,6 +101,25 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
           {step === 4 && <StepStorage data={data} update={update} />}
           {step === 5 && <StepReady data={data} />}
 
+          {/* Progress panel */}
+          {applying && (
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-teal">
+                <span className="animate-spin">⏳</span>
+                <span>{applyStatus}</span>
+              </div>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {applySteps.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span>{s.status === 'ok' ? '✅' : s.status === 'error' ? '❌' : '⏳'}</span>
+                    <span className="text-[var(--text-secondary)]">{s.step}</span>
+                    <span className="text-[var(--text-disabled)] truncate">{s.message}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Navigation */}
           <div className="flex justify-between mt-6 pt-4 border-t border-[var(--outline-variant)]">
             <StitchButton size="sm" variant="ghost" onClick={prev} disabled={step === 0}>
@@ -113,14 +133,25 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               <StitchButton onClick={async () => {
                 setApplying(true);
                 setApplyStatus(t('wiz.applyingSettings'));
+                // Poll progress every 2s
+                const pollInterval = setInterval(async () => {
+                  try {
+                    const pRes = await fetch((import.meta.env.VITE_API_URL || '/api') + '/setup/progress');
+                    const progress = await pRes.json();
+                    if (progress.message) setApplyStatus(progress.message);
+                    if (progress.results) setApplySteps(progress.results);
+                    if (progress.done) clearInterval(pollInterval);
+                  } catch {}
+                }, 2000);
                 try {
                   await onComplete(data);
+                  clearInterval(pollInterval);
                 } catch (e) {
                   setApplyStatus(e instanceof Error ? e.message : 'Error');
                   setApplying(false);
                 }
               }} disabled={applying}>
-                {applying ? applyStatus : '🚀 Start HomePiNAS'}
+                {applying ? applyStatus : t('wiz.startHomePiNAS')}
               </StitchButton>
             )}
           </div>
