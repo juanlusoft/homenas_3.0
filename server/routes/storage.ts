@@ -207,14 +207,70 @@ storageRouter.post('/smart-test/:device', requireAdmin, async (req, res) => {
   }
 });
 
+/** Get all block devices via lsblk (more reliable than systeminformation for USB bridges) */
+async function getLsblkDisks(): Promise<Array<{ device: string; size: number; model: string; vendor: string; type: string; serial: string; tran: string }>> {
+  try {
+    const { stdout } = await execFileAsync('lsblk', ['-b', '-d', '-n', '-o', 'NAME,SIZE,MODEL,VENDOR,TYPE,SERIAL,TRAN', '--json'], { timeout: 5000 });
+    const data = JSON.parse(stdout);
+    return (data.blockdevices || [])
+      .filter((d: any) => d.type === 'disk' && d.size > 1e9 && !d.name.startsWith('mmcblk') && !d.name.startsWith('loop'))
+      .map((d: any) => ({
+        device: '/dev/' + d.name,
+        size: parseInt(d.size) || 0,
+        model: (d.model || '').trim(),
+        vendor: (d.vendor || '').trim(),
+        type: d.tran || '',
+        serial: (d.serial || '').trim(),
+        tran: d.tran || '',
+      }));
+  } catch {
+    return [];
+  }
+}
+
 /** GET /api/storage/detect-disks — Raw disk detection for wizard */
 storageRouter.get('/detect-disks', requireAuth, async (_req, res) => {
   try {
-    const layout = await si.diskLayout();
+    // Use both systeminformation AND lsblk for complete detection
+    const [layout, lsblkDisks] = await Promise.all([
+      si.diskLayout(),
+      getLsblkDisks(),
+    ]);
 
-    const filtered = layout.filter(d => {
+    // Merge: start with lsblk (more complete), enrich with si data
+    const siMap = new Map(layout.map(d => [(d.device || '').replace('/dev/', ''), d]));
+    
+    const allDisks = lsblkDisks.map(lb => {
+      const siDisk = siMap.get(lb.device.replace('/dev/', ''));
+      return {
+        device: lb.device,
+        name: siDisk?.name || lb.model || lb.device,
+        size: lb.size || siDisk?.size || 0,
+        vendor: lb.vendor || siDisk?.vendor || '',
+        model: lb.model || siDisk?.name || siDisk?.model || '',
+        interfaceType: lb.tran === 'nvme' ? 'NVMe' : lb.tran === 'sata' ? 'SATA' : lb.tran || siDisk?.interfaceType || '',
+        type: lb.tran === 'nvme' ? 'SSD' : (siDisk?.type || 'HD'),
+        serialNum: lb.serial || siDisk?.serialNum || '',
+        temperature: siDisk?.temperature ?? 0,
+      };
+    });
+    
+    // If lsblk found nothing, fall back to si only
+    const source = allDisks.length > 0 ? allDisks : layout.map(d => ({
+      device: d.device || '',
+      name: d.name || '',
+      size: d.size,
+      vendor: d.vendor || '',
+      model: d.name || d.model || '',
+      interfaceType: d.interfaceType || '',
+      type: d.type || '',
+      serialNum: d.serialNum || '',
+      temperature: d.temperature ?? 0,
+    }));
+
+    const filtered = source.filter(d => {
       if (d.size < 1e9) return false;
-      if (d.device?.includes('mmcblk')) return false;
+      if (d.device?.includes('mmcblk') || d.device?.includes('loop')) return false;
       if (d.device?.includes('boot') || d.device?.includes('loop')) return false;
       const modelStr = (d.name || d.model || '').trim();
       if (/^\d+$/.test(modelStr) && d.size < 1e9) return false;
