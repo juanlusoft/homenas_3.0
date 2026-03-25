@@ -231,14 +231,15 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
   for (const d of body.cacheDisks) diskRoles[d] = 'cache';
   for (const d of body.selectedDisks) { if (!diskRoles[d]) diskRoles[d] = 'data'; }
 
-  for (const [device, role] of Object.entries(diskRoles)) {
-    results.push(await runStep(`format-${device}`, async () => {
+  // Format ALL disks in parallel (much faster than sequential)
+  const formatPromises = Object.entries(diskRoles).map(([device, role]) =>
+    runStep(`format-${device}`, async () => {
       const mkfsCmd = `mkfs.${body.poolFs}`;
       const mkfsArgs = body.poolFs === 'xfs' ? ['-f', device] : [device];
-      await execFileAsync('sudo', [mkfsCmd, ...mkfsArgs], { timeout: 300_000 });
+      await execFileAsync('sudo', [mkfsCmd, ...mkfsArgs], { timeout: 600_000 });
 
       const baseName = device.replace(/^\/dev\//, '').replace(/\//g, '-');
-      const mountBase = role === 'cache' ? '/mnt/cache' : '/mnt/storage';
+      const mountBase = role === 'cache' ? '/mnt/cache' : role === 'parity' ? '/mnt/parity' : '/mnt/storage';
       const mountPoint = `${mountBase}/${baseName}`;
 
       await execFileAsync('sudo', ['mkdir', '-p', mountPoint], { timeout: 5_000 });
@@ -248,14 +249,16 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
       ], { timeout: 10_000 });
       const uuid = blkid.trim();
 
-      // Safe fstab write via temp file
       const fstabLine = `UUID=${uuid}  ${mountPoint}  ${body.poolFs}  defaults,nofail  0  2`;
       await appendToFstab(fstabLine);
 
       await execFileAsync('sudo', ['mount', mountPoint], { timeout: 30_000 });
       return `${device} formatted (${body.poolFs}), mounted at ${mountPoint}`;
-    }));
-  }
+    })
+  );
+
+  const formatResults = await Promise.all(formatPromises);
+  results.push(...formatResults);
 
   // Step 5: Configure SnapRAID
   if (body.poolMode === 'snapraid' && body.parityDisks.length > 0) {
