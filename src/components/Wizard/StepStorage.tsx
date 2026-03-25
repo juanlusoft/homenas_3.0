@@ -46,12 +46,13 @@ function getPoolModes() {
 async function detectDisks(): Promise<DetectedDisk[]> {
   try {
     const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/storage/detect-disks`);
-    if (res.ok) return res.json();
-  } catch { /* fallback */ }
-  return [
-    { device: '/dev/sda', name: 'nvme0n1', size: 500e9, sizeHuman: '500 GB', vendor: 'JMB585 Bridge', model: '500 GB NVMe', type: 'nvme', bay: 'NVMe 1', serial: 'S6B2NA0T', temperature: 38, connected: true },
-    { device: '/dev/sdc', name: 'sdc', size: 4e12, sizeHuman: '4 TB', vendor: 'WD', model: 'Red Plus WD40EFPX', type: 'hdd', bay: 'Bay 1', serial: 'WD-WX12AB', temperature: 32, connected: true },
-  ];
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch { /* API not available */ }
+  // No mock data — show empty if API fails
+  return [];
 }
 
 export function StepStorage({ data, update }: StepProps) {
