@@ -80,6 +80,30 @@ metricsRouter.get('/updates', requireAuth, async (_req, res) => {
   }
 });
 
+/** POST /api/system/factory-reset — Reset all config (keep disk data) */
+metricsRouter.post('/factory-reset', async (_req, res) => {
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const dataDir = path.join(process.cwd(), 'data');
+    // Delete all config files but NOT disk data
+    const files = fs.readdirSync(dataDir).filter((f: string) => f.endsWith('.json') || f.endsWith('.key'));
+    for (const file of files) {
+      fs.unlinkSync(path.join(dataDir, file));
+    }
+    res.json({ success: true, message: 'Factory reset complete. Restarting...' });
+    // Restart service after response
+    setTimeout(async () => {
+      const { execFile: ef } = await import('child_process');
+      const { promisify: p } = await import('util');
+      const exec = p(ef);
+      await exec('sudo', ['systemctl', 'restart', 'homepinas-v3'], { timeout: 5000 }).catch(() => {});
+    }, 2000);
+  } catch {
+    res.json({ success: false, error: 'Reset failed' });
+  }
+});
+
 /** POST /api/system/reboot — Reboot the NAS */
 metricsRouter.post('/reboot', requireAdmin, async (req, res) => {
   audit('service_action', { user: req.user?.username, details: 'System reboot requested' });

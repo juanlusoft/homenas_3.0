@@ -228,6 +228,19 @@ export default function SystemPage() {
         </GlassCard>
       )}
 
+      {/* Factory Reset */}
+      <GlassCard elevation="low">
+        <h3 className="font-display text-lg font-semibold text-[var(--error)] mb-4">🔄 Restablecer</h3>
+        <p className="text-sm text-[var(--text-secondary)] mb-4">Borra toda la configuración y vuelve al wizard de inicio. Los datos de los discos NO se borran.</p>
+        <StitchButton size="sm" variant="ghost" onClick={async () => {
+          if (!confirm('¿Restablecer HomePiNAS? Se borrarán usuarios, ajustes y configuración. Los archivos en disco NO se borran.')) return;
+          if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
+          await authFetch('/system/factory-reset', { method: 'POST' });
+          localStorage.clear();
+          window.location.reload();
+        }}>🔄 Restablecer de fábrica</StitchButton>
+      </GlassCard>
+
       {/* Power */}
       <GlassCard elevation="low">
         <h3 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">Power Control</h3>
