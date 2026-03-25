@@ -315,12 +315,8 @@ echo -e "${GREEN}╠════════════════════
 
 LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 
-if command -v nginx &>/dev/null; then
-    echo -e "${GREEN}║${NC}   HTTPS:     https://${LOCAL_IP:-localhost}"
-    echo -e "${GREEN}║${NC}   HTTP:      http://${LOCAL_IP:-localhost} (→ HTTPS)"
-else
-    echo -e "${GREEN}║${NC}   Dashboard: http://${LOCAL_IP:-localhost}:${PORT}"
-fi
+echo -e "${GREEN}║${NC}   HTTPS:     https://${LOCAL_IP:-localhost}"
+echo -e "${GREEN}║${NC}   HTTP:      http://${LOCAL_IP:-localhost} (→ HTTPS)"
 
 echo -e "${GREEN}║${NC}   Service:   sudo systemctl status ${SERVICE_NAME}"
 echo -e "${GREEN}║${NC}   Logs:      sudo journalctl -u ${SERVICE_NAME} -f"
