@@ -82,6 +82,16 @@ else
     ok "pnpm $(pnpm -v) found"
 fi
 
+# ── Nginx install ──────────────────────────────────────────
+if ! command -v nginx &>/dev/null; then
+    info "Installing nginx..."
+    apt-get install -y nginx 2>/dev/null || dnf install -y nginx 2>/dev/null
+    systemctl enable nginx
+    ok "Nginx installed"
+else
+    ok "Nginx $(nginx -v 2>&1 | grep -o '[0-9.]*') found"
+fi
+
 # ── Git check ──────────────────────────────────────────────
 
 if ! command -v git &>/dev/null; then
@@ -228,10 +238,10 @@ else
     warn "Service may not have started. Check: journalctl -u $SERVICE_NAME -f"
 fi
 
-# ── Configure nginx (optional) ─────────────────────────────
+# ── Configure nginx (required for HTTPS) ──────────────────
 
+info "Configuring nginx reverse proxy (80 + 443)..."
 if command -v nginx &>/dev/null; then
-    info "Configuring nginx reverse proxy (80 + 443)..."
 
     # Generate self-signed cert if not exists
     CERT_DIR="${INSTALL_DIR}/certs"
