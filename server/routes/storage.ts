@@ -213,7 +213,11 @@ async function getLsblkDisks(): Promise<Array<{ device: string; size: number; mo
     const { stdout } = await execFileAsync('lsblk', ['-b', '-d', '-n', '-o', 'NAME,SIZE,MODEL,VENDOR,TYPE,SERIAL,TRAN', '--json'], { timeout: 5000 });
     const data = JSON.parse(stdout);
     return (data.blockdevices || [])
-      .filter((d: any) => d.type === 'disk' && d.size > 1e9 && !d.name.startsWith('mmcblk') && !d.name.startsWith('loop'))
+      .filter((d: any) => {
+        if (d.type !== 'disk' || d.size < 1e9) return false;
+        if (d.name.startsWith('mmcblk') || d.name.startsWith('loop')) return false;
+        return true;
+      })
       .map((d: any) => ({
         device: '/dev/' + d.name,
         size: parseInt(d.size) || 0,
@@ -314,6 +318,19 @@ storageRouter.get('/detect-disks', async (_req, res) => {  // Public: needed by 
 
     const temps = await Promise.all(result.map(d => getSmartData(d.device)));
     const final = result.map((d, i) => ({ ...d, temperature: temps[i].temperature || d.temperature }));
+
+    // Detect OS disk (where / is mounted) and mark it
+    try {
+      const { stdout: dfOut } = await execFileAsync('df', ['/', '--output=source'], { timeout: 3000 });
+      const rootDevice = dfOut.trim().split('\n').pop()?.replace(/[0-9p]+$/, '').replace('/dev/', '') || '';
+      for (const disk of final) {
+        const diskName = disk.device.replace('/dev/', '');
+        if (rootDevice && diskName === rootDevice) {
+          (disk as any).isSystemDisk = true;
+          (disk as any).bay = 'Sistema';
+        }
+      }
+    } catch {}
 
     res.json(final);
   } catch {
