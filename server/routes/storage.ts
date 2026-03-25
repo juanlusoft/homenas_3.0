@@ -236,10 +236,12 @@ async function getLsblkDisks(): Promise<Array<{ device: string; size: number; mo
 storageRouter.get('/detect-disks', async (_req, res) => {  // Public: needed by setup wizard before auth
   try {
     // Use both systeminformation AND lsblk for complete detection
-    const [layout, lsblkDisks] = await Promise.all([
-      si.diskLayout(),
-      getLsblkDisks(),
-    ]);
+    // Each source wrapped in try/catch so one failure doesn't kill the other
+    let layout: Awaited<ReturnType<typeof si.diskLayout>> = [];
+    let lsblkDisks: Awaited<ReturnType<typeof getLsblkDisks>> = [];
+    try { layout = await si.diskLayout(); } catch { console.warn('[detect-disks] si.diskLayout failed'); }
+    try { lsblkDisks = await getLsblkDisks(); } catch { console.warn('[detect-disks] lsblk failed'); }
+    console.log(`[detect-disks] si: ${layout.length} disks, lsblk: ${lsblkDisks.length} disks`);
 
     // Merge: start with lsblk (more complete), enrich with si data
     const siMap = new Map(layout.map(d => [(d.device || '').replace('/dev/', ''), d]));
