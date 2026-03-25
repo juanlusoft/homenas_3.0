@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback } from 'react';
 import { GlassCard, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -12,7 +13,7 @@ interface Stack {
 const API = import.meta.env.VITE_API_URL || '/api';
 
 export default function DockerComposePage() {
-  const fetchStacks = useCallback(() => fetch(`${API}/stacks`).then(r => r.json()), []);
+  const fetchStacks = useCallback(() => authFetch(`${API}/stacks`).then(r => r.json()), []);
   const { data: stacks, loading, refresh } = useAPI<Stack[]>(fetchStacks, 5000);
   const [editing, setEditing] = useState<string | null>(null);
   const [editorContent, setEditorContent] = useState('');
@@ -27,30 +28,30 @@ export default function DockerComposePage() {
 
   const saveEdit = useCallback(async () => {
     if (!editing) return;
-    await fetch(`${API}/stacks/${editing}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: editorContent }) });
+    await authFetch(`${API}/stacks/${editing}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: editorContent }) });
     setEditing(null);
     refresh();
   }, [editing, editorContent, refresh]);
 
   const handleUp = useCallback(async (id: string) => {
-    await fetch(`${API}/stacks/${id}/up`, { method: 'POST' });
+    await authFetch(`${API}/stacks/${id}/up`, { method: 'POST' });
     refresh();
   }, [refresh]);
 
   const handleDown = useCallback(async (id: string) => {
-    await fetch(`${API}/stacks/${id}/down`, { method: 'POST' });
+    await authFetch(`${API}/stacks/${id}/down`, { method: 'POST' });
     refresh();
   }, [refresh]);
 
   const handleCreate = useCallback(async () => {
     if (!newName.trim()) return;
-    await fetch(`${API}/stacks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName.trim(), file: newFile }) });
+    await authFetch(`${API}/stacks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName.trim(), file: newFile }) });
     setAddOpen(false); setNewName(''); refresh();
   }, [newName, newFile, refresh]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('¿Eliminar stack y todos sus contenedores?')) return;
-    await fetch(`${API}/stacks/${id}`, { method: 'DELETE' });
+    await authFetch(`${API}/stacks/${id}`, { method: 'DELETE' });
     refresh();
   }, [refresh]);
 

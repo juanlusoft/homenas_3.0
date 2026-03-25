@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GlassCard, StitchButton, Modal } from '@/components/UI';
 
@@ -50,7 +51,7 @@ export default function FilesPage() {
   const fetchFiles = useCallback(async (path: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/files/list?path=${encodeURIComponent(path)}`);
+      const res = await authFetch(`${API}/files/list?path=${encodeURIComponent(path)}`);
       if (res.ok) {
         const data = await res.json();
         setEntries(data);
@@ -89,7 +90,7 @@ export default function FilesPage() {
   // Create folder
   const handleMkdir = useCallback(async () => {
     if (!newFolderName.trim()) return;
-    await fetch(`${API}/files/mkdir`, {
+    await authFetch(`${API}/files/mkdir`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dirPath: currentPath, name: newFolderName.trim() }),
@@ -106,7 +107,7 @@ export default function FilesPage() {
     const formData = new FormData();
     for (const file of files) formData.append('files', file);
     formData.append('path', currentPath);
-    await fetch(`${API}/files/upload`, { method: 'POST', body: formData });
+    await authFetch(`${API}/files/upload`, { method: 'POST', body: formData });
     fetchFiles(currentPath);
     e.target.value = '';
   }, [currentPath, fetchFiles]);

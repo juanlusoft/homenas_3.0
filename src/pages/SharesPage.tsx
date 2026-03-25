@@ -1,4 +1,5 @@
 import { t, ts } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback } from 'react';
 import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
@@ -20,7 +21,7 @@ const EMPTY_FORM: { name: string; path: string; protocol: 'smb' | 'nfs'; accessM
 
 export default function SharesPage() {
   const fetchShares = useCallback(() =>
-    fetch(`${import.meta.env.VITE_API_URL || '/api'}/shares`).then(r => r.json()), []);
+    authFetch(`${import.meta.env.VITE_API_URL || '/api'}/shares`).then(r => r.json()), []);
   const { data: sharesData, refresh } = useAPI<Share[]>(fetchShares, 10000);
   const shares = sharesData || [];
   const [addOpen, setAddOpen] = useState(false);
@@ -33,7 +34,7 @@ export default function SharesPage() {
   const handleAdd = useCallback(async () => {
     if (!form.name.trim() || !form.path.trim()) return;
     const API = import.meta.env.VITE_API_URL || '/api';
-    await fetch(`${API}/shares`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), sharePath: form.path.trim(), protocol: form.protocol, accessMode: form.accessMode, allowedUsers: form.allowedUsers.split(',').map((u: string) => u.trim()).filter(Boolean) }) });
+    await authFetch(`${API}/shares`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), sharePath: form.path.trim(), protocol: form.protocol, accessMode: form.accessMode, allowedUsers: form.allowedUsers.split(',').map((u: string) => u.trim()).filter(Boolean) }) });
     refresh();
     setAddOpen(false); setForm(EMPTY_FORM);
   }, [form]);
@@ -41,7 +42,7 @@ export default function SharesPage() {
   const handleEdit = useCallback(async () => {
     if (!editShare) return;
     const API = import.meta.env.VITE_API_URL || '/api';
-    await fetch(`${API}/shares/${editShare.id}`, {
+    await authFetch(`${API}/shares/${editShare.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -58,7 +59,7 @@ export default function SharesPage() {
   }, [editShare, form, refresh]);
 
   const handleToggle = useCallback(async (id: string) => {
-    await fetch(`${import.meta.env.VITE_API_URL || '/api'}/shares/${id}/toggle`, { method: 'POST' });
+    await authFetch(`${import.meta.env.VITE_API_URL || '/api'}/shares/${id}/toggle`, { method: 'POST' });
     refresh();
   }, []);
 

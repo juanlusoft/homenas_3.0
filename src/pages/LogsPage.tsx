@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GlassCard, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -29,13 +30,13 @@ export default function LogsPage() {
       const pMap: Record<string, string> = { error: '3', warn: '4', info: '6', debug: '7' };
       params.set('priority', pMap[filter] || '6');
     }
-    return fetch(`${API}/logs?${params}`).then(r => r.json());
+    return authFetch(`${API}/logs?${params}`).then(r => r.json());
   }, [filter, sourceFilter]);
 
   const { data: logs } = useAPI<LogEntry[]>(fetchLogs, 5000);
 
   // Fetch available units
-  const fetchUnits = useCallback(() => fetch(`${API}/logs/units`).then(r => r.json()), []);
+  const fetchUnits = useCallback(() => authFetch(`${API}/logs/units`).then(r => r.json()), []);
   const { data: units } = useAPI<string[]>(fetchUnits);
 
   const filtered = (logs || []).filter(log => {

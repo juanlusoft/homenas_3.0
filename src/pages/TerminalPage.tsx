@@ -1,3 +1,4 @@
+import { authFetch } from '@/api/authFetch';
 import { t } from '@/i18n';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { GlassCard } from '@/components/UI';
@@ -52,7 +53,7 @@ export default function TerminalPage() {
     setRunning(true);
 
     try {
-      const res = await fetch(`${API}/terminal/exec`, {
+      const res = await authFetch(`${API}/terminal/exec`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: trimmed }),

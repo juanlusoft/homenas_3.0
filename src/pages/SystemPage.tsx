@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -42,7 +43,7 @@ export default function SystemPage() {
   const [updatesResult, setUpdatesResult] = useState<string>('');
 
   const fetchInfo = useCallback(() =>
-    fetch(`${API}/system/info`).then(r => r.json() as Promise<SystemInfo>),
+    authFetch(`${API}/system/info`).then(r => r.json() as Promise<SystemInfo>),
   [API]);
   const { data: info, loading: infoLoading } = useAPI<SystemInfo>(fetchInfo);
   const { metrics, isConnected } = useLiveMetrics();
@@ -54,7 +55,7 @@ export default function SystemPage() {
     setUpdating(true);
     setUpdateResult(null);
     try {
-      const res = await fetch(`${API}/system/updates`);
+      const res = await authFetch(`${API}/system/updates`);
       if (res.ok) {
         const data = await res.json();
         if (data.count > 0) {
@@ -80,7 +81,7 @@ export default function SystemPage() {
     setDiagRunning(true);
     setDiagResult('Running diagnostics...');
     try {
-      const res = await fetch(`${API}/system/diagnostics`);
+      const res = await authFetch(`${API}/system/diagnostics`);
       if (res.ok) {
         const data = await res.json();
         const lines = [
@@ -233,11 +234,11 @@ export default function SystemPage() {
         <div className="flex gap-3">
           <StitchButton size="sm" variant="ghost" onClick={async () => {
             if (!confirm('Reboot NAS?')) return;
-            await fetch((import.meta.env.VITE_API_URL || '/api') + '/system/reboot', { method: 'POST' });
+            await authFetch((import.meta.env.VITE_API_URL || '/api') + '/system/reboot', { method: 'POST' });
           }}>Reboot</StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={async () => {
             if (!confirm('Shutdown NAS? You will need to power it on physically.')) return;
-            await fetch((import.meta.env.VITE_API_URL || '/api') + '/system/shutdown', { method: 'POST' });
+            await authFetch((import.meta.env.VITE_API_URL || '/api') + '/system/shutdown', { method: 'POST' });
           }}>Shutdown</StitchButton>
         </div>
       </GlassCard>

@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback } from 'react';
 import { GlassCard, StitchButton } from '@/components/UI';
 import { DeviceCard, DeviceDetail } from '@/components/ActiveBackup';
@@ -17,32 +18,32 @@ export default function ActiveBackupPage() {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
 
   const fetchDevices = useCallback(() =>
-    fetch(`${API}/active-backup/devices`).then(r => r.json() as Promise<BackupDevice[]>), []);
+    authFetch(`${API}/active-backup/devices`).then(r => r.json() as Promise<BackupDevice[]>), []);
   const fetchPending = useCallback(() =>
-    fetch(`${API}/active-backup/pending`).then(r => r.json() as Promise<PendingAgent[]>), []);
+    authFetch(`${API}/active-backup/pending`).then(r => r.json() as Promise<PendingAgent[]>), []);
 
   const { data: devices, loading, refresh } = useAPI<BackupDevice[]>(fetchDevices, 5000);
   const { data: pending, refresh: refreshPending } = useAPI<PendingAgent[]>(fetchPending, 10000);
 
   const handleBackup = useCallback(async (id: string) => {
-    await fetch(`${API}/active-backup/devices/${id}/backup`, { method: 'POST' });
+    await authFetch(`${API}/active-backup/devices/${id}/backup`, { method: 'POST' });
     refresh();
   }, [refresh]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await fetch(`${API}/active-backup/devices/${id}`, { method: 'DELETE' });
+    await authFetch(`${API}/active-backup/devices/${id}`, { method: 'DELETE' });
     setSelectedDevice(null);
     refresh();
   }, [refresh]);
 
   const handleApprove = useCallback(async (id: string) => {
-    await fetch(`${API}/active-backup/pending/${id}/approve`, { method: 'POST' });
+    await authFetch(`${API}/active-backup/pending/${id}/approve`, { method: 'POST' });
     refresh();
     refreshPending();
   }, [refresh, refreshPending]);
 
   const handleReject = useCallback(async (id: string) => {
-    await fetch(`${API}/active-backup/pending/${id}/reject`, { method: 'POST' });
+    await authFetch(`${API}/active-backup/pending/${id}/reject`, { method: 'POST' });
     refreshPending();
   }, [refreshPending]);
 

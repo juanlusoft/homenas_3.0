@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useCallback, useState } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
@@ -86,7 +87,7 @@ export default function StoragePage() {
       await Promise.all(
         disks.map(d => {
           const dev = d.device.replace('/dev/', '').replace(/\d+$/, '');
-          return fetch(`${API}/storage/smart-test/${dev}`, { method: 'POST' });
+          return authFetch(`${API}/storage/smart-test/${dev}`, { method: 'POST' });
         })
       );
       refresh();

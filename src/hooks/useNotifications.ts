@@ -3,6 +3,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { authFetch } from '@/api/authFetch';
 // useEffect already imported
 import { useSocket } from './useSocket';
 import type { Notification } from '@/components/Notifications';
@@ -16,7 +17,7 @@ export function useNotifications() {
 
   // Fetch notification history from backend
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || '/api'}/settings/notifications/history`)
+    authFetch(`${import.meta.env.VITE_API_URL || '/api'}/settings/notifications/history`)
       .then(r => r.json())
       .then((history: { title: string; message: string; severity: string; time: string }[]) => {
         const mapped: Notification[] = history.slice(0, 20).map((h, i) => ({

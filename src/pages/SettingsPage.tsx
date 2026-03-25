@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useEffect } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 
@@ -77,7 +78,7 @@ export default function SettingsPage() {
   // Load real settings from backend on mount
   useEffect(() => {
     const API = import.meta.env.VITE_API_URL || '/api';
-    fetch(`${API}/settings`).then(r => r.json()).then(data => {
+    authFetch(`${API}/settings`).then(r => r.json()).then(data => {
       if (data && typeof data === 'object') {
         setSettings(prev => ({ ...prev, ...data }));
       }
@@ -93,7 +94,7 @@ export default function SettingsPage() {
   const API = import.meta.env.VITE_API_URL || '/api';
 
   const handleSave = async () => {
-    await fetch(`${API}/settings`, {
+    await authFetch(`${API}/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
@@ -104,7 +105,7 @@ export default function SettingsPage() {
 
   const handleTestTelegram = async () => {
     if (!settings.telegramToken || !settings.telegramChatId) return;
-    await fetch(`${API}/settings/notifications/test-telegram`, {
+    await authFetch(`${API}/settings/notifications/test-telegram`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: settings.telegramToken, chatId: settings.telegramChatId }),
@@ -238,7 +239,7 @@ export default function SettingsPage() {
               <input value={settings.smtpUser} onChange={e => update('smtpUser', e.target.value)} placeholder={t('smtp.user')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
               <input type="password" value={settings.smtpPass} onChange={e => update('smtpPass', e.target.value)} placeholder={t('smtp.pass')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
               <input value={settings.smtpTo} onChange={e => update('smtpTo', e.target.value)} placeholder={t('smtp.to')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
-              <StitchButton size="sm" variant="ghost" onClick={async () => { await fetch(`${API}/settings/notifications/test-email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smtpHost: settings.smtpHost, smtpPort: settings.smtpPort, smtpUser: settings.smtpUser, smtpPass: settings.smtpPass, emailTo: settings.smtpTo }) }); }}>{t('smtp.test')}</StitchButton>
+              <StitchButton size="sm" variant="ghost" onClick={async () => { await authFetch(`${API}/settings/notifications/test-email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smtpHost: settings.smtpHost, smtpPort: settings.smtpPort, smtpUser: settings.smtpUser, smtpPass: settings.smtpPass, emailTo: settings.smtpTo }) }); }}>{t('smtp.test')}</StitchButton>
             </>
           )}
         </div>
@@ -258,7 +259,7 @@ export default function SettingsPage() {
               </select>
               <input value={settings.ddnsDomain} onChange={e => update('ddnsDomain', e.target.value)} placeholder={t('ddns.domain')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
               <input value={settings.ddnsToken} onChange={e => update('ddnsToken', e.target.value)} placeholder={t('ddns.token')} className="stitch-input w-full rounded-lg px-3 py-2 text-sm text-[var(--text-primary)]" />
-              <StitchButton size="sm" variant="ghost" onClick={async () => { await fetch(`${API}/ddns/update`, { method: 'POST' }); }}>{t('ddns.updateNow')}</StitchButton>
+              <StitchButton size="sm" variant="ghost" onClick={async () => { await authFetch(`${API}/ddns/update`, { method: 'POST' }); }}>{t('ddns.updateNow')}</StitchButton>
             </>
           )}
         </div>

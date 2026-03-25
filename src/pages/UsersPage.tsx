@@ -1,4 +1,5 @@
 import { t, ts } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback } from 'react';
 import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
@@ -19,7 +20,7 @@ const ROLE_COLORS: Record<string, string> = { admin: 'text-teal', user: 'text-[v
 export default function UsersPage() {
   const API = import.meta.env.VITE_API_URL || '/api';
   const fetchUsers = useCallback(() =>
-    fetch(`${API}/users`).then(r => r.json()), [API]);
+    authFetch(`${API}/users`).then(r => r.json()), [API]);
   const { data: usersData, refresh } = useAPI<User[]>(fetchUsers, 10000);
   const users = usersData || [];
   const [addOpen, setAddOpen] = useState(false);
@@ -37,7 +38,7 @@ export default function UsersPage() {
     if (!form.username.trim()) { setError(t('users.username') + ' required'); return; }
     if (form.password.length < 6) { setError(t('wiz.passwordTooShort')); return; }
     if (form.password !== form.confirmPassword) { setError(t('wiz.passwordsNoMatch')); return; }
-    await fetch(`${API}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: form.username.trim(), password: form.password, role: form.role }) });
+    await authFetch(`${API}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: form.username.trim(), password: form.password, role: form.role }) });
     refresh();
     setAddOpen(false);
     resetForm();
@@ -45,14 +46,14 @@ export default function UsersPage() {
 
   const handleEdit = useCallback(async () => {
     if (!editUser) return;
-    await fetch(`${API}/users/${editUser.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: form.role }) });
+    await authFetch(`${API}/users/${editUser.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: form.role }) });
     refresh();
     setEditUser(null);
     resetForm();
   }, [editUser, form]);
 
   const handleDelete = useCallback(async (id: number) => {
-    await fetch(`${API}/users/${id}`, { method: 'DELETE' });
+    await authFetch(`${API}/users/${id}`, { method: 'DELETE' });
     refresh();
   }, []);
 
@@ -124,7 +125,7 @@ export default function UsersPage() {
               <p className="text-xs text-[var(--text-secondary)]">{t('users.enforce2FA')}</p>
             </div>
             <StitchButton size="sm" variant="ghost" onClick={() => {
-              fetch(`${API}/users/enforce-2fa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enforce: !twoFaEnforced }) });
+              authFetch(`${API}/users/enforce-2fa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enforce: !twoFaEnforced }) });
               setTwoFaEnforced(v => !v);
             }}>
               {twoFaEnforced ? t('users.disable') : t('users.enable')}

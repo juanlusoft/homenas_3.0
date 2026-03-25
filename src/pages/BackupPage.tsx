@@ -1,4 +1,5 @@
 import { t, ts } from '@/i18n';
+import { authFetch } from '@/api/authFetch';
 import { useState, useCallback } from 'react';
 import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
@@ -34,7 +35,7 @@ const EMPTY_FORM = { name: '', type: 'incremental' as BackupJob['type'], schedul
 export default function BackupPage() {
   const API = import.meta.env.VITE_API_URL || '/api';
   const fetchJobs = useCallback(() =>
-    fetch(`${API}/backup`).then(r => r.json()), [API]);
+    authFetch(`${API}/backup`).then(r => r.json()), [API]);
   const { data: jobsData, refresh } = useAPI<BackupJob[]>(fetchJobs, 5000);
   const jobs = jobsData || [];
   const [addOpen, setAddOpen] = useState(false);
@@ -49,7 +50,7 @@ export default function BackupPage() {
 
   const handleAdd = useCallback(async () => {
     if (!form.name.trim()) return;
-    await fetch(`${API}/backup`, {
+    await authFetch(`${API}/backup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -61,7 +62,7 @@ export default function BackupPage() {
 
   const handleEdit = useCallback(async () => {
     if (!editJob) return;
-    await fetch(`${API}/backup/${editJob.id}`, {
+    await authFetch(`${API}/backup/${editJob.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -72,11 +73,11 @@ export default function BackupPage() {
   }, [editJob, form, API, refresh]);
 
   const handleRunNow = useCallback(async (id: string) => {
-    await fetch(`${API}/backup/run/${id}`, { method: 'POST' });
+    await authFetch(`${API}/backup/run/${id}`, { method: 'POST' });
     refresh();
   }, []);
 
-  const handleRunAll = useCallback(async () => { await fetch(`${API}/backup/run-all`, { method: 'POST' }); refresh(); }, [API, refresh]);
+  const handleRunAll = useCallback(async () => { await authFetch(`${API}/backup/run-all`, { method: 'POST' }); refresh(); }, [API, refresh]);
 
   const openEdit = (job: BackupJob) => {
     setForm({ name: job.name, type: job.type, schedule: job.schedule, destination: job.destination });
@@ -136,7 +137,7 @@ export default function BackupPage() {
               <StitchButton size="sm" variant="ghost" onClick={() => openEdit(job)}>{t('backup.configure')}</StitchButton>
               {job.status === 'failed' && (
                 <StitchButton size="sm" variant="ghost" onClick={async () => {
-                  const res = await fetch(`${API_URL}/backup/${job.id}/logs`);
+                  const res = await authFetch(`${API_URL}/backup/${job.id}/logs`);
                   if (res.ok) {
                     const data = await res.json();
                     setLogContent(data.log || 'No logs available');
