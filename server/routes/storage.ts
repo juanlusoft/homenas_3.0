@@ -229,7 +229,7 @@ async function getLsblkDisks(): Promise<Array<{ device: string; size: number; mo
 }
 
 /** GET /api/storage/detect-disks — Raw disk detection for wizard */
-storageRouter.get('/detect-disks', requireAuth, async (_req, res) => {
+storageRouter.get('/detect-disks', async (_req, res) => {  // Public: needed by setup wizard before auth
   try {
     // Use both systeminformation AND lsblk for complete detection
     const [layout, lsblkDisks] = await Promise.all([
