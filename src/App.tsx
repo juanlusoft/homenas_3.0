@@ -107,7 +107,6 @@ export default function App() {
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const [, setLangTick] = useState(0);
   const { notifications, markRead, clearAll } = useNotifications();
-  const metrics = null; // Live metrics only in Dashboard now
   const ViewComponent = viewComponents[currentView];
 
   // Compute real system health from live metrics
