@@ -139,8 +139,9 @@ export default function SharesPage() {
                 {share.status === 'active' ? t('shares.disable') : t('shares.enable')}
               </StitchButton>
               <StitchButton size="sm" variant="ghost" onClick={async () => {
-                const deleteData = confirm(`¿Eliminar compartido "${share.name}"?\n\nPulsa Aceptar para eliminar también la carpeta.\nPulsa Cancelar para mantener los archivos.`);
-                await authFetch(`/shares/${share.id}`, { method: 'DELETE', body: JSON.stringify({ deleteFolder: deleteData }) });
+                if (!confirm(`¿Eliminar el compartido "${share.name}"?`)) return;
+                const deleteFolder = confirm('¿Eliminar también la carpeta y sus archivos?\n\n• Aceptar = borrar carpeta y archivos\n• Cancelar = mantener archivos en disco');
+                await authFetch(`/shares/${share.id}`, { method: 'DELETE', body: JSON.stringify({ deleteFolder }) });
                 refresh();
               }}>🗑️</StitchButton>
             </div>
