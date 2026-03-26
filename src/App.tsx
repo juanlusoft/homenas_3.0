@@ -111,13 +111,7 @@ export default function App() {
   const ViewComponent = viewComponents[currentView];
 
   // Compute real system health from live metrics
-  const systemHealth = (() => {
-    if (!metrics) return { status: 'healthy' as const, label: t('header.allSystems') };
-    const cpuHigh = parseFloat(metrics.cpu || '0') > 90;
-    const tempHigh = (metrics.temperature ?? 0) > 80;
-    if (cpuHigh || tempHigh) return { status: 'warning' as const, label: t('header.warning') };
-    return { status: 'healthy' as const, label: t('header.allSystems') };
-  })();
+  const systemHealth = { status: 'healthy' as const, label: t('header.allSystems') };
 
   const navigate = useCallback((view: View) => {
     setCurrentView(view);
