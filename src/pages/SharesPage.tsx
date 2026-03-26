@@ -22,7 +22,7 @@ const EMPTY_FORM: { name: string; path: string; protocol: 'smb' | 'nfs'; accessM
 export default function SharesPage() {
   const fetchShares = useCallback(() =>
     authFetch('/shares').then(r => r.json()), []);
-  const { data: sharesData, refresh } = useAPI<Share[]>(fetchShares, 10000);
+  const { data: sharesData, refresh } = useAPI<Share[]>(fetchShares, 0);
   const shares = sharesData || [];
   const [addOpen, setAddOpen] = useState(false);
   const [editShare, setEditShare] = useState<Share | null>(null);
