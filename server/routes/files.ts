@@ -88,7 +88,8 @@ filesRouter.post('/mkdir', async (req, res) => {
     }
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to create directory' });
+    console.error('[mkdir] Failed:', target, e instanceof Error ? e.message : e);
+    res.status(500).json({ error: 'Failed to create directory: ' + (e instanceof Error ? e.message : String(e)) });
   }
 });
 
