@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GlowPill, StitchButton } from '@/components/UI';
 import { t, setLanguage } from '@/i18n';
-import { useLiveMetrics } from '@/hooks/useLiveMetrics';
+// useLiveMetrics moved to DashboardPage only — was causing re-renders on all pages
 import { clearToken, getToken, getStoredUser } from './api/client';
 import DashboardPage from '@/pages/DashboardPage';
 import StoragePage from '@/pages/StoragePage';
@@ -107,7 +107,7 @@ export default function App() {
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const [, setLangTick] = useState(0);
   const { notifications, markRead, clearAll } = useNotifications();
-  const { metrics } = useLiveMetrics();
+  const metrics = null; // Live metrics only in Dashboard now
   const ViewComponent = viewComponents[currentView];
 
   // Compute real system health from live metrics
