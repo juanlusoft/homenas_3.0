@@ -4,7 +4,7 @@ export const es: Record<string, string> = {
   'nav.files': 'Archivos',
   'nav.shares': 'Compartidos',
   'nav.storage': 'Almacenamiento',
-  'nav.backup': 'Copias de seguridad',
+  'nav.backup': 'Backup',
   'nav.active-backup': 'Active Backup',
   'nav.services': 'Servicios',
   'nav.stacks': 'Stacks',
@@ -479,7 +479,7 @@ export const es: Record<string, string> = {
   'vpn.notInstalled': 'WireGuard no instalado',
 
   // Scheduler
-  'sched.title': 'Tareas Programadas',
+  'sched.title': 'Tareas',
   'sched.newTask': '+ Nueva Tarea',
   'sched.name': 'Nombre',
   'sched.schedule': 'Programación (cron)',
