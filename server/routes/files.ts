@@ -95,6 +95,18 @@ filesRouter.post('/upload', upload.array('files', 20), (req, res) => {
   });
 });
 
+/** GET /api/files/download?path=/file.txt — Download a file */
+filesRouter.get('/download', async (req, res) => {
+  const filePath = safePath((req.query.path as string) || '');
+  try {
+    const stat = await fs.promises.stat(filePath);
+    if (!stat.isFile()) return res.status(400).json({ error: 'Not a file' });
+    res.download(filePath);
+  } catch {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
 /** DELETE /api/files/delete — Delete file or directory */
 filesRouter.delete('/delete', async (req, res) => {
   const { filePath } = req.body;

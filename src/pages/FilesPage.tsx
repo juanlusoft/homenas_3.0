@@ -165,6 +165,7 @@ export default function FilesPage() {
                 <th className="py-2.5 px-2">{t('files.name')}</th>
                 <th className="py-2.5 px-2 hidden sm:table-cell">{t('files.size')}</th>
                 <th className="py-2.5 px-2 hidden md:table-cell">{t('files.modified')}</th>
+                <th className="py-2.5 px-2 text-right">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -194,10 +195,34 @@ export default function FilesPage() {
                     {entry.type === 'file' ? formatSize(entry.size) : '—'}
                   </td>
                   <td className="py-2 px-2 font-mono text-xs text-[var(--text-secondary)] hidden md:table-cell">{entry.modified}</td>
+                  <td className="py-2 px-2 text-right" onClick={e => e.stopPropagation()}>
+                    <div className="flex gap-1 justify-end">
+                      <button title="Descargar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-[var(--text-secondary)]"
+                        onClick={() => {
+                          if (entry.type === 'file') {
+                            const url = `${window.location.origin}/api/files/download?path=${encodeURIComponent(currentPath + '/' + entry.name)}`;
+                            window.open(url, '_blank');
+                          }
+                        }}>⬇️</button>
+                      <button title="Renombrar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-[var(--text-secondary)]"
+                        onClick={() => {
+                          const newName = prompt('Nuevo nombre:', entry.name);
+                          if (newName && newName !== entry.name) {
+                            authFetch('/files/rename', { method: 'POST', body: JSON.stringify({ oldPath: currentPath + '/' + entry.name, newName }) }).then(() => fetchFiles(currentPath));
+                          }
+                        }}>✏️</button>
+                      <button title="Eliminar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-red-400"
+                        onClick={() => {
+                          if (confirm(`¿Eliminar ${entry.name}?`)) {
+                            authFetch('/files/delete', { method: 'DELETE', body: JSON.stringify({ filePath: currentPath + '/' + entry.name }) }).then(() => fetchFiles(currentPath));
+                          }
+                        }}>🗑️</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {entries.length === 0 && !loading && (
-                <tr><td colSpan={4} className="py-8 text-center text-[var(--text-disabled)]">📂 {t('files.items')}: 0</td></tr>
+                <tr><td colSpan={5} className="py-8 text-center text-[var(--text-disabled)]">📂 {t('files.items')}: 0</td></tr>
               )}
             </tbody>
           </table>
