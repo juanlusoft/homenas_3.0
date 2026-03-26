@@ -128,6 +128,7 @@ storageRouter.get('/disks', requireAuth, async (_req, res) => {
       if (fs.mount === '/boot/firmware') return false;    // boot partition
       if (fs.mount === '/') return false;                 // root OS partition
       if (fs.type === 'tmpfs' || fs.type === 'devtmpfs') return false;
+      if (fs.type?.includes('fuse') || fs.type?.includes('mergerfs')) return false; // mergerfs virtual mount
       if (fs.fs === 'efivarfs' || fs.fs === 'overlay') return false;
       if (fs.size < 1e8) return false;                   // tiny filesystems
       return true;

@@ -15,7 +15,7 @@ interface NetworkChartProps {
 function formatSpeed(bytesPerSec: number): string {
   if (bytesPerSec >= 1e6) return `${(bytesPerSec / 1e6).toFixed(1)} MB/s`;
   if (bytesPerSec >= 1e3) return `${(bytesPerSec / 1e3).toFixed(1)} KB/s`;
-  return `${bytesPerSec} B/s`;
+  return `${Math.round(bytesPerSec)} B/s`;
 }
 
 function formatTime(timestamp: string): string {
