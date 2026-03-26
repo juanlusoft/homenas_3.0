@@ -104,6 +104,7 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
+  const [, setLangTick] = useState(0);
   const { notifications, markRead, clearAll } = useNotifications();
   const { metrics } = useLiveMetrics();
   const ViewComponent = viewComponents[currentView];
@@ -298,7 +299,27 @@ export default function App() {
               Logout
             </button>
           </div>
-          <p className="text-xs text-[var(--text-disabled)]">v3.5.0 · Stitch</p>
+          <div className="flex items-center gap-2 mb-2">
+            <button onClick={() => {
+              const root = document.documentElement;
+              const isDark = root.style.colorScheme !== 'light';
+              root.style.colorScheme = isDark ? 'light' : 'dark';
+              document.body.style.backgroundColor = isDark ? '#f0f0f0' : 'var(--surface)';
+              document.body.style.color = isDark ? '#1a1a1a' : 'var(--text-primary)';
+              localStorage.setItem('homepinas-theme', isDark ? 'light' : 'dark');
+            }} className="text-xs px-2 py-1 rounded bg-surface-high text-[var(--text-secondary)] hover:text-teal">
+              🌓
+            </button>
+            <button onClick={() => {
+              const current = localStorage.getItem('homepinas-language') || 'es';
+              const next = current === 'es' ? 'en' : 'es';
+              setLanguage(next);
+              setLangTick(n => n + 1);
+            }} className="text-xs px-2 py-1 rounded bg-surface-high text-[var(--text-secondary)] hover:text-teal">
+              {localStorage.getItem('homepinas-language') === 'en' ? '🇬🇧' : '🇪🇸'}
+            </button>
+          </div>
+          <p className="text-xs text-[var(--text-disabled)]">v6.2.0 · Stitch</p>
         </div>
       </aside>
 
