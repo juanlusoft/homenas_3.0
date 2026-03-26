@@ -160,8 +160,8 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
   audit('setup_started', { user: req.user?.username || body.username, ip: req.ip || 'unknown' });
 
   // Pre-flight validation
-  if (!body.username || !body.password || body.password.length < 8) {
-    return res.status(400).json({ error: 'Username and password (min 8 chars) required' });
+  if (!body.username || !body.password || body.password.length < 6) {
+    return res.status(400).json({ error: 'Username and password (min 6 chars) required' });
   }
   if (!/^[a-zA-Z0-9_.-]+$/.test(body.username)) {
     return res.status(400).json({ error: 'Username contains invalid characters' });
