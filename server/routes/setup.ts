@@ -250,8 +250,32 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
   // Format ALL disks in parallel (much faster than sequential)
   const formatPromises = Object.entries(diskRoles).map(([device, role]) =>
     runStep(`format-${device}`, async () => {
+      // Unmount all partitions on this device before formatting
+      try {
+        const { stdout: mounts } = await execFileAsync('mount', [], { timeout: 5000 });
+        const deviceBase = device.replace(/\d+$/, '');
+        for (const line of mounts.split('\n')) {
+          if (line.startsWith(deviceBase) || line.startsWith(device)) {
+            const mountPoint = line.split(' on ')[1]?.split(' type ')[0];
+            if (mountPoint) {
+              await execFileAsync('sudo', ['umount', '-f', mountPoint], { timeout: 10000 }).catch(() => {});
+            }
+          }
+        }
+      } catch {}
+
+      // Create partition table + single partition if formatting whole disk
+      if (!device.match(/\d+$/)) {
+        // It's a raw disk like /dev/sdc, not a partition like /dev/sdc1
+        await execFileAsync('sudo', ['parted', '-s', device, 'mklabel', 'gpt'], { timeout: 30000 }).catch(() => {});
+        await execFileAsync('sudo', ['parted', '-s', device, 'mkpart', 'primary', '0%', '100%'], { timeout: 30000 }).catch(() => {});
+        await new Promise(r => setTimeout(r, 2000)); // Wait for kernel to detect partition
+      }
+
+      // Format: use partition if exists, otherwise device
+      const partDevice = device.match(/\d+$/) ? device : device + '1';
       const mkfsCmd = `mkfs.${body.poolFs}`;
-      const mkfsArgs = body.poolFs === 'xfs' ? ['-f', device] : [device];
+      const mkfsArgs = body.poolFs === 'xfs' ? ['-f', partDevice] : [partDevice];
       await execFileAsync('sudo', [mkfsCmd, ...mkfsArgs], { timeout: 600_000 });
 
       const baseName = device.replace(/^\/dev\//, '').replace(/\//g, '-');
@@ -261,7 +285,7 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
       await execFileAsync('sudo', ['mkdir', '-p', mountPoint], { timeout: 5_000 });
 
       const { stdout: blkid } = await execFileAsync('sudo', [
-        'blkid', '-s', 'UUID', '-o', 'value', device,
+        'blkid', '-s', 'UUID', '-o', 'value', partDevice,
       ], { timeout: 10_000 });
       const uuid = blkid.trim();
 
@@ -269,7 +293,7 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
       await appendToFstab(fstabLine);
 
       await execFileAsync('sudo', ['mount', mountPoint], { timeout: 30_000 });
-      return `${device} formatted (${body.poolFs}), mounted at ${mountPoint}`;
+      return `${partDevice} formatted (${body.poolFs}), mounted at ${mountPoint}`;
     })
   );
 
