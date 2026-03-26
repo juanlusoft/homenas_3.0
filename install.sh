@@ -184,6 +184,10 @@ ok "Frontend built"
 
 mkdir -p "$INSTALL_DIR/data"
 chown -R "$REAL_USER:$REAL_USER" "$INSTALL_DIR/data"
+# Ensure storage directories are writable
+for dir in /mnt/storage /mnt/cache /mnt/parity /mnt/disks; do
+    [ -d "$dir" ] && chown -R "$REAL_USER:$REAL_USER" "$dir" 2>/dev/null || true
+done
 ok "Data directory ready"
 
 # ── Set ownership ──────────────────────────────────────────
