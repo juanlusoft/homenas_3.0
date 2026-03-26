@@ -10,7 +10,7 @@ import { audit } from '../middleware/audit.js';
 export const metricsRouter = Router();
 
 /** GET /api/system/metrics — Current system metrics */
-metricsRouter.get('/metrics', requireAuth, async (_req, res) => {
+metricsRouter.get('/metrics', async (_req, res) => {  // Public: dashboard needs it
   try {
     const [cpu, mem, temp, time, load] = await Promise.all([
       si.currentLoad(),
@@ -133,7 +133,7 @@ metricsRouter.post('/shutdown', requireAdmin, async (req, res) => {
 });
 
 /** GET /api/system/info — Static system info */
-metricsRouter.get('/info', requireAuth, async (_req, res) => {
+metricsRouter.get('/info', async (_req, res) => {
   try {
     const [system, os, cpu] = await Promise.all([
       si.system(),

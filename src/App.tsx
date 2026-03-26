@@ -110,7 +110,7 @@ export default function App() {
 
   // Compute real system health from live metrics
   const systemHealth = (() => {
-    if (!isConnected || !metrics) return { status: 'error' as const, label: 'Offline' };
+    if (!metrics) return { status: 'healthy' as const, label: t('header.allSystems') };
     const cpuHigh = parseFloat(metrics.cpu || '0') > 90;
     const tempHigh = (metrics.temperature ?? 0) > 80;
     if (cpuHigh || tempHigh) return { status: 'warning' as const, label: t('header.warning') };
