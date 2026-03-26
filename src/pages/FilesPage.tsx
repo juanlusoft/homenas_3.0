@@ -36,7 +36,6 @@ function formatSize(bytes: number): string {
   return `${bytes} B`;
 }
 
-const API = import.meta.env.VITE_API_URL || '/api';
 
 export default function FilesPage() {
   const [currentPath, setCurrentPath] = useState('/');
@@ -51,7 +50,7 @@ export default function FilesPage() {
   const fetchFiles = useCallback(async (path: string) => {
     setLoading(true);
     try {
-      const res = await authFetch(`${API}/files/list?path=${encodeURIComponent(path)}`);
+      const res = await authFetch(`/files/list?path=${encodeURIComponent(path)}`);
       if (res.ok) {
         const data = await res.json();
         setEntries(data);
@@ -90,7 +89,7 @@ export default function FilesPage() {
   // Create folder
   const handleMkdir = useCallback(async () => {
     if (!newFolderName.trim()) return;
-    await authFetch(`${API}/files/mkdir`, {
+    await authFetch('/files/mkdir', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dirPath: currentPath, name: newFolderName.trim() }),
@@ -107,7 +106,7 @@ export default function FilesPage() {
     const formData = new FormData();
     for (const file of files) formData.append('files', file);
     formData.append('path', currentPath);
-    await authFetch(`${API}/files/upload`, { method: 'POST', body: formData });
+    await authFetch('/files/upload', { method: 'POST', body: formData });
     fetchFiles(currentPath);
     e.target.value = '';
   }, [currentPath, fetchFiles]);

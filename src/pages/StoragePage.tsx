@@ -82,12 +82,11 @@ export default function StoragePage() {
   const runSmartCheck = useCallback(async () => {
     if (!disks?.length) return;
     setSmartRunning(true);
-    const API = import.meta.env.VITE_API_URL || '/api';
-    try {
+        try {
       await Promise.all(
         disks.map(d => {
           const dev = d.device.replace('/dev/', '').replace(/\d+$/, '');
-          return authFetch(`${API}/storage/smart-test/${dev}`, { method: 'POST' });
+          return authFetch(`/storage/smart-test/${dev}`, { method: 'POST' });
         })
       );
       refresh();

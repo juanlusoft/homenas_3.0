@@ -12,38 +12,37 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1e6).toFixed(1)} MB`;
 }
 
-const API = import.meta.env.VITE_API_URL || '/api';
 
 export default function ActiveBackupPage() {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
 
   const fetchDevices = useCallback(() =>
-    authFetch(`${API}/active-backup/devices`).then(r => r.json() as Promise<BackupDevice[]>), []);
+    authFetch('/active-backup/devices').then(r => r.json() as Promise<BackupDevice[]>), []);
   const fetchPending = useCallback(() =>
-    authFetch(`${API}/active-backup/pending`).then(r => r.json() as Promise<PendingAgent[]>), []);
+    authFetch('/active-backup/pending').then(r => r.json() as Promise<PendingAgent[]>), []);
 
   const { data: devices, loading, refresh } = useAPI<BackupDevice[]>(fetchDevices, 5000);
   const { data: pending, refresh: refreshPending } = useAPI<PendingAgent[]>(fetchPending, 10000);
 
   const handleBackup = useCallback(async (id: string) => {
-    await authFetch(`${API}/active-backup/devices/${id}/backup`, { method: 'POST' });
+    await authFetch(`/active-backup/devices/${id}/backup`, { method: 'POST' });
     refresh();
   }, [refresh]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await authFetch(`${API}/active-backup/devices/${id}`, { method: 'DELETE' });
+    await authFetch(`/active-backup/devices/${id}`, { method: 'DELETE' });
     setSelectedDevice(null);
     refresh();
   }, [refresh]);
 
   const handleApprove = useCallback(async (id: string) => {
-    await authFetch(`${API}/active-backup/pending/${id}/approve`, { method: 'POST' });
+    await authFetch(`/active-backup/pending/${id}/approve`, { method: 'POST' });
     refresh();
     refreshPending();
   }, [refresh, refreshPending]);
 
   const handleReject = useCallback(async (id: string) => {
-    await authFetch(`${API}/active-backup/pending/${id}/reject`, { method: 'POST' });
+    await authFetch(`/active-backup/pending/${id}/reject`, { method: 'POST' });
     refreshPending();
   }, [refreshPending]);
 

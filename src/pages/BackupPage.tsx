@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 import { useAPI } from '@/hooks/useAPI';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface BackupJob {
   id: string; name: string; type: 'full' | 'incremental' | 'snapshot';
@@ -33,9 +32,8 @@ function translateSchedule(s: string): string {
 const EMPTY_FORM = { name: '', type: 'incremental' as BackupJob['type'], schedule: '0 2 * * *', destination: '/mnt/backup/' };
 
 export default function BackupPage() {
-  const API = import.meta.env.VITE_API_URL || '/api';
   const fetchJobs = useCallback(() =>
-    authFetch(`${API}/backup`).then(r => r.json()), [API]);
+    authFetch('/backup').then(r => r.json()), []);
   const { data: jobsData, refresh } = useAPI<BackupJob[]>(fetchJobs, 5000);
   const jobs = jobsData || [];
   const [addOpen, setAddOpen] = useState(false);
@@ -50,7 +48,7 @@ export default function BackupPage() {
 
   const handleAdd = useCallback(async () => {
     if (!form.name.trim()) return;
-    await authFetch(`${API}/backup`, {
+    await authFetch('/backup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -58,11 +56,11 @@ export default function BackupPage() {
     refresh();
     setAddOpen(false);
     setForm(EMPTY_FORM);
-  }, [form, API, refresh]);
+  }, [form, refresh]);
 
   const handleEdit = useCallback(async () => {
     if (!editJob) return;
-    await authFetch(`${API}/backup/${editJob.id}`, {
+    await authFetch(`/backup/${editJob.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -70,14 +68,14 @@ export default function BackupPage() {
     refresh();
     setEditJob(null);
     setForm(EMPTY_FORM);
-  }, [editJob, form, API, refresh]);
+  }, [editJob, form, refresh]);
 
   const handleRunNow = useCallback(async (id: string) => {
-    await authFetch(`${API}/backup/run/${id}`, { method: 'POST' });
+    await authFetch(`/backup/run/${id}`, { method: 'POST' });
     refresh();
   }, []);
 
-  const handleRunAll = useCallback(async () => { await authFetch(`${API}/backup/run-all`, { method: 'POST' }); refresh(); }, [API, refresh]);
+  const handleRunAll = useCallback(async () => { await authFetch('/backup/run-all', { method: 'POST' }); refresh(); }, [refresh]);
 
   const openEdit = (job: BackupJob) => {
     setForm({ name: job.name, type: job.type, schedule: job.schedule, destination: job.destination });
@@ -137,7 +135,7 @@ export default function BackupPage() {
               <StitchButton size="sm" variant="ghost" onClick={() => openEdit(job)}>{t('backup.configure')}</StitchButton>
               {job.status === 'failed' && (
                 <StitchButton size="sm" variant="ghost" onClick={async () => {
-                  const res = await authFetch(`${API_URL}/backup/${job.id}/logs`);
+                  const res = await authFetch(`/backup/${job.id}/logs`);
                   if (res.ok) {
                     const data = await res.json();
                     setLogContent(data.log || 'No logs available');

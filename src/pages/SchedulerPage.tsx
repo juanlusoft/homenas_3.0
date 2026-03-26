@@ -6,10 +6,9 @@ import { useAPI } from '@/hooks/useAPI';
 
 interface Task { id: string; name: string; schedule: string; command: string; enabled: boolean; lastRun: string; lastResult: 'success' | 'failed' | 'never'; lastOutput?: string; }
 
-const API = import.meta.env.VITE_API_URL || '/api';
 
 export default function SchedulerPage() {
-  const fetchTasks = useCallback(() => authFetch(`${API}/scheduler`).then(r => r.json()), []);
+  const fetchTasks = useCallback(() => authFetch('/scheduler').then(r => r.json()), []);
   const { data: tasks, refresh } = useAPI<Task[]>(fetchTasks, 5000);
   const [addOpen, setAddOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -19,26 +18,26 @@ export default function SchedulerPage() {
 
   const handleAdd = useCallback(async () => {
     if (!form.name.trim() || !form.command.trim()) return;
-    await authFetch(`${API}/scheduler`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+    await authFetch('/scheduler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     setAddOpen(false); setForm({ name: '', schedule: '0 * * * *', command: '' }); refresh();
   }, [form, refresh]);
 
   const handleRun = useCallback(async (id: string) => {
-    await authFetch(`${API}/scheduler/${id}/run`, { method: 'POST' }); refresh();
+    await authFetch(`/scheduler/${id}/run`, { method: 'POST' }); refresh();
   }, [refresh]);
 
   const handleToggle = useCallback(async (task: Task) => {
-    await authFetch(`${API}/scheduler/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !task.enabled }) }); refresh();
+    await authFetch(`/scheduler/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !task.enabled }) }); refresh();
   }, [refresh]);
 
   const handleEdit = useCallback(async () => {
     if (!editTask) return;
-    await authFetch(`${API}/scheduler/${editTask.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+    await authFetch(`/scheduler/${editTask.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     setEditTask(null); refresh();
   }, [editTask, form, refresh]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await authFetch(`${API}/scheduler/${id}`, { method: 'DELETE' }); refresh();
+    await authFetch(`/scheduler/${id}`, { method: 'DELETE' }); refresh();
   }, [refresh]);
 
   const list = tasks || [];

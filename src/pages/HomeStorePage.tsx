@@ -96,8 +96,7 @@ export default function HomeStorePage() {
 
   // Sync installed/running state from real Docker containers on mount
   useEffect(() => {
-    const API = import.meta.env.VITE_API_URL || '/api';
-    authFetch(`${API}/store/status`).then(r => r.json()).then(data => {
+    authFetch('/store/status').then(r => r.json()).then(data => {
       if (data.running && Array.isArray(data.running)) {
         setApps(prev => prev.map(app => {
           const isRunning = data.running.some((name: string) => name === app.id || name.includes(app.id));
@@ -121,9 +120,8 @@ export default function HomeStorePage() {
   const handleUninstall = useCallback(async (id: string) => {
     if (!confirm(t('store.uninstall') + '?') || busy[id]) return;
     setBusy(prev => ({ ...prev, [id]: 'uninstalling' }));
-    const API = import.meta.env.VITE_API_URL || '/api';
     try {
-      const res = await authFetch(`${API}/store/uninstall/${id}`, {
+      const res = await authFetch(`/store/uninstall/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: id }),
@@ -174,11 +172,10 @@ export default function HomeStorePage() {
       // New install — close modal and trigger install
       setConfigApp(null);
       setBusy(prev => ({ ...prev, [id]: 'installing' }));
-      const API = import.meta.env.VITE_API_URL || '/api';
       try {
         const envPairs = configForm.env.split('\n').filter(Boolean);
         const volumePairs = configForm.volumes.split('\n').filter(Boolean);
-        const res = await authFetch(`${API}/store/install/${id}`, {
+        const res = await authFetch(`/store/install/${id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -202,9 +199,8 @@ export default function HomeStorePage() {
       }
     } else {
       // Edit existing — just update config on server
-      const API = import.meta.env.VITE_API_URL || '/api';
       try {
-        await authFetch(`${API}/store/update/${id}`, {
+        await authFetch(`/store/update/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

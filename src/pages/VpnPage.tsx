@@ -7,23 +7,22 @@ import { useAPI } from '@/hooks/useAPI';
 interface VpnPeer { id: string; name: string; publicKey: string; allowedIPs: string; createdAt: string; }
 interface VpnConfig { enabled: boolean; listenPort: number; serverAddress: string; publicKey: string; peers: VpnPeer[]; }
 
-const API = import.meta.env.VITE_API_URL || '/api';
 
 export default function VpnPage() {
-  const fetchVpn = useCallback(() => authFetch(`${API}/vpn`).then(r => r.json()), []);
+  const fetchVpn = useCallback(() => authFetch('/vpn').then(r => r.json()), []);
   const { data: vpn, refresh } = useAPI<VpnConfig>(fetchVpn, 10000);
   const [addOpen, setAddOpen] = useState(false);
   const [peerName, setPeerName] = useState('');
   const [clientConfig, setClientConfig] = useState('');
 
   const handleSetup = useCallback(async () => {
-    await authFetch(`${API}/vpn/setup`, { method: 'POST' });
+    await authFetch('/vpn/setup', { method: 'POST' });
     refresh();
   }, [refresh]);
 
   const handleAddPeer = useCallback(async () => {
     if (!peerName.trim()) return;
-    const res = await authFetch(`${API}/vpn/peers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: peerName.trim() }) });
+    const res = await authFetch('/vpn/peers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: peerName.trim() }) });
     const data = await res.json();
     if (data.clientConfig) setClientConfig(data.clientConfig);
     setPeerName('');
@@ -32,7 +31,7 @@ export default function VpnPage() {
   }, [peerName, refresh]);
 
   const handleDeletePeer = useCallback(async (id: string) => {
-    await authFetch(`${API}/vpn/peers/${id}`, { method: 'DELETE' });
+    await authFetch(`/vpn/peers/${id}`, { method: 'DELETE' });
     refresh();
   }, [refresh]);
 

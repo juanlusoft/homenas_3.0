@@ -96,6 +96,7 @@ const viewComponents: Record<View, React.FC> = {
   users: UsersPage,
 };
 
+const API = import.meta.env.VITE_API_URL || '/api';
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -150,7 +151,6 @@ export default function App() {
     const storedUser = getStoredUser();
     if (token && storedUser) {
       // Verify token is still valid
-      const API = import.meta.env.VITE_API_URL || '/api';
       fetch(`${API}/users/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       }).then(res => {
@@ -168,7 +168,6 @@ export default function App() {
 
   // Check backend setup status on mount
   useEffect(() => {
-    const API = import.meta.env.VITE_API_URL || '/api';
     fetch(`${API}/setup/status`).then(r => r.json()).then(data => {
       if (data.setupCompleted) {
         setSetupDone(true);
@@ -202,7 +201,6 @@ export default function App() {
   // Show setup wizard on first run
   if (!setupDone) {
     return <SetupWizard onComplete={async (data) => {
-      const API = import.meta.env.VITE_API_URL || '/api';
       try {
         const res = await fetch(`${API}/setup/apply`, {
           method: 'POST',

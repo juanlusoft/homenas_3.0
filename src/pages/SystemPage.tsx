@@ -38,13 +38,12 @@ function formatUptime(seconds: number): string {
 const goTo = (view: string) => window.dispatchEvent(new CustomEvent('homepinas:navigate', { detail: view }));
 
 export default function SystemPage() {
-  const API = import.meta.env.VITE_API_URL || '/api';
   const [diagResult, setDiagResult] = useState<string>('');
   const [updatesResult, setUpdatesResult] = useState<string>('');
 
   const fetchInfo = useCallback(() =>
-    authFetch(`${API}/system/info`).then(r => r.json() as Promise<SystemInfo>),
-  [API]);
+    authFetch('/system/info').then(r => r.json() as Promise<SystemInfo>),
+  []);
   const { data: info, loading: infoLoading } = useAPI<SystemInfo>(fetchInfo);
   const { metrics, isConnected } = useLiveMetrics();
   const [updating, setUpdating] = useState(false);
@@ -55,7 +54,7 @@ export default function SystemPage() {
     setUpdating(true);
     setUpdateResult(null);
     try {
-      const res = await authFetch(`${API}/system/updates`);
+      const res = await authFetch('/system/updates');
       if (res.ok) {
         const data = await res.json();
         if (data.count > 0) {
@@ -75,13 +74,13 @@ export default function SystemPage() {
     } finally {
       setUpdating(false);
     }
-  }, [API]);
+  }, []);
 
   const runDiagnostics = useCallback(async () => {
     setDiagRunning(true);
     setDiagResult('Running diagnostics...');
     try {
-      const res = await authFetch(`${API}/system/diagnostics`);
+      const res = await authFetch('/system/diagnostics');
       if (res.ok) {
         const data = await res.json();
         const lines = [
@@ -124,7 +123,7 @@ export default function SystemPage() {
     } finally {
       setDiagRunning(false);
     }
-  }, [API]);
+  }, []);
 
   return (
     <div className="space-y-8">

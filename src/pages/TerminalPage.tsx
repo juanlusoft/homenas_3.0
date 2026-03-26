@@ -9,7 +9,6 @@ interface TermLine {
   text: string;
 }
 
-const API = import.meta.env.VITE_API_URL || '/api';
 let lineId = 0;
 
 export default function TerminalPage() {
@@ -53,7 +52,7 @@ export default function TerminalPage() {
     setRunning(true);
 
     try {
-      const res = await authFetch(`${API}/terminal/exec`, {
+      const res = await authFetch('/terminal/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: trimmed }),
