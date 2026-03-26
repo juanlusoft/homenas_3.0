@@ -214,8 +214,10 @@ async function getLsblkDisks(): Promise<Array<{ device: string; size: number; mo
     const data = JSON.parse(stdout);
     return (data.blockdevices || [])
       .filter((d: any) => {
-        if (d.type !== 'disk' || d.size < 1e9) return false;
-        if (d.name.startsWith('mmcblk') || d.name.startsWith('loop')) return false;
+        if (d.type !== 'disk') return false;
+        if (d.name.startsWith('mmcblk') || d.name.startsWith('loop') || d.name.startsWith('zram')) return false;
+        // JMB585 bridge reports size=0 but disk is real — keep it
+        if (d.size < 1e9 && d.model !== '456' && d.vendor?.trim() !== 'ASM') return false;
         return true;
       })
       .map((d: any) => ({
@@ -227,6 +229,16 @@ async function getLsblkDisks(): Promise<Array<{ device: string; size: number; mo
         serial: (d.serial || '').trim(),
         tran: d.tran || '',
       }));
+    // Fix size=0 for JMB585 bridge: read from /sys/block/NAME/size
+    for (const disk of result) {
+      if (disk.size === 0 || disk.size < 1e9) {
+        try {
+          const fs = await import('fs');
+          const sysSize = fs.readFileSync('/sys/block/' + disk.device.replace('/dev/', '') + '/size', 'utf-8').trim();
+          disk.size = parseInt(sysSize) * 512; // sectors * 512 bytes
+        } catch {}
+      }
+    }
   } catch {
     return [];
   }
