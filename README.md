@@ -1,6 +1,6 @@
-# HomePiNAS v6
+# HomePiNAS v6.3
 
-**Dashboard NAS de nueva generación · Diseño Stitch "Luminous Obsidian"**
+**Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
 ## Instalación
 
@@ -8,11 +8,12 @@
 curl -sL https://raw.githubusercontent.com/juanlusoft/homenas_3.0/main/install.sh | sudo bash
 ```
 
-El instalador:
+El instalador automáticamente:
 - Actualiza el sistema (`apt update && upgrade`)
 - Instala Node.js 22, pnpm, nginx, git
 - Configura HTTPS con certificado self-signed (puerto 443)
 - Crea servicio systemd con auto-arranque
+- Configura sudoers para smartctl
 
 Accede por: `https://<IP-del-NAS>`
 
@@ -23,24 +24,24 @@ Accede por: `https://<IP-del-NAS>`
 | Frontend | React 19 + TypeScript + Vite 8 + Tailwind CSS 4 |
 | UI | shadcn/ui + Stitch "Luminous Obsidian" |
 | Backend | Express 5 + Socket.io 4 |
-| Auth | JWT + bcrypt + TOTP 2FA |
+| Auth | JWT + bcrypt + TOTP 2FA + roles |
 | Monitorización | systeminformation + lsblk (real-time) |
-| Base de datos | JSON files (data/) + better-sqlite3 |
+| Storage | MergerFS + SnapRAID + SMART (smartctl) |
 | Charts | Recharts 3 (lazy-loaded) |
-| Notificaciones | Telegram + SMTP |
+| Notificaciones | Telegram + SMTP automáticas |
 | i18n | Español + English (430+ claves) |
 | PWA | Service Worker + manifest.json |
 
-## Vistas (19 + Login + Wizard)
+## 19 Vistas + Login + Wizard
 
 | Vista | Descripción |
 |-------|-------------|
 | 🔐 Login | Auth JWT real con control de roles |
-| 📊 Panel | Métricas real-time (CPU/Mem/Uptime/Disco) + 4 gráficos |
-| 📂 Archivos | Gestor de archivos (upload/mkdir/delete/rename) |
+| 📊 Panel | Métricas real-time + 4 gráficos + uptime + disco |
+| 📂 Archivos | Upload, mkdir, download, rename, delete |
 | 🔗 Compartidos | Samba + NFS (CRUD + toggle + config real) |
-| 💾 Almacenamiento | Discos SMART real + dedup + badges rol |
-| 📦 Copias de seguridad | rsync/btrfs real + CRUD + run |
+| 💾 Almacenamiento | SMART real + dedup + badges rol |
+| 📦 Backup | rsync/btrfs real + CRUD + run |
 | 🖥️ Active Backup | Backup de PCs remotos (Win/Mac/Linux) |
 | 🐳 Servicios | Docker (logs/restart/stop) + systemd (start/stop) |
 | 🏗️ Stacks | Docker Compose real (up/down/edit/create) |
@@ -61,10 +62,9 @@ Accede por: `https://<IP-del-NAS>`
 
 - Detección de discos via `lsblk` (JMB585, NVMe, SATA, USB)
 - SnapRAID + MergerFS / Mirror / Basic
-- Asignación de roles: Paridad / Datos / Caché
 - Formateo en paralelo (todos los discos a la vez)
 - Panel de progreso en tiempo real
-- Marca disco del SO como "Sistema"
+- Desmonta discos + crea partición GPT automáticamente
 
 ## Alertas Automáticas (Telegram)
 
@@ -85,31 +85,32 @@ pnpm build        # producción
 pnpm lint         # ESLint 10
 ```
 
-## Backup Agent
-
-App Electron para backup automático de PCs al NAS.
-- Windows (.exe) / macOS (.dmg) / Linux (.AppImage)
-- Auto-descubrimiento del NAS en la red
-- Backup incremental o imagen completa
-- Descarga: [GitHub Releases](https://github.com/juanlusoft/homenas_3.0/releases)
-
 ## 📋 Changelog
 
-### v6.2.0 (25 Marzo 2026)
-- Auth JWT real en todas las páginas
-- CORS abierto para LAN
-- lsblk para detección completa de discos
-- nginx obligatorio en instalador
-- apt update+upgrade automático
-- Formateo paralelo de discos
-- Panel de progreso en wizard
-- Factory reset desde UI
-- Alertas Telegram automáticas
-- VPN + Scheduler + DDNS + SMTP
-- 19 rutas backend, 430+ i18n keys
+### v6.3.0 (26 Marzo 2026)
+- File actions: download, rename, delete per file
+- MergerFS mount fix (ProtectSystem removed)
+- authFetch double /api prefix fixed globally
+- Theme + language toggles in header
+- Upload to correct directory
+- Password min 6 chars
+- Disk format: unmount + GPT partition
+- Wizard progress panel real-time
+- Factory reset button
+- Network throughput integer display
+- MergerFS dedup (no /mnt/storage duplicate)
+
+### v6.0.0 (25 Marzo 2026)
+- VPN + Scheduler pages
+- Reboot/shutdown from UI
+- Notification history
+- Config export/import
+- DDNS + SMTP + Telegram alerts
+- Health monitor (disk/temp)
 
 ### v3.0.0 (21 Marzo 2026) - Release Inicial
 
 ---
 
 **Equipo**: Vision 👁️ (HomeLabs Avengers)
+**Repo**: https://github.com/juanlusoft/homenas_3.0
