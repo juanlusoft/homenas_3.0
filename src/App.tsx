@@ -105,7 +105,7 @@ export default function App() {
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const { notifications, markRead, clearAll } = useNotifications();
-  const { metrics, isConnected } = useLiveMetrics();
+  const { metrics } = useLiveMetrics();
   const ViewComponent = viewComponents[currentView];
 
   // Compute real system health from live metrics
