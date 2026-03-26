@@ -134,6 +134,14 @@ sharesRouter.delete('/:id', requireAdmin, async (req: Request, res: Response) =>
   const target = shares.find(s => s.id === req.params.id);
   shares = shares.filter(s => s.id !== req.params.id);
   saveShares(shares);
+
+  // Optionally delete the folder
+  if (req.body?.deleteFolder && target?.path) {
+    try {
+      const fs = await import('fs');
+      fs.rmSync(target.path, { recursive: true });
+    } catch {}
+  }
   await applySambaConfig(shares.filter(s => s.protocol === 'smb' && s.status === 'active'));
   audit('share_deleted', { user: req.user?.username, details: `Share "${target?.name}"` });
   res.json({ success: true });
