@@ -70,7 +70,7 @@ export default function DashboardPage() {
   const { metrics: live, isConnected, history } = useLiveMetrics();
   const fetchDisks = useCallback(() => api.getDisks(), []);
   const fetchUptime = useCallback(() =>
-    authFetch(`${import.meta.env.VITE_API_URL || '/api'}/system/metrics`).then(r => r.json()), []);
+    authFetch('/system/metrics').then(r => r.json()), []);
   const { data: disks, loading: disksLoading } = useAPI<Disk[]>(fetchDisks, 10000);
   const { data: sysMetrics } = useAPI<{ uptime: number }>(fetchUptime, 5000);
 

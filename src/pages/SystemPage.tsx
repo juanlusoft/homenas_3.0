@@ -247,11 +247,11 @@ export default function SystemPage() {
         <div className="flex gap-3">
           <StitchButton size="sm" variant="ghost" onClick={async () => {
             if (!confirm('Reboot NAS?')) return;
-            await authFetch((import.meta.env.VITE_API_URL || '/api') + '/system/reboot', { method: 'POST' });
+            await authFetch('/system/reboot', { method: 'POST' });
           }}>Reboot</StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={async () => {
             if (!confirm('Shutdown NAS? You will need to power it on physically.')) return;
-            await authFetch((import.meta.env.VITE_API_URL || '/api') + '/system/shutdown', { method: 'POST' });
+            await authFetch('/system/shutdown', { method: 'POST' });
           }}>Shutdown</StitchButton>
         </div>
       </GlassCard>
