@@ -26,11 +26,9 @@ export async function authFetch(path: string, options: RequestInit = {}): Promis
   const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
   const res = await fetch(url, { ...options, headers });
 
-  // If 401, token expired — redirect to login
+  // If 401, token expired — just log it, don't reload (avoids infinite loop)
   if (res.status === 401) {
-    localStorage.removeItem('homepinas-token');
-    localStorage.removeItem('homepinas-setup');
-    window.location.reload();
+    console.warn('[authFetch] 401 on', path);
   }
 
   return res;
