@@ -105,8 +105,7 @@ export default function FilesPage() {
     if (!files?.length) return;
     const formData = new FormData();
     for (const file of files) formData.append('files', file);
-    formData.append('path', currentPath);
-    await authFetch('/files/upload', { method: 'POST', body: formData });
+    await authFetch(`/files/upload?path=${encodeURIComponent(currentPath)}`, { method: 'POST', body: formData });
     fetchFiles(currentPath);
     e.target.value = '';
   }, [currentPath, fetchFiles]);
