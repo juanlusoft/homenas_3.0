@@ -77,15 +77,7 @@ filesRouter.post('/mkdir', async (req, res) => {
   if (!name || /[\/\\]/.test(name)) return res.status(400).json({ error: 'Invalid name' });
   const target = path.join(safePath(dirPath || '/'), name);
   try {
-    try {
-      await fs.promises.mkdir(target, { recursive: true });
-    } catch {
-      // Fallback: use sudo if permission denied
-      const { execFile } = await import('child_process');
-      const { promisify } = await import('util');
-      await promisify(execFile)('sudo', ['mkdir', '-p', target], { timeout: 5000 });
-      await promisify(execFile)('sudo', ['chown', `${process.env.USER || 'juanlu'}:${process.env.USER || 'juanlu'}`, target], { timeout: 5000 });
-    }
+    await fs.promises.mkdir(target, { recursive: true });
     res.json({ success: true });
   } catch (e) {
     console.error('[mkdir] Failed:', target, e instanceof Error ? e.message : e);
