@@ -299,26 +299,6 @@ export default function App() {
               Logout
             </button>
           </div>
-          <div className="flex items-center gap-2 mb-2">
-            <button onClick={() => {
-              const root = document.documentElement;
-              const isDark = root.style.colorScheme !== 'light';
-              root.style.colorScheme = isDark ? 'light' : 'dark';
-              document.body.style.backgroundColor = isDark ? '#f0f0f0' : 'var(--surface)';
-              document.body.style.color = isDark ? '#1a1a1a' : 'var(--text-primary)';
-              localStorage.setItem('homepinas-theme', isDark ? 'light' : 'dark');
-            }} className="text-xs px-2 py-1 rounded bg-surface-high text-[var(--text-secondary)] hover:text-teal">
-              🌓
-            </button>
-            <button onClick={() => {
-              const current = localStorage.getItem('homepinas-language') || 'es';
-              const next = current === 'es' ? 'en' : 'es';
-              setLanguage(next);
-              setLangTick(n => n + 1);
-            }} className="text-xs px-2 py-1 rounded bg-surface-high text-[var(--text-secondary)] hover:text-teal">
-              {localStorage.getItem('homepinas-language') === 'en' ? '🇬🇧' : '🇪🇸'}
-            </button>
-          </div>
           <p className="text-xs text-[var(--text-disabled)]">v6.2.0 · Stitch</p>
         </div>
       </aside>
@@ -347,10 +327,25 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-2 lg:gap-3">
+              <button onClick={() => {
+                const next = (localStorage.getItem('homepinas-language') || 'es') === 'es' ? 'en' : 'es';
+                setLanguage(next); setLangTick(n => n + 1);
+              }} className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-surface-void transition-colors" title="Idioma">
+                {(localStorage.getItem('homepinas-language') || 'es') === 'es' ? '🇪🇸' : '🇬🇧'}
+              </button>
+              <button onClick={() => {
+                const isDark = document.documentElement.style.colorScheme !== 'light';
+                document.documentElement.style.colorScheme = isDark ? 'light' : 'dark';
+                document.body.style.backgroundColor = isDark ? '#f0f0f0' : '';
+                document.body.style.color = isDark ? '#1a1a1a' : '';
+                localStorage.setItem('homepinas-theme', isDark ? 'light' : 'dark');
+              }} className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-surface-void transition-colors" title="Tema">
+                🌓
+              </button>
               <NotificationBell notifications={notifications} onMarkRead={markRead} onClearAll={clearAll} />
               <GlowPill status={systemHealth.status} label={systemHealth.label} />
               <StitchButton size="sm" className="hidden sm:inline-flex" onClick={() => navigate('settings')}>
-                Settings
+                {t('header.settings')}
               </StitchButton>
             </div>
           </div>
