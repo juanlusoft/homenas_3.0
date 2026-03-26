@@ -341,7 +341,7 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
       });
       const mergedMount = '/mnt/storage';
       const branchStr = branches.join(':');
-      const mergerfsOpts = 'defaults,allow_other,use_ino,category.create=mfs,moveonenospc=true,dropcacheonclose=true,cache.files=auto-full,minfreespace=4G,fsname=mergerfs';
+      const mergerfsOpts = 'allow_other,use_ino,category.create=mfs,moveonenospc=true,dropcacheonclose=true,cache.files=auto-full,minfreespace=4G,fsname=mergerfs';
 
       await execFileAsync('sudo', ['mkdir', '-p', mergedMount], { timeout: 5_000 });
 
