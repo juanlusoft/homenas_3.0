@@ -25,6 +25,7 @@ export default function SharesPage() {
   const { data: sharesData, refresh } = useAPI<Share[]>(fetchShares, 0);
   const shares = sharesData || [];
   const [addOpen, setAddOpen] = useState(false);
+  const [deleteShare, setDeleteShare] = useState<Share | null>(null);
   const [editShare, setEditShare] = useState<Share | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
@@ -138,12 +139,7 @@ export default function SharesPage() {
               <StitchButton size="sm" variant="ghost" onClick={() => handleToggle(share.id)}>
                 {share.status === 'active' ? t('shares.disable') : t('shares.enable')}
               </StitchButton>
-              <StitchButton size="sm" variant="ghost" onClick={async () => {
-                if (!confirm(`¿Eliminar el compartido "${share.name}"?`)) return;
-                const deleteFolder = confirm('¿Eliminar también la carpeta y sus archivos?\n\n• Aceptar = borrar carpeta y archivos\n• Cancelar = mantener archivos en disco');
-                await authFetch(`/shares/${share.id}`, { method: 'DELETE', body: JSON.stringify({ deleteFolder }) });
-                refresh();
-              }}>🗑️</StitchButton>
+              <StitchButton size="sm" variant="ghost" onClick={() => setDeleteShare(share)}>🗑️</StitchButton>
             </div>
           </GlassCard>
         ))}
@@ -157,6 +153,21 @@ export default function SharesPage() {
       <Modal open={!!editShare} onClose={() => setEditShare(null)} title={`${t('shares.edit')}: ${editShare?.name}`}
         actions={<><StitchButton size="sm" variant="ghost" onClick={() => setEditShare(null)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={handleEdit}>{t('common.save')}</StitchButton></>}>
         <ShareForm />
+      </Modal>
+      {/* Delete confirmation */}
+      <Modal open={!!deleteShare} onClose={() => setDeleteShare(null)} title={`¿Eliminar "${deleteShare?.name}"?`}
+        actions={<>
+          <StitchButton size="sm" variant="ghost" onClick={() => setDeleteShare(null)}>{t('common.cancel')}</StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={async () => {
+            if (deleteShare) { await authFetch(`/shares/${deleteShare.id}`, { method: 'DELETE', body: JSON.stringify({ deleteFolder: false }) }); refresh(); }
+            setDeleteShare(null);
+          }}>Mantener archivos</StitchButton>
+          <StitchButton size="sm" onClick={async () => {
+            if (deleteShare) { await authFetch(`/shares/${deleteShare.id}`, { method: 'DELETE', body: JSON.stringify({ deleteFolder: true }) }); refresh(); }
+            setDeleteShare(null);
+          }}>Eliminar todo</StitchButton>
+        </>}>
+        <p className="text-sm text-[var(--text-secondary)]">¿Qué quieres hacer con la carpeta <strong>{deleteShare?.path}</strong> y sus archivos?</p>
       </Modal>
     </div>
   );
