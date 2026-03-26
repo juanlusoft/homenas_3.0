@@ -290,7 +290,7 @@ export default function App() {
               Logout
             </button>
           </div>
-          <p className="text-xs text-[var(--text-disabled)]">v6.3.0 · Stitch</p>
+          <p className="text-xs text-[var(--text-disabled)]">v6.4.0 · Stitch</p>
         </div>
       </aside>
 

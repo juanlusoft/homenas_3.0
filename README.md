@@ -1,4 +1,4 @@
-# HomePiNAS v6.3
+# HomePiNAS v6.4
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
