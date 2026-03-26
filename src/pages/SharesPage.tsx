@@ -70,8 +70,15 @@ export default function SharesPage() {
 
   const ShareForm = () => (
     <div className="space-y-3">
-      <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('files.name')} autoFocus className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
-      <input value={form.path} onChange={e => setForm(f => ({ ...f, path: e.target.value }))} placeholder="/mnt/storage/..." className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
+      <input value={form.name} onChange={e => {
+          const name = e.target.value;
+          setForm(f => ({ ...f, name, path: '/mnt/storage/' + name.toLowerCase().replace(/[^a-z0-9_-]/g, '') }));
+        }} placeholder={t('files.name')} autoFocus className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
+      <div>
+        <label className="block text-xs text-[var(--text-secondary)] mb-1">Ruta en disco</label>
+        <input value={form.path} onChange={e => setForm(f => ({ ...f, path: e.target.value }))} placeholder="/mnt/storage/musica" className="stitch-input w-full rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]" />
+        <p className="text-xs text-[var(--text-disabled)] mt-1">Se creará automáticamente si no existe</p>
+      </div>
       <div className="flex gap-2">
         <select value={form.protocol} onChange={e => setForm(f => ({ ...f, protocol: e.target.value as 'smb' | 'nfs' }))} className="stitch-input flex-1 rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)]">
           <option value="smb">SMB</option><option value="nfs">NFS</option>
