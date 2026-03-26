@@ -215,9 +215,6 @@ Environment=NODE_ENV=production
 Environment=PORT=$PORT
 
 # Security hardening (NoNewPrivileges omitted — sudo smartctl needs privilege escalation)
-ProtectSystem=strict
-ReadWritePaths=$INSTALL_DIR/data
-PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
