@@ -41,7 +41,7 @@ terminalRouter.post('/exec', requireAdmin, terminalLimiter, async (req: Request,
   const args = parts.slice(1);
 
   // Security: check whitelist
-  if (!ALLOWED_COMMANDS.has(cmd) && cmd !== 'clear' && cmd !== 'help') {
+  if (!ALLOWED_COMMANDS.has(cmd) && cmd !== 'clear' && cmd !== 'help' && cmd !== 'cd') {
     audit('terminal_blocked', { user: req.user?.username, details: `Blocked: ${cmd}` });
     return res.json({
       output: `bash: ${cmd}: comando no permitido. Escribe "help" para ver comandos disponibles.`,
