@@ -40,7 +40,6 @@ function getNavItems(role: 'admin' | 'user' | 'readonly'): { id: View; label: st
     { id: 'homestore', label: t('nav.homestore'), icon: '🏪' },
     { id: 'network', label: t('nav.network'), icon: '🌐' },
     { id: 'logs', label: t('nav.logs'), icon: '📋' },
-    { id: 'vpn', label: 'VPN', icon: '🔐' },
     { id: 'scheduler', label: t('sched.title'), icon: '⏰' },
     { id: 'system', label: t('nav.system'), icon: '⚙️' },
   ];
