@@ -102,7 +102,7 @@ export const api = {
   delete: fetchAPI.delete,
   // Legacy convenience methods used by pages
   getDisks: () => fetchAPI<DiskInfo[]>('/storage/disks'),
-  getNetwork: () => fetchAPI<NetworkInterface[]>('/network'),
+  getNetwork: () => fetchAPI<NetworkInterface[]>('/network/interfaces'),
   getDocker: () => fetchAPI<DockerContainer[]>('/services/docker'),
   getSystemd: () => fetchAPI<SystemdService[]>('/services/systemd'),
 };
@@ -196,6 +196,6 @@ export interface SystemdService {
 export const fetchMetrics = (): Promise<SystemMetrics> => fetchAPI('/system');
 export type Disk = DiskInfo;
 export const fetchDisks = (): Promise<DiskInfo[]> => fetchAPI('/storage/disks');
-export const fetchNetwork = (): Promise<NetworkInterface[]> => fetchAPI('/network');
+export const fetchNetwork = (): Promise<NetworkInterface[]> => fetchAPI('/network/interfaces');
 export const fetchDocker = (): Promise<DockerContainer[]> => fetchAPI('/services/docker');
 export const fetchSystemd = (): Promise<SystemdService[]> => fetchAPI('/services/systemd');
