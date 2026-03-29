@@ -25,6 +25,8 @@ const ALLOWED_COMMANDS = new Set([
 const BLOCKED_ARGS = ['--exec', '-exec', '|', ';', '&&', '||', '`', '$(', '>', '<', '>>'];
 
 /** POST /api/terminal/exec — Execute a command (admin only, rate limited) */
+let cwd = '/';
+
 terminalRouter.post('/exec', requireAdmin, terminalLimiter, async (req: Request, res: Response) => {
   const { command } = req.body;
   if (!command || typeof command !== 'string') {
@@ -58,6 +60,17 @@ terminalRouter.post('/exec', requireAdmin, terminalLimiter, async (req: Request,
   }
 
   if (cmd === 'clear') return res.json({ output: '', exitCode: 0, clear: true });
+  if (cmd === 'cd') {
+    const target = args[0] || '/home';
+    const pathMod = require('path');
+    const fsMod = require('fs');
+    const newDir = pathMod.resolve(cwd, target);
+    if (fsMod.existsSync(newDir) && fsMod.statSync(newDir).isDirectory()) {
+      cwd = newDir;
+      return res.json({ output: '', exitCode: 0, cwd });
+    }
+    return res.json({ output: `bash: cd: ${target}: No existe el directorio`, exitCode: 1 });
+  }
   if (cmd === 'help') {
     return res.json({
       output: `Comandos disponibles:\n${Array.from(ALLOWED_COMMANDS).sort().join('\n')}`,
@@ -70,6 +83,7 @@ terminalRouter.post('/exec', requireAdmin, terminalLimiter, async (req: Request,
   try {
     const { stdout, stderr } = await execFileAsync(cmd, args, {
       timeout: 15000,
+      cwd,
       cwd: '/home',
       maxBuffer: 1024 * 1024,
       env: { ...process.env, TERM: 'dumb', COLUMNS: '120' },
