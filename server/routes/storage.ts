@@ -765,3 +765,237 @@ storageRouter.get('/snapraid/progress/:jobId', requireAuth, (req, res) => {
   if (!job) return res.status(404).json({ error: 'Job not found' });
   res.json({ output: job.output, done: job.done, exitCode: job.exitCode, startedAt: job.startedAt });
 });
+
+// ── Badblocks ────────────────────────────────────────────────────────────────
+
+interface BadblocksJob {
+  output: string[];
+  done: boolean;
+  exitCode: number | null;
+  startedAt: string;
+  percent: number;
+  badCount: number;
+  proc?: import('child_process').ChildProcess;
+}
+
+const badblocksJobs = new Map<string, BadblocksJob>();
+
+/**
+ * POST /api/storage/badblocks/:device
+ * Starts a non-destructive read-only surface scan using badblocks.
+ * Safe to run on a mounted disk.
+ */
+storageRouter.post('/badblocks/:device', requireAdmin, (req, res) => {
+  const devName = req.params.device.replace(/[^a-zA-Z0-9]/g, '');
+  if (!devName) return res.status(400).json({ error: 'Invalid device' });
+  const device = `/dev/${devName}`;
+
+  // Only one scan per device at a time
+  const existing = badblocksJobs.get(devName);
+  if (existing && !existing.done) {
+    return res.status(409).json({ error: 'Scan already running for this device' });
+  }
+
+  const { spawn } = require('child_process') as typeof import('child_process');
+  const job: BadblocksJob = {
+    output: [], done: false, exitCode: null,
+    startedAt: new Date().toISOString(), percent: 0, badCount: 0,
+  };
+  badblocksJobs.set(devName, job);
+
+  // -s = show progress, -v = verbose, -n = non-destructive read-write (safer than -w)
+  // Use -s (progress to stderr) -v (verbose) readonly mode
+  const proc = spawn('sudo', ['badblocks', '-sv', device], { stdio: ['ignore', 'pipe', 'pipe'] });
+  job.proc = proc;
+
+  const onData = (chunk: Buffer) => {
+    const text = chunk.toString();
+    const lines = text.split(/[\n\r]+/).filter(Boolean);
+    for (const line of lines) {
+      job.output.push(line);
+      // Parse progress: "Checking blocks 0 to 976773167"  / "123456789/976773167"
+      const pctMatch = line.match(/(\d+)\/(\d+)/);
+      if (pctMatch) {
+        job.percent = Math.round((parseInt(pctMatch[1]) / parseInt(pctMatch[2])) * 100);
+      }
+      // Count bad blocks reported
+      if (line.match(/^\d+$/)) job.badCount++;
+    }
+    if (job.output.length > 1000) job.output = job.output.slice(-1000);
+  };
+
+  proc.stdout.on('data', onData);
+  proc.stderr.on('data', onData);
+  proc.on('close', (code) => {
+    job.done = true;
+    job.exitCode = code;
+    job.percent = 100;
+    job.proc = undefined;
+  });
+
+  res.json({ device, message: `Escaneo iniciado en ${device}` });
+});
+
+/** GET /api/storage/badblocks/:device/status — Progress of a running scan */
+storageRouter.get('/badblocks/:device/status', requireAuth, (req, res) => {
+  const devName = req.params.device.replace(/[^a-zA-Z0-9]/g, '');
+  const job = badblocksJobs.get(devName);
+  if (!job) return res.json({ running: false, done: false, percent: 0, badCount: 0, output: [] });
+  res.json({
+    running: !job.done,
+    done: job.done,
+    exitCode: job.exitCode,
+    percent: job.percent,
+    badCount: job.badCount,
+    startedAt: job.startedAt,
+    output: job.output.slice(-50), // last 50 lines
+  });
+});
+
+/** DELETE /api/storage/badblocks/:device — Cancel a running scan */
+storageRouter.delete('/badblocks/:device', requireAdmin, (req, res) => {
+  const devName = req.params.device.replace(/[^a-zA-Z0-9]/g, '');
+  const job = badblocksJobs.get(devName);
+  if (!job || job.done) return res.status(404).json({ error: 'No active scan' });
+  try {
+    job.proc?.kill('SIGTERM');
+    job.done = true;
+    job.exitCode = -1;
+    res.json({ success: true, message: 'Escaneo cancelado' });
+  } catch {
+    res.status(500).json({ error: 'Could not cancel scan' });
+  }
+});
+
+// ── Cache mover ──────────────────────────────────────────────────────────────
+
+interface CacheMoverJob {
+  output: string[];
+  done: boolean;
+  exitCode: number | null;
+  startedAt: string;
+  proc?: import('child_process').ChildProcess;
+}
+
+let cacheMoverJob: CacheMoverJob | null = null;
+
+/** GET /api/storage/cache/status — Cache disk usage and mover status */
+storageRouter.get('/cache/status', requireAuth, async (_req, res) => {
+  try {
+    const mounts = fs.readFileSync('/proc/mounts', 'utf-8');
+    const cacheLines = mounts.split('\n').filter(l => l.includes('/mnt/cache'));
+    const pool = await getMergerFSPool();
+
+    const cacheDisks = await Promise.all(
+      cacheLines.map(async line => {
+        const parts = line.split(' ');
+        const mountpoint = parts[1];
+        try {
+          const { stdout } = await execFileAsync('df', ['-B1', '--output=size,used,avail,pcent', mountpoint], { timeout: 5000 });
+          const [, dataLine] = stdout.trim().split('\n');
+          const [size, used, avail, pct] = dataLine.trim().split(/\s+/);
+          return { mountpoint, size: parseInt(size), used: parseInt(used), avail: parseInt(avail), usePercent: parseInt(pct) };
+        } catch {
+          return { mountpoint, size: 0, used: 0, avail: 0, usePercent: 0 };
+        }
+      })
+    );
+
+    res.json({
+      cacheDisks,
+      poolMount: pool?.mountpoint || null,
+      moverRunning: !!(cacheMoverJob && !cacheMoverJob.done),
+      moverJob: cacheMoverJob ? { done: cacheMoverJob.done, exitCode: cacheMoverJob.exitCode, startedAt: cacheMoverJob.startedAt, output: cacheMoverJob.output.slice(-20) } : null,
+    });
+  } catch {
+    res.json({ cacheDisks: [], poolMount: null, moverRunning: false, moverJob: null });
+  }
+});
+
+/**
+ * POST /api/storage/cache/move
+ * Moves files from cache disk(s) to the main MergerFS pool using rsync.
+ * Files are removed from cache after successful transfer (--remove-source-files).
+ */
+storageRouter.post('/cache/move', requireAdmin, async (_req, res) => {
+  if (cacheMoverJob && !cacheMoverJob.done) {
+    return res.status(409).json({ error: 'Cache mover ya está en ejecución' });
+  }
+
+  const pool = await getMergerFSPool();
+  if (!pool) return res.status(400).json({ error: 'No se encontró pool MergerFS' });
+
+  // Find cache mount points
+  const mounts = fs.readFileSync('/proc/mounts', 'utf-8');
+  const cacheMounts = mounts.split('\n')
+    .filter(l => l.includes('/mnt/cache'))
+    .map(l => l.split(' ')[1])
+    .filter(Boolean);
+
+  if (cacheMounts.length === 0) {
+    return res.status(400).json({ error: 'No se encontraron discos de caché montados' });
+  }
+
+  const { spawn } = require('child_process') as typeof import('child_process');
+
+  cacheMoverJob = {
+    output: [], done: false, exitCode: null,
+    startedAt: new Date().toISOString(),
+  };
+
+  // Move from each cache disk to pool
+  const runNext = (idx: number) => {
+    if (idx >= cacheMounts.length) {
+      cacheMoverJob!.done = true;
+      cacheMoverJob!.exitCode = 0;
+      return;
+    }
+    const src = cacheMounts[idx] + '/';
+    const dst = pool.mountpoint + '/';
+    cacheMoverJob!.output.push(`[mover] ${src} → ${dst}`);
+
+    const proc = spawn('sudo', [
+      'rsync', '-av', '--remove-source-files',
+      '--exclude=.snapraid*', '--exclude=lost+found',
+      src, dst,
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    cacheMoverJob!.proc = proc;
+
+    const onData = (chunk: Buffer) => {
+      const lines = chunk.toString().split('\n').filter(Boolean);
+      cacheMoverJob!.output.push(...lines);
+      if (cacheMoverJob!.output.length > 500) cacheMoverJob!.output = cacheMoverJob!.output.slice(-500);
+    };
+    proc.stdout.on('data', onData);
+    proc.stderr.on('data', onData);
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        cacheMoverJob!.done = true;
+        cacheMoverJob!.exitCode = code;
+      } else {
+        runNext(idx + 1);
+      }
+    });
+  };
+
+  runNext(0);
+  res.json({ message: `Cache mover iniciado: ${cacheMounts.join(', ')} → ${pool.mountpoint}` });
+});
+
+/** GET /api/storage/iostats — Disk I/O statistics */
+storageRouter.get('/iostats', requireAuth, async (_req, res) => {
+  try {
+    const stats = await si.disksIO();
+    const statList = Array.isArray(stats) ? stats : [stats];
+    res.json(statList.map(s => ({
+      name: s.name,
+      readSpeed: s.rIO_sec ?? 0,
+      writeSpeed: s.wIO_sec ?? 0,
+      readBytes: s.rIO ?? 0,
+      writeBytes: s.wIO ?? 0,
+    })));
+  } catch {
+    res.json([]);
+  }
+});

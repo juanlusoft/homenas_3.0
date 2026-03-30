@@ -87,6 +87,13 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.4.6 (30 Marzo 2026)
+- Badblocks: escaneo de superficie no destructivo por disco con progreso en tiempo real y cancelación
+- Cache Mover: mueve archivos de discos caché al pool MergerFS via rsync con salida en vivo
+- GET /storage/iostats: estadísticas de I/O por disco
+- GET/POST /storage/cache/status|move: gestión del cache mover
+- POST/GET/DELETE /storage/badblocks/:device: control completo del escaneo
+
 ### v6.4.5 (30 Marzo 2026)
 - Almacenamiento: botón "Quitar del pool" en discos de datos/caché con hot-remove MergerFS
 - SnapRAID: sección con estado del pool, sync y scrub con salida en tiempo real

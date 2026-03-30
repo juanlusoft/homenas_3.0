@@ -27,7 +27,11 @@ interface AvailableDisk {
 
 type DiskAction = 'pool' | 'standalone' | 'external';
 
-function DiskCard({ disk, onRemoveFromPool }: { disk: Disk; onRemoveFromPool?: (disk: Disk) => void }) {
+function DiskCard({ disk, onRemoveFromPool, onBadblocks }: {
+  disk: Disk;
+  onRemoveFromPool?: (disk: Disk) => void;
+  onBadblocks?: (disk: Disk) => void;
+}) {
   const status = disk.health === 'healthy' ? 'healthy' : disk.health === 'warning' ? 'warning' : 'error';
   const barColor = (disk.usage ?? 0) > 90 ? 'bg-red-500' : (disk.usage ?? 0) > 75 ? 'bg-amber-500' : 'bg-teal';
   const badge = disk.role ? ROLE_BADGE[disk.role] : null;
@@ -87,12 +91,20 @@ function DiskCard({ disk, onRemoveFromPool }: { disk: Disk; onRemoveFromPool?: (
         </div>
       </div>
 
-      {isPoolDisk && onRemoveFromPool && (
-        <StitchButton size="sm" variant="ghost" className="w-full text-red-400 hover:text-red-300"
-          onClick={() => onRemoveFromPool(disk)}>
-          Quitar del pool
-        </StitchButton>
-      )}
+      <div className="flex gap-2">
+        {onBadblocks && (
+          <StitchButton size="sm" variant="ghost" className="flex-1"
+            onClick={() => onBadblocks(disk)}>
+            🔍 Badblocks
+          </StitchButton>
+        )}
+        {isPoolDisk && onRemoveFromPool && (
+          <StitchButton size="sm" variant="ghost" className="flex-1 text-red-400 hover:text-red-300"
+            onClick={() => onRemoveFromPool(disk)}>
+            Quitar pool
+          </StitchButton>
+        )}
+      </div>
     </GlassCard>
   );
 }
@@ -102,6 +114,206 @@ interface SnapraidJob {
   done: boolean;
   exitCode: number | null;
   startedAt: string;
+}
+
+interface BadblocksStatus {
+  running: boolean;
+  done: boolean;
+  exitCode: number | null;
+  percent: number;
+  badCount: number;
+  startedAt?: string;
+  output: string[];
+}
+
+function BadblocksModal({ device, open, onClose }: { device: string; open: boolean; onClose: () => void }) {
+  const devName = device.replace('/dev/', '').replace(/\d+$/, '');
+  const [status, setStatus] = useState<BadblocksStatus | null>(null);
+  const [starting, setStarting] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const outputRef = useRef<HTMLPreElement>(null);
+
+  const poll = useCallback(async () => {
+    const res = await authFetch(`/storage/badblocks/${devName}/status`);
+    if (res.ok) setStatus(await res.json());
+  }, [devName]);
+
+  useEffect(() => {
+    if (!open) return;
+    poll();
+  }, [open, poll]);
+
+  useEffect(() => {
+    if (!status?.running) { if (pollRef.current) clearInterval(pollRef.current); return; }
+    pollRef.current = setInterval(poll, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [status?.running, poll]);
+
+  useEffect(() => {
+    if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
+  }, [status?.output?.length]);
+
+  const start = useCallback(async () => {
+    setStarting(true);
+    await authFetch(`/storage/badblocks/${devName}`, { method: 'POST' });
+    await poll();
+    setStarting(false);
+    pollRef.current = setInterval(poll, 3000);
+  }, [devName, poll]);
+
+  const cancel = useCallback(async () => {
+    await authFetch(`/storage/badblocks/${devName}`, { method: 'DELETE' });
+    await poll();
+  }, [devName, poll]);
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Badblocks: ${device}`}
+      actions={<StitchButton size="sm" variant="ghost" onClick={onClose}>Cerrar</StitchButton>}>
+      <div className="space-y-4">
+        {!status?.running && !status?.done && (
+          <div className="space-y-3">
+            <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 text-sm text-blue-300">
+              🔍 Escaneo de superficie de solo lectura — no destructivo, seguro en discos montados. Puede tardar horas en discos grandes.
+            </div>
+            <StitchButton size="sm" onClick={start} disabled={starting} className="w-full">
+              {starting ? 'Iniciando...' : 'Iniciar escaneo'}
+            </StitchButton>
+          </div>
+        )}
+
+        {(status?.running || status?.done) && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {status.running && <span className="animate-pulse text-amber-400 text-xs">⏳ En curso</span>}
+                {status.done && status.badCount === 0 && <span className="text-teal text-xs">✅ Sin sectores defectuosos</span>}
+                {status.done && status.badCount > 0 && <span className="text-red-400 text-xs">❌ {status.badCount} sectores defectuosos</span>}
+              </div>
+              {status.running && (
+                <StitchButton size="sm" variant="ghost" onClick={cancel} className="text-red-400">Cancelar</StitchButton>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            <div>
+              <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
+                <span>Progreso</span>
+                <span>{status.percent}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-surface-void">
+                <div className={`h-2 rounded-full transition-all duration-500 ${status.badCount > 0 ? 'bg-red-500' : 'bg-teal'}`}
+                  style={{ width: `${status.percent}%` }} />
+              </div>
+            </div>
+
+            {status.output.length > 0 && (
+              <pre ref={outputRef}
+                className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-secondary)] max-h-48 overflow-auto whitespace-pre-wrap">
+                {status.output.join('\n')}
+              </pre>
+            )}
+
+            {status.done && (
+              <StitchButton size="sm" onClick={start} className="w-full">
+                Repetir escaneo
+              </StitchButton>
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+interface CacheStatus {
+  cacheDisks: { mountpoint: string; size: number; used: number; avail: number; usePercent: number }[];
+  poolMount: string | null;
+  moverRunning: boolean;
+  moverJob: { done: boolean; exitCode: number | null; startedAt: string; output: string[] } | null;
+}
+
+function CacheMoverSection({ onRefreshDisks }: { onRefreshDisks: () => void }) {
+  const fetchCache = useCallback(() =>
+    authFetch('/storage/cache/status').then(r => r.json() as Promise<CacheStatus>), []);
+  const { data: cache, loading, refresh } = useAPI<CacheStatus>(fetchCache, 15000);
+  const [moving, setMoving] = useState(false);
+  const outputRef = useRef<HTMLPreElement>(null);
+
+  useEffect(() => {
+    if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
+  }, [cache?.moverJob?.output?.length]);
+
+  // Poll while mover is running
+  useEffect(() => {
+    if (!cache?.moverRunning) return;
+    const id = setInterval(refresh, 3000);
+    return () => clearInterval(id);
+  }, [cache?.moverRunning, refresh]);
+
+  const triggerMove = useCallback(async () => {
+    setMoving(true);
+    await authFetch('/storage/cache/move', { method: 'POST' });
+    await refresh();
+    setMoving(false);
+    onRefreshDisks();
+  }, [refresh, onRefreshDisks]);
+
+  if (loading || !cache || cache.cacheDisks.length === 0) return null;
+
+  const formatGB = (bytes: number) => (bytes / 1e9).toFixed(1) + ' GB';
+
+  return (
+    <GlassCard elevation="low">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-display text-lg font-semibold text-[var(--text-primary)]">Cache Mover</h3>
+          <p className="text-xs text-[var(--text-secondary)]">
+            Mueve archivos de la caché SSD al pool principal
+            {cache.poolMount && <span className="font-mono text-teal"> → {cache.poolMount}</span>}
+          </p>
+        </div>
+        <StitchButton size="sm" onClick={triggerMove} disabled={moving || cache.moverRunning}>
+          {cache.moverRunning ? '⏳ Moviendo...' : moving ? '...' : '▶ Mover ahora'}
+        </StitchButton>
+      </div>
+
+      {/* Cache disks */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mb-4">
+        {cache.cacheDisks.map(d => (
+          <div key={d.mountpoint} className="rounded-lg bg-surface-void p-3">
+            <div className="flex justify-between mb-2">
+              <span className="font-mono text-xs text-[var(--text-primary)]">{d.mountpoint}</span>
+              <span className={`text-xs font-bold ${d.usePercent > 80 ? 'text-red-400' : 'text-teal'}`}>{d.usePercent}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-surface-low">
+              <div className={`h-1.5 rounded-full ${d.usePercent > 80 ? 'bg-red-500' : 'bg-teal'}`}
+                style={{ width: `${d.usePercent}%` }} />
+            </div>
+            <div className="flex justify-between mt-1 text-xs text-[var(--text-disabled)]">
+              <span>{formatGB(d.used)} usado</span>
+              <span>{formatGB(d.avail)} libre</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {cache.moverJob && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">
+              {cache.moverRunning ? '⏳ En curso' : cache.moverJob.exitCode === 0 ? '✅ Completado' : '❌ Error'}
+            </span>
+          </div>
+          {cache.moverJob.output.length > 0 && (
+            <pre ref={outputRef}
+              className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-secondary)] max-h-40 overflow-auto whitespace-pre-wrap">
+              {cache.moverJob.output.join('\n')}
+            </pre>
+          )}
+        </div>
+      )}
+    </GlassCard>
+  );
 }
 
 function SnapraidSection({ onRefreshDisks }: { onRefreshDisks: () => void }) {
@@ -246,6 +458,7 @@ export default function StoragePage() {
   const { data: availableDisks, loading: availLoading, refresh: refreshAvail } = useAPI<AvailableDisk[]>(fetchAvailable, 30000);
 
   const [smartRunning, setSmartRunning] = useState(false);
+  const [badblocksDevice, setBadblocksDevice] = useState<string | null>(null);
   const [removingDisk, setRemovingDisk] = useState<Disk | null>(null);
   const [removeResult, setRemoveResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
@@ -394,9 +607,19 @@ export default function StoragePage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {disks?.map((disk) => <DiskCard key={disk.device} disk={disk} onRemoveFromPool={handleRemoveFromPool} />)}
+          {disks?.map((disk) => (
+            <DiskCard
+              key={disk.device}
+              disk={disk}
+              onRemoveFromPool={handleRemoveFromPool}
+              onBadblocks={d => setBadblocksDevice(d.device.replace(/\d+$/, ''))}
+            />
+          ))}
         </div>
       )}
+
+      {/* Cache mover */}
+      <CacheMoverSection onRefreshDisks={refresh} />
 
       {/* SnapRAID */}
       <SnapraidSection onRefreshDisks={refresh} />
@@ -424,6 +647,15 @@ export default function StoragePage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Badblocks modal */}
+      {badblocksDevice && (
+        <BadblocksModal
+          device={badblocksDevice}
+          open={!!badblocksDevice}
+          onClose={() => setBadblocksDevice(null)}
+        />
       )}
 
       {/* Remove from pool modal */}
