@@ -92,6 +92,7 @@ export default function HomeStorePage() {
   const [category, setCategory] = useState<AppCategory | 'all'>('all');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'installed' | 'available'>('all');
+  const [sort, setSort] = useState<'default' | 'az' | 'za'>('default');
   const [busy, setBusy] = useState<Record<string, 'installing' | 'uninstalling'>>({});
 
   // Sync installed/running state from real Docker containers on mount
@@ -107,7 +108,7 @@ export default function HomeStorePage() {
   }, []);
 
   const filtered = useMemo(() => {
-    return apps.filter(app => {
+    const list = apps.filter(app => {
       if (category !== 'all' && app.category !== category) return false;
       if (filter === 'installed' && !app.installed) return false;
       if (filter === 'available' && app.installed) return false;
@@ -115,7 +116,10 @@ export default function HomeStorePage() {
           !app.description.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [apps, category, search, filter]);
+    if (sort === 'az') return [...list].sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === 'za') return [...list].sort((a, b) => b.name.localeCompare(a.name));
+    return list; // 'default' = integration order (array order)
+  }, [apps, category, search, filter, sort]);
 
   const handleUninstall = useCallback(async (id: string) => {
     if (!confirm(t('store.uninstall') + '?') || busy[id]) return;
@@ -269,6 +273,20 @@ export default function HomeStorePage() {
             }`}
           >
             {f === 'all' ? t('store.all') : f === 'installed' ? `✓ ${t('store.installed')}` : `+ ${t('store.available')}`}
+          </button>
+        ))}
+
+        <span className="mx-2 text-[var(--outline)]">|</span>
+
+        {([['default', '↕ Default'], ['az', 'A→Z'], ['za', 'Z→A']] as const).map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setSort(val)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              sort === val ? 'bg-teal/10 text-teal' : 'text-[var(--text-secondary)] hover:bg-surface-void'
+            }`}
+          >
+            {label}
           </button>
         ))}
 

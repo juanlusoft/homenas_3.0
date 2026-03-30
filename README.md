@@ -87,6 +87,10 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.4.2 (30 Marzo 2026)
+- Red: fix botón Guardar IP (URL incorrecta /interfaces/:id → /:id/config)
+- Tienda: botones de ordenación A→Z, Z→A y orden de integración (Default)
+
 ### v6.4.1 (30 Marzo 2026)
 - Actualización desde git: botón "Buscar actualizaciones" comprueba commits pendientes en origin/main
 - Botón "Aplicar actualización" hace git pull + pnpm install + reinicio del servicio

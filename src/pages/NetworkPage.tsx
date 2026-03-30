@@ -80,7 +80,7 @@ export default function NetworkPage() {
 
   const handleSaveNetwork = useCallback(async () => {
     if (!editIface) return;
-    await fetchAPI(`/network/interfaces/${editIface}`, {
+    await fetchAPI(`/network/${editIface}/config`, {
       method: 'PUT',
       body: JSON.stringify(netForm),
     });
