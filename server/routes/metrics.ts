@@ -112,7 +112,8 @@ metricsRouter.post('/git-update', requireAdmin, async (req, res) => {
     const { promisify: p } = await import('util');
     const exec = p(ef);
     const { stdout: pullOut } = await exec('git', ['pull', 'origin', 'main'], { cwd: REPO_DIR, timeout: 60000 });
-    await exec('pnpm', ['install', '--frozen-lockfile'], { cwd: REPO_DIR, timeout: 120000 });
+    await exec('pnpm', ['install', '--frozen-lockfile'], { env: { ...process.env, CI: 'true' }, cwd: REPO_DIR, timeout: 120000 });
+    await exec('pnpm', ['run', 'build'], { cwd: REPO_DIR, timeout: 180000 });
     res.json({ success: true, output: pullOut });
     setTimeout(async () => {
       await exec('sudo', ['systemctl', 'restart', 'homepinas-v3'], { timeout: 5000 }).catch(() => {});

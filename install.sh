@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-APP_VERSION="6.4.9"
+APP_VERSION="6.5.0"
 REPO_URL="https://github.com/juanlusoft/homenas_3.0.git"
 BRANCH="main"
 INSTALL_DIR="/opt/homepinas-v3"

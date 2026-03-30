@@ -478,13 +478,13 @@ export default function StoragePage() {
 
   const confirmRemove = useCallback(async () => {
     if (!removingDisk) return;
-    if (!confirm(`⚠️ ¿Quitar ${removingDisk.mount} del pool? El disco se desmontará.`)) return;
+    if (!confirm(`⚠️ ¿Quitar ${removingDisk.mountpoint} del pool? El disco se desmontará.`)) return;
     setRemoveBusy(true);
     try {
       const res = await authFetch('/storage/remove-from-pool', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mountpoint: removingDisk.mount }),
+        body: JSON.stringify({ mountpoint: removingDisk.mountpoint }),
       });
       const data = await res.json();
       setRemoveResult({ ok: !!data.success, msg: data.message || data.error });
@@ -662,7 +662,7 @@ export default function StoragePage() {
       <Modal
         open={!!removingDisk}
         onClose={() => { setRemovingDisk(null); setRemoveResult(null); }}
-        title={`Quitar del pool: ${removingDisk?.mount}`}
+        title={`Quitar del pool: ${removingDisk?.mountpoint}`}
         actions={
           removeResult?.ok ? (
             <StitchButton size="sm" onClick={() => { setRemovingDisk(null); setRemoveResult(null); }}>Cerrar</StitchButton>
@@ -679,7 +679,7 @@ export default function StoragePage() {
         {removingDisk && !removeResult && (
           <div className="space-y-3">
             <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-sm text-amber-300">
-              ⚠️ El disco <strong>{removingDisk.mount}</strong> será eliminado del pool MergerFS y desmontado. Los datos no se borran, pero el disco quedará inaccesible hasta que lo vuelvas a montar.
+              ⚠️ El disco <strong>{removingDisk.mountpoint}</strong> será eliminado del pool MergerFS y desmontado. Los datos no se borran, pero el disco quedará inaccesible hasta que lo vuelvas a montar.
             </div>
             <div className="text-sm text-[var(--text-secondary)]">
               <p>Dispositivo: <span className="font-mono text-[var(--text-primary)]">{removingDisk.device}</span></p>
