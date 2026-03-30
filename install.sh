@@ -208,7 +208,7 @@ Type=simple
 User=$REAL_USER
 Group=$REAL_USER
 WorkingDirectory=$INSTALL_DIR
-ExecStart=$(command -v npx) tsx server/index.ts
+ExecStart=$(command -v node) ${INSTALL_DIR}/node_modules/tsx/dist/cli.mjs server/index.ts
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
