@@ -87,6 +87,10 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.4.7 (30 Marzo 2026)
+- Instalador: añade ntfs-3g, exfat-fuse, exfatprogs, smartmontools, parted, gdisk, badblocks, rsync, snapraid, mergerfs
+- Instalador: sudoers completo para todos los comandos NAS (mount, umount, blkid, sgdisk, mkfs, badblocks, rsync, snapraid, nmcli, systemctl...)
+
 ### v6.4.6 (30 Marzo 2026)
 - Badblocks: escaneo de superficie no destructivo por disco con progreso en tiempo real y cancelación
 - Cache Mover: mueve archivos de discos caché al pool MergerFS via rsync con salida en vivo

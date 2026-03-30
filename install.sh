@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-APP_VERSION="6.4.6"
+APP_VERSION="6.4.7"
 REPO_URL="https://github.com/juanlusoft/homenas_3.0.git"
 BRANCH="main"
 INSTALL_DIR="/opt/homepinas-v3"
@@ -220,17 +220,51 @@ Environment=PORT=$PORT
 WantedBy=multi-user.target
 EOF
 
+# ── Storage tools ─────────────────────────────────────────
+
+info "Installing storage tools (ntfs-3g, exfat, smartmontools, parted, badblocks)..."
+apt-get install -y \
+    ntfs-3g \
+    exfat-fuse \
+    exfatprogs \
+    smartmontools \
+    parted \
+    gdisk \
+    e2fsprogs \
+    util-linux \
+    rsync \
+    snapraid \
+    mergerfs 2>/dev/null || {
+    warn "Some storage tools could not be installed (non-critical). Install manually if needed."
+}
+ok "Storage tools ready"
+
 # ── Sudoers for smartctl ──────────────────────────────────
 
-SMARTCTL_PATH=$(command -v smartctl 2>/dev/null || echo "/usr/sbin/smartctl")
-SUDOERS_FILE="/etc/sudoers.d/homepinas-smart"
-if [ -x "$SMARTCTL_PATH" ]; then
-    echo "$REAL_USER ALL=(ALL) NOPASSWD: $SMARTCTL_PATH" > "$SUDOERS_FILE"
-    chmod 0440 "$SUDOERS_FILE"
-    ok "Sudoers entry for smartctl created"
-else
-    warn "smartctl not found. Install smartmontools for SMART monitoring: apt install smartmontools"
-fi
+SUDOERS_FILE="/etc/sudoers.d/homepinas"
+cat > "$SUDOERS_FILE" << SUDOERS
+# HomePiNAS — allow passwordless sudo for NAS management tools
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/sbin/smartctl
+$REAL_USER ALL=(ALL) NOPASSWD: /sbin/sgdisk
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/sbin/parted
+$REAL_USER ALL=(ALL) NOPASSWD: /sbin/mkfs.ext4
+$REAL_USER ALL=(ALL) NOPASSWD: /bin/mount
+$REAL_USER ALL=(ALL) NOPASSWD: /bin/umount
+$REAL_USER ALL=(ALL) NOPASSWD: /sbin/blkid
+$REAL_USER ALL=(ALL) NOPASSWD: /sbin/partprobe
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/sbin/badblocks
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/bin/rsync
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/bin/snapraid
+$REAL_USER ALL=(ALL) NOPASSWD: /bin/cp
+$REAL_USER ALL=(ALL) NOPASSWD: /bin/mkdir
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/sbin/nmcli
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl
+$REAL_USER ALL=(ALL) NOPASSWD: /sbin/reboot
+$REAL_USER ALL=(ALL) NOPASSWD: /sbin/shutdown
+$REAL_USER ALL=(ALL) NOPASSWD: /usr/bin/apt
+SUDOERS
+chmod 0440 "$SUDOERS_FILE"
+ok "Sudoers entries created for all NAS tools"
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
