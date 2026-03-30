@@ -54,6 +54,328 @@ activeBackupRouter.get('/agent/download', requireAuth, (_req, res) => {
   res.redirect('https://github.com/juanlusoft/homenas_3.0/releases/latest/download/homepinas-agent');
 });
 
+/** GET /agent/generate/:platform — Generate installer script for platform */
+activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => {
+  const platform = req.params.platform as 'linux' | 'mac' | 'windows';
+  const backupType = (req.query.backupType as string) || 'incremental';
+  if (!['linux', 'mac', 'windows'].includes(platform)) {
+    return res.status(400).json({ error: 'Invalid platform. Use: linux, mac, windows' });
+  }
+  if (!['full', 'incremental', 'folders'].includes(backupType)) {
+    return res.status(400).json({ error: 'Invalid backupType. Use: full, incremental, folders' });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const id = crypto.randomUUID().slice(0, 8);
+  const nasHost = req.hostname || req.headers.host?.split(':')[0] || 'homepinas.local';
+  const nasPort = process.env.PORT || '3001';
+  const nasUrl = `http://${nasHost}:${nasPort}`;
+
+  // Pre-register device as pending so admin can approve it
+  pendingAgents.set(id, {
+    id,
+    hostname: `pending-${platform}-${id}`,
+    os: platform === 'windows' ? 'Windows' : platform === 'mac' ? 'macOS' : 'Linux',
+    ip: 'unknown',
+    requestedAt: new Date().toISOString(),
+  });
+
+  // Backup source strings per type and platform
+  const linuxBackupPaths = backupType === 'full'
+    ? '("/")'
+    : backupType === 'incremental'
+    ? '("$HOME")'
+    : '("$HOME/Documents" "$HOME/Desktop" "$HOME/Pictures" "$HOME/Videos")';
+  const linuxRsyncFlags = backupType === 'full' ? '-az --delete --one-file-system' : '-az --delete';
+  const macBackupPaths = backupType === 'full'
+    ? '("/")'
+    : backupType === 'incremental'
+    ? '("/Users/$USER")'
+    : '("$HOME/Documents" "$HOME/Desktop" "$HOME/Pictures" "$HOME/Movies")';
+  const winBackupPaths = backupType === 'full'
+    ? '@("C:\\\\")'
+    : backupType === 'incremental'
+    ? '@("$env:USERPROFILE")'
+    : '@("$env:USERPROFILE\\\\Documents", "$env:USERPROFILE\\\\Desktop", "$env:USERPROFILE\\\\Pictures")';
+
+  if (platform === 'linux') {
+    const script = `#!/bin/bash
+# ============================================================
+# HomePiNAS Active Backup Agent — Linux Installer
+# Generated: ${new Date().toISOString()}
+# NAS: ${nasUrl}
+# Device ID: ${id}
+# Backup type: ${backupType}
+# ============================================================
+set -e
+
+NAS_URL="${nasUrl}"
+DEVICE_ID="${id}"
+DEVICE_TOKEN="${token}"
+BACKUP_TYPE="${backupType}"
+AGENT_DIR="$HOME/.homepinas-agent"
+BACKUP_LOG="$AGENT_DIR/backup.log"
+
+echo "[HomePiNAS] Installing Linux backup agent (type: $BACKUP_TYPE)..."
+mkdir -p "$AGENT_DIR"
+
+HOSTNAME_VAL=$(hostname)
+DISTRO=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'"' -f2 || echo "Linux")
+
+echo "[HomePiNAS] Registering device with NAS..."
+curl -sf -X POST "$NAS_URL/api/active-backup/agent/register" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Agent-Token: $DEVICE_TOKEN" \\
+  -d "{\\"hostname\\":\\"$HOSTNAME_VAL\\",\\"os\\":\\"$DISTRO\\",\\"id\\":\\"$DEVICE_ID\\"}" || true
+
+cat > "$AGENT_DIR/backup.sh" << 'BACKUPEOF'
+#!/bin/bash
+NAS_URL="__NAS_URL__"
+DEVICE_ID="__DEVICE_ID__"
+DEVICE_TOKEN="__DEVICE_TOKEN__"
+BACKUP_TYPE="__BACKUP_TYPE__"
+BACKUP_PATHS=${linuxBackupPaths}
+RSYNC_FLAGS="${linuxRsyncFlags}"
+BACKUP_LOG="$HOME/.homepinas-agent/backup.log"
+NAS_DEST="/mnt/storage/active-backup/$DEVICE_ID"
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$BACKUP_LOG"; }
+log "Starting $BACKUP_TYPE backup..."
+
+CONFIG=$(curl -sf "$NAS_URL/api/active-backup/agent/poll/$DEVICE_ID" \\
+  -H "Authorization: Bearer $DEVICE_TOKEN" 2>/dev/null || echo '{}')
+if ! echo "$CONFIG" | grep -q '"approved":true'; then
+  log "Not yet approved by admin. Skipping."; exit 0
+fi
+
+TOTAL_SIZE=0
+START=$(date +%s)
+for P in "${BACKUP_PATHS[@]}"; do
+  if [ -e "$P" ]; then
+    log "Backing up: $P"
+    SIZE=$(du -sb "$P" 2>/dev/null | cut -f1 || echo 0)
+    TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
+    rsync $RSYNC_FLAGS "$P" "juanlu@__NAS_HOST__:$NAS_DEST/" 2>>"$BACKUP_LOG" || true
+  fi
+done
+END=$(date +%s)
+log "Done in $((END-START))s. Size: $TOTAL_SIZE bytes"
+
+curl -sf -X POST "$NAS_URL/api/active-backup/agent/report/$DEVICE_ID" \\
+  -H "Content-Type: application/json" -H "Authorization: Bearer $DEVICE_TOKEN" \\
+  -d "{\\"status\\":\\"complete\\",\\"size\\":$TOTAL_SIZE,\\"type\\":\\"$BACKUP_TYPE\\"}" >/dev/null 2>&1 || true
+BACKUPEOF
+
+sed -i "s|__NAS_URL__|${nasUrl}|g; s|__DEVICE_ID__|${id}|g; s|__DEVICE_TOKEN__|${token}|g; s|__BACKUP_TYPE__|${backupType}|g; s|__NAS_HOST__|${nasHost}|g" "$AGENT_DIR/backup.sh"
+chmod +x "$AGENT_DIR/backup.sh"
+
+(crontab -l 2>/dev/null | grep -v homepinas; echo "0 2 * * * $AGENT_DIR/backup.sh >> $BACKUP_LOG 2>&1") | crontab -
+
+echo ""
+echo "=============================================="
+echo "  HomePiNAS Agent instalado!"
+echo "  Device ID   : $DEVICE_ID"
+echo "  NAS URL     : $NAS_URL"
+echo "  Backup type : $BACKUP_TYPE"
+echo "  Schedule    : Diario a las 02:00 (cron)"
+echo "  Logs        : $BACKUP_LOG"
+echo ""
+echo "  SIGUIENTE PASO: Aprueba este dispositivo"
+echo "  en Active Backup del dashboard."
+echo "=============================================="
+`;
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="homepinas-agent-linux-${id}.sh"`);
+    return res.send(script);
+  }
+
+  if (platform === 'mac') {
+    const script = `#!/bin/bash
+# ============================================================
+# HomePiNAS Active Backup Agent — macOS Installer
+# Generated: ${new Date().toISOString()}
+# NAS: ${nasUrl}  |  Device ID: ${id}  |  Backup: ${backupType}
+# ============================================================
+set -e
+
+NAS_URL="${nasUrl}"
+DEVICE_ID="${id}"
+DEVICE_TOKEN="${token}"
+BACKUP_TYPE="${backupType}"
+AGENT_DIR="$HOME/.homepinas-agent"
+PLIST_PATH="$HOME/Library/LaunchAgents/com.homepinas.agent.plist"
+
+echo "[HomePiNAS] Installing macOS backup agent (type: $BACKUP_TYPE)..."
+mkdir -p "$AGENT_DIR"
+
+OS_VERSION=$(sw_vers -productVersion 2>/dev/null || echo "macOS")
+HOSTNAME_VAL=$(hostname)
+
+echo "[HomePiNAS] Registering device..."
+curl -sf -X POST "$NAS_URL/api/active-backup/agent/register" \\
+  -H "Content-Type: application/json" -H "X-Agent-Token: $DEVICE_TOKEN" \\
+  -d "{\\"hostname\\":\\"$HOSTNAME_VAL\\",\\"os\\":\\"macOS $OS_VERSION\\",\\"id\\":\\"$DEVICE_ID\\"}" || true
+
+cat > "$AGENT_DIR/backup.sh" << 'BACKUPEOF'
+#!/bin/bash
+NAS_URL="__NAS_URL__"
+DEVICE_ID="__DEVICE_ID__"
+DEVICE_TOKEN="__DEVICE_TOKEN__"
+BACKUP_TYPE="__BACKUP_TYPE__"
+BACKUP_PATHS=${macBackupPaths}
+LOG_FILE="$HOME/.homepinas-agent/backup.log"
+NAS_DEST="/mnt/storage/active-backup/$DEVICE_ID"
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"; }
+log "Starting $BACKUP_TYPE backup..."
+
+CONFIG=$(curl -sf "$NAS_URL/api/active-backup/agent/poll/$DEVICE_ID" \\
+  -H "Authorization: Bearer $DEVICE_TOKEN" 2>/dev/null || echo '{}')
+if ! echo "$CONFIG" | grep -q '"approved":true'; then
+  log "Not yet approved. Skipping."; exit 0
+fi
+
+TOTAL_SIZE=0
+for P in "${BACKUP_PATHS[@]}"; do
+  if [ -e "$P" ]; then
+    SIZE=$(du -sk "$P" 2>/dev/null | awk '{print $1*1024}' || echo 0)
+    TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
+    rsync -az --delete "$P" "juanlu@__NAS_HOST__:$NAS_DEST/" 2>>"$LOG_FILE" || true
+  fi
+done
+
+curl -sf -X POST "$NAS_URL/api/active-backup/agent/report/$DEVICE_ID" \\
+  -H "Content-Type: application/json" -H "Authorization: Bearer $DEVICE_TOKEN" \\
+  -d "{\\"status\\":\\"complete\\",\\"size\\":$TOTAL_SIZE,\\"type\\":\\"$BACKUP_TYPE\\"}" >/dev/null 2>&1 || true
+log "Done."
+BACKUPEOF
+
+sed -i '' "s|__NAS_URL__|${nasUrl}|g; s|__DEVICE_ID__|${id}|g; s|__DEVICE_TOKEN__|${token}|g; s|__BACKUP_TYPE__|${backupType}|g; s|__NAS_HOST__|${nasHost}|g" "$AGENT_DIR/backup.sh"
+chmod +x "$AGENT_DIR/backup.sh"
+
+cat > "$PLIST_PATH" << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.homepinas.agent</string>
+  <key>ProgramArguments</key><array><string>$AGENT_DIR/backup.sh</string></array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>2</integer><key>Minute</key><integer>0</integer></dict>
+  <key>StandardOutPath</key><string>$AGENT_DIR/backup.log</string>
+  <key>StandardErrorPath</key><string>$AGENT_DIR/backup.log</string>
+</dict></plist>
+PLIST
+
+launchctl load "$PLIST_PATH" 2>/dev/null || true
+
+echo "=============================================="
+echo "  HomePiNAS Agent instalado para macOS!"
+echo "  Device ID   : $DEVICE_ID  |  Tipo: $BACKUP_TYPE"
+echo "  Diario 02:00 via launchd"
+echo "  SIGUIENTE: Aprueba en Active Backup."
+echo "=============================================="
+`;
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="homepinas-agent-mac-${id}.sh"`);
+    return res.send(script);
+  }
+
+  // Windows PowerShell
+  const robocopyFlags = backupType === 'full' ? '/MIR /R:1 /W:1' : backupType === 'incremental' ? '/MIR /XO /R:1 /W:1' : '/MIR /R:1 /W:1';
+  const script = `# ============================================================
+# HomePiNAS Active Backup Agent — Windows Installer
+# Generated: ${new Date().toISOString()}
+# NAS: ${nasUrl}  |  Device: ${id}  |  Tipo: ${backupType}
+# Ejecutar como Administrador en PowerShell
+# ============================================================
+
+$NasUrl      = "${nasUrl}"
+$NasHost     = "${nasHost}"
+$DeviceId    = "${id}"
+$DeviceToken = "${token}"
+$BackupType  = "${backupType}"
+$AgentDir    = "$env:APPDATA\\HomePiNAS"
+$BackupLog   = "$AgentDir\\backup.log"
+$ScriptPath  = "$AgentDir\\backup.ps1"
+$TaskName    = "HomePiNAS Backup"
+
+Write-Host "[HomePiNAS] Instalando agente Windows (tipo: $BackupType)..." -ForegroundColor Cyan
+New-Item -ItemType Directory -Force -Path $AgentDir | Out-Null
+
+$Hostname = $env:COMPUTERNAME
+$OS = (Get-CimInstance Win32_OperatingSystem).Caption
+Write-Host "[HomePiNAS] Registrando dispositivo: $Hostname"
+try {
+  $Body = @{ hostname = $Hostname; os = $OS; id = $DeviceId } | ConvertTo-Json
+  Invoke-RestMethod -Uri "$NasUrl/api/active-backup/agent/register" \`
+    -Method POST -ContentType "application/json" \`
+    -Headers @{ "X-Agent-Token" = $DeviceToken } -Body $Body | Out-Null
+  Write-Host "[HomePiNAS] Registrado correctamente." -ForegroundColor Green
+} catch {
+  Write-Host "[HomePiNAS] No se pudo conectar al NAS. Continuando..." -ForegroundColor Yellow
+}
+
+@"
+\$NasUrl      = "${nasUrl}"
+\$NasHost     = "${nasHost}"
+\$DeviceId    = "${id}"
+\$DeviceToken = "${token}"
+\$BackupType  = "${backupType}"
+\$BackupLog   = "$AgentDir\\backup.log"
+\$BackupPaths = ${winBackupPaths}
+\$NasShare    = "\\\\$NasHost\\active-backup\\\$DeviceId"
+\$RobocopyFlags = "${robocopyFlags}".Split(" ")
+
+function Write-Log { param(\$msg) Add-Content -Path \$BackupLog -Value "[\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] \$msg" }
+
+Write-Log "Iniciando backup \$BackupType..."
+try {
+  \$Config = Invoke-RestMethod -Uri "\$NasUrl/api/active-backup/agent/poll/\$DeviceId" \`
+    -Headers @{ Authorization = "Bearer \$DeviceToken" } -TimeoutSec 10
+  if (-not \$Config.approved) { Write-Log "No aprobado. Saltando."; exit 0 }
+} catch { Write-Log "No se puede conectar al NAS. Saltando."; exit 0 }
+
+\$TotalSize = 0
+foreach (\$Path in \$BackupPaths) {
+  if (Test-Path \$Path) {
+    Write-Log "Backup: \$Path"
+    \$Dest = "\$NasShare\\" + (Split-Path \$Path -Leaf)
+    New-Item -ItemType Directory -Force -Path \$Dest -ErrorAction SilentlyContinue | Out-Null
+    & robocopy \$Path \$Dest @RobocopyFlags /LOG+:\$BackupLog /NP /NDL /NC /NJS | Out-Null
+    \$Size = (Get-ChildItem \$Path -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+    \$TotalSize += \$Size
+  }
+}
+
+try {
+  \$Report = @{ status = "complete"; size = \$TotalSize; type = \$BackupType } | ConvertTo-Json
+  Invoke-RestMethod -Uri "\$NasUrl/api/active-backup/agent/report/\$DeviceId" \`
+    -Method POST -ContentType "application/json" \`
+    -Headers @{ Authorization = "Bearer \$DeviceToken" } -Body \$Report | Out-Null
+} catch {}
+Write-Log "Backup completo. Total: \$TotalSize bytes"
+"@ | Set-Content -Path $ScriptPath -Encoding UTF8
+
+$Action   = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -WindowStyle Hidden -File \`"$ScriptPath\`""
+$Trigger  = New-ScheduledTaskTrigger -Daily -At "02:00"
+$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -WakeToRun
+Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Force | Out-Null
+
+Write-Host ""
+Write-Host "==============================================" -ForegroundColor Green
+Write-Host "  HomePiNAS Agent instalado para Windows!" -ForegroundColor Green
+Write-Host "  Device ID : $DeviceId  |  Tipo: $BackupType"
+Write-Host "  Diario 02:00 via Programador de tareas"
+Write-Host "  Logs      : $BackupLog"
+Write-Host ""
+Write-Host "  SIGUIENTE: Aprueba el dispositivo en"
+Write-Host "  Active Backup del dashboard."
+Write-Host "==============================================" -ForegroundColor Green
+`;
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Content-Disposition', `attachment; filename="homepinas-agent-windows-${id}.ps1"`);
+  return res.send(script);
+});
+
 /** POST /agent/register — Agent self-registration */
 activeBackupRouter.post('/agent/register', requireAdmin, (req, res) => {
   const { hostname, os } = req.body;

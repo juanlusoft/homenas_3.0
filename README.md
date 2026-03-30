@@ -1,4 +1,4 @@
-# HomePiNAS v6.5.1
+# HomePiNAS v6.5.2
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -113,6 +113,14 @@ pnpm lint         # ESLint 10
 ### v6.4.3 (30 Marzo 2026)
 - git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
 - git-check: devuelve el error real al frontend en lugar de mensaje genérico
+
+### v6.5.2 (30 Marzo 2026)
+- Active Backup: generación de agentes para Windows (.ps1), macOS (.sh) y Linux (.sh)
+- Agentes con token único preconfigurado y registro automático en el NAS
+- 3 tipos de backup: disco completo, incremental y carpetas específicas
+- Windows: robocopy a SMB share + Tarea Programada a las 02:00
+- macOS: rsync + launchd plist diario a las 02:00
+- Linux: rsync + cron diario a las 02:00
 
 ### v6.5.1 (30 Marzo 2026)
 - Tienda: descripciones de todas las apps traducidas al español/inglés según idioma seleccionado
