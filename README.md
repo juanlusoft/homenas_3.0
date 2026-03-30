@@ -1,4 +1,4 @@
-# HomePiNAS v6.5.0
+# HomePiNAS v6.5.1
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -113,6 +113,11 @@ pnpm lint         # ESLint 10
 ### v6.4.3 (30 Marzo 2026)
 - git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
 - git-check: devuelve el error real al frontend en lugar de mensaje genérico
+
+### v6.5.1 (30 Marzo 2026)
+- Tienda: descripciones de todas las apps traducidas al español/inglés según idioma seleccionado
+- Tienda: añadidos Threadfin, Dispatcharr y Aircd con iconos originales
+- Tienda: búsqueda funciona en ambos idiomas
 
 ### v6.5.0 (30 Marzo 2026)
 - OTA: actualización incluye ahora pnpm build para reconstruir el frontend

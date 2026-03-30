@@ -85,6 +85,11 @@ const INITIAL_APPS: StoreApp[] = [
   { id: 'restic', name: 'Restic REST Server', icon: '🗄️', author: 'Restic', description: 'REST backend for Restic backup tool. Fast, secure, deduplicated backups.', version: '0.13.0', category: 'backup', port: 8000, official: true, installed: false, running: false, image: 'restic/rest-server', size: '15 MB' },
   { id: 'borgmatic', name: 'Borgmatic', icon: '📼', author: 'Borgmatic', description: 'Simple wrapper for BorgBackup. Deduplicating, compressing, encrypted backups.', version: '1.9.1', category: 'backup', official: true, installed: false, running: false, image: 'ghcr.io/borgmatic-collective/borgmatic', size: '100 MB' },
   { id: 'kopia', name: 'Kopia', icon: '📁', author: 'Kopia', description: 'Fast and secure backup tool. Snapshots, encryption, deduplication, compression.', version: '0.17.0', category: 'backup', port: 51515, official: true, installed: false, running: false, image: 'kopia/kopia', size: '60 MB' },
+
+  // IPTV / Media extras
+  { id: 'threadfin', name: 'Threadfin', icon: '📡', iconUrl: 'https://raw.githubusercontent.com/Threadfin/Threadfin/main/src/img/threadfin.png', author: 'Threadfin', description: 'M3U proxy for Plex/Emby/Jellyfin. Manage IPTV playlists and EPG guides from a single interface.', version: '2.1.0', category: 'media', port: 34400, official: false, installed: false, running: false, image: 'fyb3roptik/threadfin', size: '50 MB' },
+  { id: 'dispatcharr', name: 'Dispatcharr', icon: '📨', iconUrl: 'https://raw.githubusercontent.com/Dispatcharr/Dispatcharr/refs/heads/main/frontend/public/logo192.png', author: 'Dispatcharr', description: 'Media request manager. Modern alternative to Overseerr/Jellyseerr with multi-server support.', version: '0.3.0', category: 'media', port: 6868, official: false, installed: false, running: false, image: 'ghcr.io/dispatcharr/dispatcharr', size: '150 MB' },
+  { id: 'aircd', name: 'Aircd', icon: '💬', iconUrl: 'https://raw.githubusercontent.com/unrealircd/unrealircd/unreal60_dev/doc/ircd.png', author: 'Aircd Project', description: 'Lightweight self-hosted IRC server. Private chat on your own infrastructure.', version: '1.0.0', category: 'network', port: 6667, official: false, installed: false, running: false, image: 'inspircd/inspircd-docker', size: '30 MB' },
 ];
 
 export default function HomeStorePage() {

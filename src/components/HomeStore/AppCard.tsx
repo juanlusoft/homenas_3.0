@@ -40,7 +40,7 @@ export function AppCard({ app, busy, onUninstall, onOpen, onConfigure }: AppCard
         )}
       </div>
 
-      <p className="text-xs text-[var(--text-secondary)] mb-3 line-clamp-2 flex-1">{app.description}</p>
+      <p className="text-xs text-[var(--text-secondary)] mb-3 line-clamp-2 flex-1">{t('store.desc.' + app.id, app.description)}</p>
 
       <div className="flex items-center justify-between text-xs text-[var(--text-disabled)] mb-3">
         <span className="font-mono">{app.version}</span>
