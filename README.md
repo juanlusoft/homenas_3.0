@@ -87,6 +87,13 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.4.4 (30 Marzo 2026)
+- Almacenamiento: sección "Discos disponibles" con detección de discos sin usar
+- Hot-plug: añadir disco al pool MergerFS en caliente (POST /storage/add-to-pool)
+- Volumen individual: formatear y montar disco independiente (POST /storage/mount-standalone)
+- Montar externo: NTFS/FAT32/exFAT/ext4 sin formatear para recuperar datos (POST /storage/mount-external)
+- Desmontar: endpoint POST /storage/unmount
+
 ### v6.4.3 (30 Marzo 2026)
 - git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
 - git-check: devuelve el error real al frontend en lugar de mensaje genérico

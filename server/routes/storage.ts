@@ -359,3 +359,297 @@ function formatBytes(bytes: number): string {
   if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
   return `${(bytes / 1e3).toFixed(1)} KB`;
 }
+
+/** Validate device name — only allow safe block device names like sda, sdb1, nvme0n1 */
+function sanitizeDevice(raw: string): string | null {
+  const clean = raw.replace(/^\/dev\//, '');
+  if (!/^[a-zA-Z0-9]+$/.test(clean)) return null;
+  return `/dev/${clean}`;
+}
+
+/** Get next available disk index for naming (/mnt/disk1, /mnt/disk2…) */
+async function getNextDiskIndex(): Promise<number> {
+  let i = 1;
+  while (fs.existsSync(`/mnt/disk${i}`)) i++;
+  return i;
+}
+
+/** Get current MergerFS pool mount point and sources from /proc/mounts */
+async function getMergerFSPool(): Promise<{ mountpoint: string; sources: string[] } | null> {
+  try {
+    const mounts = fs.readFileSync('/proc/mounts', 'utf-8');
+    for (const line of mounts.split('\n')) {
+      if (line.includes('fuse.mergerfs') || line.includes('mergerfs')) {
+        const parts = line.split(' ');
+        const sources = parts[0].split(':').filter(Boolean);
+        return { mountpoint: parts[1], sources };
+      }
+    }
+  } catch {}
+  return null;
+}
+
+/** Append a line to /etc/fstab safely via temp file + sudo cp */
+async function appendFstab(line: string): Promise<void> {
+  const current = fs.readFileSync('/etc/fstab', 'utf-8');
+  const tmpPath = path.join(process.cwd(), 'data', 'fstab.tmp');
+  fs.mkdirSync(path.dirname(tmpPath), { recursive: true });
+  fs.writeFileSync(tmpPath, current.trimEnd() + '\n' + line + '\n');
+  await execFileAsync('sudo', ['cp', tmpPath, '/etc/fstab'], { timeout: 5000 });
+  try { fs.unlinkSync(tmpPath); } catch {}
+}
+
+/**
+ * GET /api/storage/available-disks
+ * Returns disks that are not the system disk and have no mounted partitions.
+ * These are candidates for hot-plug add to pool, standalone mount, or external mount.
+ */
+storageRouter.get('/available-disks', requireAuth, async (_req, res) => {
+  try {
+    const { stdout } = await execFileAsync('lsblk', [
+      '-J', '-b', '-o', 'NAME,SIZE,MODEL,TYPE,FSTYPE,MOUNTPOINT,SERIAL,TRAN,VENDOR',
+    ], { timeout: 8000 });
+
+    const data = JSON.parse(stdout);
+    const allDevices: any[] = data.blockdevices || [];
+
+    // Find system disk (where / is mounted)
+    let systemDisk = '';
+    try {
+      const { stdout: dfOut } = await execFileAsync('df', ['/', '--output=source'], { timeout: 3000 });
+      systemDisk = dfOut.trim().split('\n').pop()?.replace(/[0-9p]+$/, '').replace('/dev/', '') || '';
+    } catch {}
+
+    const result = allDevices
+      .filter(d => {
+        if (d.type !== 'disk') return false;
+        if (d.name.startsWith('loop') || d.name.startsWith('zram') || d.name.startsWith('mmcblk')) return false;
+        if (d.name === systemDisk) return false;
+        return true;
+      })
+      .map(d => {
+        const partitions: { name: string; size: number; fstype: string; mountpoint: string }[] = [];
+        let hasMountedPartition = false;
+        let hasFilesystem = !!d.fstype;
+
+        for (const child of (d.children || [])) {
+          partitions.push({
+            name: `/dev/${child.name}`,
+            size: parseInt(child.size) || 0,
+            fstype: child.fstype || '',
+            mountpoint: child.mountpoint || '',
+          });
+          if (child.mountpoint) hasMountedPartition = true;
+          if (child.fstype) hasFilesystem = true;
+        }
+
+        // Also check if disk itself has a mountpoint
+        if (d.mountpoint) hasMountedPartition = true;
+
+        const isNvme = d.tran === 'nvme' || d.name.includes('nvme');
+        const isSsd = !isNvme && (d.model || '').toLowerCase().includes('ssd');
+        const diskType = isNvme ? 'nvme' : isSsd ? 'ssd' : 'hdd';
+
+        return {
+          device: `/dev/${d.name}`,
+          model: (d.model || d.vendor || d.name || '').trim(),
+          size: parseInt(d.size) || 0,
+          sizeHuman: formatBytes(parseInt(d.size) || 0),
+          type: diskType,
+          serial: (d.serial || '').trim(),
+          hasFilesystem,
+          hasMountedPartition,
+          filesystem: d.fstype || (partitions[0]?.fstype) || '',
+          partitions,
+        };
+      });
+
+    res.json(result);
+  } catch {
+    res.json([]);
+  }
+});
+
+/**
+ * POST /api/storage/add-to-pool
+ * Hot-adds a disk to the MergerFS pool.
+ * Formats ext4, mounts at /mnt/diskN, hot-adds to MergerFS, updates fstab.
+ */
+storageRouter.post('/add-to-pool', requireAdmin, async (req, res) => {
+  const device = sanitizeDevice(req.body.device);
+  if (!device) return res.status(400).json({ error: 'Invalid device' });
+
+  try {
+    // 1. Wipe + create GPT + single partition
+    await execFileAsync('sudo', ['sgdisk', '--zap-all', device], { timeout: 15000 });
+    await execFileAsync('sudo', ['sgdisk', '-n', '0:0:0', device], { timeout: 10000 });
+    await execFileAsync('sudo', ['partprobe', device], { timeout: 5000 }).catch(() => {});
+
+    // Partition name: sdb → sdb1, nvme0n1 → nvme0n1p1
+    const partDevice = device.includes('nvme') ? `${device}p1` : `${device}1`;
+
+    // 2. Format ext4
+    const idx = await getNextDiskIndex();
+    const label = `disk${idx}`;
+    await execFileAsync('sudo', ['mkfs.ext4', '-L', label, '-F', partDevice], { timeout: 60000 });
+
+    // 3. Get UUID
+    const { stdout: uuidOut } = await execFileAsync('sudo', ['blkid', '-s', 'UUID', '-o', 'value', partDevice], { timeout: 5000 });
+    const uuid = uuidOut.trim();
+
+    // 4. Mount
+    const mountPoint = `/mnt/${label}`;
+    await execFileAsync('sudo', ['mkdir', '-p', mountPoint], { timeout: 5000 });
+    await execFileAsync('sudo', ['mount', partDevice, mountPoint], { timeout: 10000 });
+
+    // 5. Add to fstab
+    await appendFstab(`UUID=${uuid} ${mountPoint} ext4 defaults,nofail 0 2`);
+
+    // 6. Hot-add to MergerFS if pool exists
+    const pool = await getMergerFSPool();
+    let poolAdded = false;
+    if (pool) {
+      try {
+        await execFileAsync('sudo', ['mount', '-o', `remount,add:${mountPoint}`, pool.mountpoint], { timeout: 10000 });
+        poolAdded = true;
+      } catch {}
+    }
+
+    res.json({
+      success: true,
+      mountPoint,
+      label,
+      poolAdded,
+      poolMount: pool?.mountpoint || null,
+      message: poolAdded
+        ? `Disco añadido al pool en ${mountPoint} y unido a ${pool!.mountpoint}`
+        : `Disco montado en ${mountPoint}. Configura el pool MergerFS para añadirlo.`,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[add-to-pool]', msg);
+    res.status(500).json({ success: false, error: msg });
+  }
+});
+
+/**
+ * POST /api/storage/mount-standalone
+ * Formats and mounts a disk as an independent volume at /mnt/:name.
+ */
+storageRouter.post('/mount-standalone', requireAdmin, async (req, res) => {
+  const device = sanitizeDevice(req.body.device);
+  const rawName = (req.body.name as string || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32);
+  if (!device) return res.status(400).json({ error: 'Invalid device' });
+  if (!rawName) return res.status(400).json({ error: 'Name required' });
+
+  const mountPoint = `/mnt/${rawName}`;
+
+  // Prevent overwriting existing mount points
+  if (fs.existsSync(mountPoint)) {
+    const { stdout: checkMount } = await execFileAsync('mountpoint', ['-q', mountPoint]).catch(() => ({ stdout: '' })) as { stdout: string };
+    if (checkMount !== undefined) {
+      const already = await execFileAsync('mountpoint', ['-q', mountPoint]).then(() => true).catch(() => false);
+      if (already) return res.status(409).json({ error: `${mountPoint} ya está montado` });
+    }
+  }
+
+  try {
+    await execFileAsync('sudo', ['sgdisk', '--zap-all', device], { timeout: 15000 });
+    await execFileAsync('sudo', ['sgdisk', '-n', '0:0:0', device], { timeout: 10000 });
+    await execFileAsync('sudo', ['partprobe', device], { timeout: 5000 }).catch(() => {});
+
+    const partDevice = device.includes('nvme') ? `${device}p1` : `${device}1`;
+    await execFileAsync('sudo', ['mkfs.ext4', '-L', rawName, '-F', partDevice], { timeout: 60000 });
+
+    const { stdout: uuidOut } = await execFileAsync('sudo', ['blkid', '-s', 'UUID', '-o', 'value', partDevice], { timeout: 5000 });
+    const uuid = uuidOut.trim();
+
+    await execFileAsync('sudo', ['mkdir', '-p', mountPoint], { timeout: 5000 });
+    await execFileAsync('sudo', ['mount', partDevice, mountPoint], { timeout: 10000 });
+    await appendFstab(`UUID=${uuid} ${mountPoint} ext4 defaults,nofail 0 2`);
+
+    res.json({ success: true, mountPoint, message: `Disco montado en ${mountPoint}` });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[mount-standalone]', msg);
+    res.status(500).json({ success: false, error: msg });
+  }
+});
+
+/**
+ * POST /api/storage/mount-external
+ * Mounts an existing NTFS/FAT32/exFAT/ext4 disk without formatting.
+ * Useful for data recovery from Windows/external drives.
+ */
+storageRouter.post('/mount-external', requireAdmin, async (req, res) => {
+  const rawDevice = req.body.partition || req.body.device;
+  const device = sanitizeDevice(rawDevice);
+  const readonly = req.body.readonly === true;
+  const rawName = (req.body.name as string || 'recovery').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32);
+  if (!device) return res.status(400).json({ error: 'Invalid device' });
+
+  try {
+    // Detect filesystem
+    const { stdout: fstypeOut } = await execFileAsync('sudo', ['blkid', '-s', 'TYPE', '-o', 'value', device], { timeout: 5000 });
+    const fstype = fstypeOut.trim().toLowerCase();
+
+    if (!fstype) return res.status(400).json({ error: 'No se detectó sistema de archivos en el dispositivo. ¿Está la partición correcta?' });
+
+    // Mount options by filesystem
+    const mountPoint = `/mnt/${rawName}`;
+    await execFileAsync('sudo', ['mkdir', '-p', mountPoint], { timeout: 5000 });
+
+    let mountArgs: string[];
+    if (fstype === 'ntfs' || fstype === 'ntfs-3g') {
+      const opts = readonly ? 'ro' : 'rw,uid=1000,gid=1000,umask=0022';
+      mountArgs = ['sudo', 'mount', '-t', 'ntfs-3g', '-o', opts, device, mountPoint];
+    } else if (fstype === 'vfat' || fstype === 'fat32' || fstype === 'msdos') {
+      const opts = readonly ? 'ro' : 'rw,uid=1000,gid=1000,umask=0022';
+      mountArgs = ['sudo', 'mount', '-t', 'vfat', '-o', opts, device, mountPoint];
+    } else if (fstype === 'exfat') {
+      const opts = readonly ? 'ro' : 'rw,uid=1000,gid=1000,umask=0022';
+      mountArgs = ['sudo', 'mount', '-t', 'exfat', '-o', opts, device, mountPoint];
+    } else {
+      // ext4, xfs, btrfs — mount as-is
+      const opts = readonly ? 'ro' : 'defaults';
+      mountArgs = ['sudo', 'mount', '-o', opts, device, mountPoint];
+    }
+
+    await execFileAsync(mountArgs[0], mountArgs.slice(1), { timeout: 10000 });
+
+    res.json({
+      success: true,
+      mountPoint,
+      filesystem: fstype,
+      readonly,
+      message: `${fstype.toUpperCase()} montado en ${mountPoint}${readonly ? ' (solo lectura)' : ''}`,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[mount-external]', msg);
+    // Common error: ntfs-3g not installed
+    if (msg.includes('ntfs-3g') || msg.includes('No such file')) {
+      return res.status(500).json({ success: false, error: 'ntfs-3g no instalado. Ejecuta: sudo apt install ntfs-3g' });
+    }
+    res.status(500).json({ success: false, error: msg });
+  }
+});
+
+/**
+ * POST /api/storage/unmount
+ * Safely unmounts a disk from a given mountpoint.
+ */
+storageRouter.post('/unmount', requireAdmin, async (req, res) => {
+  const rawMount = (req.body.mountpoint as string || '');
+  // Only allow /mnt/... paths
+  if (!rawMount.startsWith('/mnt/') || rawMount.includes('..')) {
+    return res.status(400).json({ error: 'Invalid mountpoint' });
+  }
+  try {
+    await execFileAsync('sudo', ['umount', rawMount], { timeout: 15000 });
+    res.json({ success: true, message: `${rawMount} desmontado` });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, error: msg });
+  }
+});
