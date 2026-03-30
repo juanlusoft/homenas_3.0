@@ -1,4 +1,4 @@
-# HomePiNAS v6.4.8
+# HomePiNAS v6.4.9
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -113,6 +113,9 @@ pnpm lint         # ESLint 10
 ### v6.4.3 (30 Marzo 2026)
 - git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
 - git-check: devuelve el error real al frontend en lugar de mensaje genérico
+
+### v6.4.9 (30 Marzo 2026)
+- Gráficos: eje X muestra hora real completa (HH:MM:SS) en lugar de solo minutos:segundos
 
 ### v6.4.8 (30 Marzo 2026)
 - Red: fix guardar IP estática — nmcli resuelve el nombre de conexión por dispositivo (no asume que coincide con el nombre de interfaz)

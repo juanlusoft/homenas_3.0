@@ -19,7 +19,7 @@ function formatSpeed(bytesPerSec: number): string {
 }
 
 function formatTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' });
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 export function NetworkChart({ data }: NetworkChartProps) {
