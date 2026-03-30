@@ -150,7 +150,7 @@ fi
 
 TOTAL_SIZE=0
 START=$(date +%s)
-for P in "${BACKUP_PATHS[@]}"; do
+for P in "\${BACKUP_PATHS[@]}"; do
   if [ -e "$P" ]; then
     log "Backing up: $P"
     SIZE=$(du -sb "$P" 2>/dev/null | cut -f1 || echo 0)
@@ -236,7 +236,7 @@ if ! echo "$CONFIG" | grep -q '"approved":true'; then
 fi
 
 TOTAL_SIZE=0
-for P in "${BACKUP_PATHS[@]}"; do
+for P in "\${BACKUP_PATHS[@]}"; do
   if [ -e "$P" ]; then
     SIZE=$(du -sk "$P" 2>/dev/null | awk '{print $1*1024}' || echo 0)
     TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
