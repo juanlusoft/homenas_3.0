@@ -1,6 +1,6 @@
 import { t } from '@/i18n';
 import { authFetch } from '@/api/authFetch';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
 import { useAPI } from '@/hooks/useAPI';
 import { api } from '@/api/client';
@@ -27,10 +27,11 @@ interface AvailableDisk {
 
 type DiskAction = 'pool' | 'standalone' | 'external';
 
-function DiskCard({ disk }: { disk: Disk }) {
+function DiskCard({ disk, onRemoveFromPool }: { disk: Disk; onRemoveFromPool?: (disk: Disk) => void }) {
   const status = disk.health === 'healthy' ? 'healthy' : disk.health === 'warning' ? 'warning' : 'error';
   const barColor = (disk.usage ?? 0) > 90 ? 'bg-red-500' : (disk.usage ?? 0) > 75 ? 'bg-amber-500' : 'bg-teal';
   const badge = disk.role ? ROLE_BADGE[disk.role] : null;
+  const isPoolDisk = disk.role === 'data' || disk.role === 'cache';
 
   return (
     <GlassCard elevation="mid" className="hover:shadow-lg transition-shadow">
@@ -65,7 +66,7 @@ function DiskCard({ disk }: { disk: Disk }) {
       </div>
 
       {/* SMART details */}
-      <div className="grid grid-cols-3 gap-3 text-center">
+      <div className="grid grid-cols-3 gap-3 text-center mb-4">
         <div>
           <p className="font-mono text-lg font-bold text-[var(--text-primary)]">
             {(disk.temperature ?? 0) > 0 ? `${disk.temperature}°C` : 'N/A'}
@@ -85,6 +86,112 @@ function DiskCard({ disk }: { disk: Disk }) {
           <p className="text-xs text-[var(--text-secondary)]">{t('storage.badSectors')}</p>
         </div>
       </div>
+
+      {isPoolDisk && onRemoveFromPool && (
+        <StitchButton size="sm" variant="ghost" className="w-full text-red-400 hover:text-red-300"
+          onClick={() => onRemoveFromPool(disk)}>
+          Quitar del pool
+        </StitchButton>
+      )}
+    </GlassCard>
+  );
+}
+
+interface SnapraidJob {
+  output: string[];
+  done: boolean;
+  exitCode: number | null;
+  startedAt: string;
+}
+
+function SnapraidSection({ onRefreshDisks }: { onRefreshDisks: () => void }) {
+  const fetchStatus = useCallback(() =>
+    authFetch('/storage/snapraid/status').then(r => r.json()), []);
+  const { data: status, loading: statusLoading, refresh: refreshStatus } = useAPI<{
+    available: boolean; synced: boolean; hasError: boolean; output: string;
+  }>(fetchStatus);
+
+  const [activeJob, setActiveJob] = useState<{ id: string; type: 'sync' | 'scrub' } | null>(null);
+  const [jobData, setJobData] = useState<SnapraidJob | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startJob = useCallback(async (type: 'sync' | 'scrub') => {
+    const res = await authFetch(`/storage/snapraid/${type}`, { method: 'POST' });
+    const data = await res.json();
+    setActiveJob({ id: data.jobId, type });
+    setJobData({ output: [], done: false, exitCode: null, startedAt: new Date().toISOString() });
+  }, []);
+
+  useEffect(() => {
+    if (!activeJob) return;
+    pollRef.current = setInterval(async () => {
+      const res = await authFetch(`/storage/snapraid/progress/${activeJob.id}`);
+      if (!res.ok) return;
+      const data: SnapraidJob = await res.json();
+      setJobData(data);
+      if (data.done) {
+        clearInterval(pollRef.current!);
+        refreshStatus();
+        onRefreshDisks();
+      }
+    }, 2000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [activeJob, refreshStatus, onRefreshDisks]);
+
+  const outputRef = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
+  }, [jobData?.output.length]);
+
+  if (statusLoading) return <div className="h-24 animate-pulse rounded-xl bg-surface-void" />;
+  if (!status?.available) return null;
+
+  const isRunning = activeJob && jobData && !jobData.done;
+
+  return (
+    <GlassCard elevation="low">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="font-display text-lg font-semibold text-[var(--text-primary)]">SnapRAID</h3>
+          <p className="text-xs text-[var(--text-secondary)]">
+            {status.synced ? '✅ Pool sincronizado' : status.hasError ? '❌ Errores detectados' : '⚠️ Sincronización pendiente'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <StitchButton size="sm" variant="ghost" onClick={() => startJob('sync')} disabled={!!isRunning}>
+            {isRunning && activeJob?.type === 'sync' ? '⏳ Sincronizando...' : '🔄 Sync'}
+          </StitchButton>
+          <StitchButton size="sm" variant="ghost" onClick={() => startJob('scrub')} disabled={!!isRunning}>
+            {isRunning && activeJob?.type === 'scrub' ? '⏳ Verificando...' : '🔍 Scrub'}
+          </StitchButton>
+        </div>
+      </div>
+
+      {jobData && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+              {activeJob?.type === 'sync' ? 'Sincronización' : 'Verificación'} — {jobData.done ? (jobData.exitCode === 0 ? '✅ Completado' : '❌ Error') : '⏳ En curso...'}
+            </span>
+            {jobData.done && (
+              <button className="text-xs text-[var(--text-disabled)] hover:text-[var(--text-secondary)]"
+                onClick={() => { setActiveJob(null); setJobData(null); }}>
+                Cerrar
+              </button>
+            )}
+          </div>
+          <pre ref={outputRef}
+            className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-56 overflow-auto whitespace-pre-wrap">
+            {jobData.output.join('\n') || 'Iniciando...'}
+          </pre>
+        </div>
+      )}
+
+      {!jobData && (
+        <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-secondary)] max-h-40 overflow-auto whitespace-pre-wrap">
+          {status.output}
+        </pre>
+      )}
     </GlassCard>
   );
 }
@@ -139,6 +246,9 @@ export default function StoragePage() {
   const { data: availableDisks, loading: availLoading, refresh: refreshAvail } = useAPI<AvailableDisk[]>(fetchAvailable, 30000);
 
   const [smartRunning, setSmartRunning] = useState(false);
+  const [removingDisk, setRemovingDisk] = useState<Disk | null>(null);
+  const [removeResult, setRemoveResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
   const [selectedDisk, setSelectedDisk] = useState<AvailableDisk | null>(null);
   const [action, setAction] = useState<DiskAction>('pool');
   const [standaloneName, setStandaloneName] = useState('');
@@ -147,6 +257,31 @@ export default function StoragePage() {
   const [externalReadonly, setExternalReadonly] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleRemoveFromPool = useCallback((disk: Disk) => {
+    setRemovingDisk(disk);
+    setRemoveResult(null);
+  }, []);
+
+  const confirmRemove = useCallback(async () => {
+    if (!removingDisk) return;
+    if (!confirm(`⚠️ ¿Quitar ${removingDisk.mount} del pool? El disco se desmontará.`)) return;
+    setRemoveBusy(true);
+    try {
+      const res = await authFetch('/storage/remove-from-pool', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mountpoint: removingDisk.mount }),
+      });
+      const data = await res.json();
+      setRemoveResult({ ok: !!data.success, msg: data.message || data.error });
+      if (data.success) { refresh(); refreshAvail(); }
+    } catch {
+      setRemoveResult({ ok: false, msg: 'Error de conexión' });
+    } finally {
+      setRemoveBusy(false);
+    }
+  }, [removingDisk, refresh, refreshAvail]);
 
   const openModal = useCallback((disk: AvailableDisk) => {
     setSelectedDisk(disk);
@@ -259,9 +394,12 @@ export default function StoragePage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {disks?.map((disk) => <DiskCard key={disk.device} disk={disk} />)}
+          {disks?.map((disk) => <DiskCard key={disk.device} disk={disk} onRemoveFromPool={handleRemoveFromPool} />)}
         </div>
       )}
+
+      {/* SnapRAID */}
+      <SnapraidSection onRefreshDisks={refresh} />
 
       {/* Available (unused) disks */}
       {(availLoading || unusedDisks.length > 0) && (
@@ -287,6 +425,42 @@ export default function StoragePage() {
           )}
         </div>
       )}
+
+      {/* Remove from pool modal */}
+      <Modal
+        open={!!removingDisk}
+        onClose={() => { setRemovingDisk(null); setRemoveResult(null); }}
+        title={`Quitar del pool: ${removingDisk?.mount}`}
+        actions={
+          removeResult?.ok ? (
+            <StitchButton size="sm" onClick={() => { setRemovingDisk(null); setRemoveResult(null); }}>Cerrar</StitchButton>
+          ) : (
+            <>
+              <StitchButton size="sm" variant="ghost" onClick={() => setRemovingDisk(null)}>{t('common.cancel')}</StitchButton>
+              <StitchButton size="sm" onClick={confirmRemove} disabled={removeBusy}>
+                {removeBusy ? 'Procesando...' : 'Quitar del pool'}
+              </StitchButton>
+            </>
+          )
+        }
+      >
+        {removingDisk && !removeResult && (
+          <div className="space-y-3">
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-sm text-amber-300">
+              ⚠️ El disco <strong>{removingDisk.mount}</strong> será eliminado del pool MergerFS y desmontado. Los datos no se borran, pero el disco quedará inaccesible hasta que lo vuelvas a montar.
+            </div>
+            <div className="text-sm text-[var(--text-secondary)]">
+              <p>Dispositivo: <span className="font-mono text-[var(--text-primary)]">{removingDisk.device}</span></p>
+              <p>Tamaño: <span className="font-mono text-[var(--text-primary)]">{removingDisk.size}</span></p>
+            </div>
+          </div>
+        )}
+        {removeResult && (
+          <div className={`rounded-lg p-4 text-sm border ${removeResult.ok ? 'bg-teal/10 border-teal/20 text-teal' : 'bg-red-500/10 border-red-500/20 text-red-300'}`}>
+            {removeResult.ok ? '✅ ' : '❌ '}{removeResult.msg}
+          </div>
+        )}
+      </Modal>
 
       {/* Disk action modal */}
       <Modal

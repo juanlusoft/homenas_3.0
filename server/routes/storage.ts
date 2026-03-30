@@ -641,7 +641,6 @@ storageRouter.post('/mount-external', requireAdmin, async (req, res) => {
  */
 storageRouter.post('/unmount', requireAdmin, async (req, res) => {
   const rawMount = (req.body.mountpoint as string || '');
-  // Only allow /mnt/... paths
   if (!rawMount.startsWith('/mnt/') || rawMount.includes('..')) {
     return res.status(400).json({ error: 'Invalid mountpoint' });
   }
@@ -652,4 +651,117 @@ storageRouter.post('/unmount', requireAdmin, async (req, res) => {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ success: false, error: msg });
   }
+});
+
+/**
+ * POST /api/storage/remove-from-pool
+ * Hot-removes a disk from the MergerFS pool, unmounts it, and removes from fstab.
+ * body: { mountpoint: '/mnt/disk2' }
+ */
+storageRouter.post('/remove-from-pool', requireAdmin, async (req, res) => {
+  const rawMount = (req.body.mountpoint as string || '');
+  if (!rawMount.startsWith('/mnt/') || rawMount.includes('..')) {
+    return res.status(400).json({ error: 'Invalid mountpoint' });
+  }
+
+  try {
+    const pool = await getMergerFSPool();
+    let poolRemoved = false;
+
+    // 1. Hot-remove from MergerFS if pool exists and disk is in it
+    if (pool && pool.sources.includes(rawMount)) {
+      try {
+        await execFileAsync('sudo', ['mount', '-o', `remount,remove:${rawMount}`, pool.mountpoint], { timeout: 10000 });
+        poolRemoved = true;
+      } catch (e) {
+        console.warn('[remove-from-pool] mergerfs remount failed:', e);
+      }
+    }
+
+    // 2. Unmount the disk
+    await execFileAsync('sudo', ['umount', rawMount], { timeout: 15000 });
+
+    // 3. Remove from /etc/fstab (remove lines matching the mountpoint)
+    try {
+      const fstab = fs.readFileSync('/etc/fstab', 'utf-8');
+      const filtered = fstab.split('\n').filter(line => !line.includes(rawMount)).join('\n');
+      const tmpPath = path.join(process.cwd(), 'data', 'fstab.tmp');
+      fs.mkdirSync(path.dirname(tmpPath), { recursive: true });
+      fs.writeFileSync(tmpPath, filtered);
+      await execFileAsync('sudo', ['cp', tmpPath, '/etc/fstab'], { timeout: 5000 });
+      try { fs.unlinkSync(tmpPath); } catch {}
+    } catch {}
+
+    res.json({
+      success: true,
+      poolRemoved,
+      message: poolRemoved
+        ? `Disco eliminado del pool y desmontado desde ${rawMount}`
+        : `Disco desmontado desde ${rawMount}`,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[remove-from-pool]', msg);
+    res.status(500).json({ success: false, error: msg });
+  }
+});
+
+// ── SnapRAID ────────────────────────────────────────────────────────────────
+
+/** In-memory store for running snapraid operations */
+const snapraidJobs = new Map<string, { output: string[]; done: boolean; exitCode: number | null; startedAt: string }>();
+
+function runSnapraidAsync(jobId: string, args: string[]): void {
+  const { spawn } = require('child_process') as typeof import('child_process');
+  const job = { output: [] as string[], done: false, exitCode: null as number | null, startedAt: new Date().toISOString() };
+  snapraidJobs.set(jobId, job);
+
+  const proc = spawn('sudo', ['snapraid', ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  const onData = (chunk: Buffer) => {
+    const lines = chunk.toString().split('\n').filter(Boolean);
+    job.output.push(...lines);
+    // Keep last 500 lines
+    if (job.output.length > 500) job.output = job.output.slice(-500);
+  };
+  proc.stdout.on('data', onData);
+  proc.stderr.on('data', onData);
+  proc.on('close', (code) => {
+    job.done = true;
+    job.exitCode = code;
+  });
+}
+
+/** GET /api/storage/snapraid/status — SnapRAID pool status */
+storageRouter.get('/snapraid/status', requireAuth, async (_req, res) => {
+  try {
+    const { stdout, stderr } = await execFileAsync('sudo', ['snapraid', 'status'], { timeout: 30000 });
+    const output = (stdout + stderr).trim();
+    const hasError = output.includes('DANGER') || output.includes('failed');
+    const synced = output.includes('No differences') || output.includes('Everything OK') || output.includes('0 files') ;
+    res.json({ available: true, synced, hasError, output });
+  } catch {
+    res.json({ available: false, synced: false, hasError: false, output: 'SnapRAID no está instalado o configurado.' });
+  }
+});
+
+/** POST /api/storage/snapraid/sync — Start async SnapRAID sync */
+storageRouter.post('/snapraid/sync', requireAdmin, async (req, res) => {
+  const jobId = `sync-${Date.now()}`;
+  runSnapraidAsync(jobId, ['sync']);
+  res.json({ jobId, message: 'SnapRAID sync iniciado' });
+});
+
+/** POST /api/storage/snapraid/scrub — Start async SnapRAID scrub */
+storageRouter.post('/snapraid/scrub', requireAdmin, async (req, res) => {
+  const jobId = `scrub-${Date.now()}`;
+  runSnapraidAsync(jobId, ['scrub', '-p', '100', '-o', '0']);
+  res.json({ jobId, message: 'SnapRAID scrub iniciado' });
+});
+
+/** GET /api/storage/snapraid/progress/:jobId — Live output of a running job */
+storageRouter.get('/snapraid/progress/:jobId', requireAuth, (req, res) => {
+  const job = snapraidJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json({ output: job.output, done: job.done, exitCode: job.exitCode, startedAt: job.startedAt });
 });

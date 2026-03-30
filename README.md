@@ -87,6 +87,11 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.4.5 (30 Marzo 2026)
+- Almacenamiento: botón "Quitar del pool" en discos de datos/caché con hot-remove MergerFS
+- SnapRAID: sección con estado del pool, sync y scrub con salida en tiempo real
+- POST /storage/remove-from-pool: hot-remove + unmount + limpieza fstab
+
 ### v6.4.4 (30 Marzo 2026)
 - Almacenamiento: sección "Discos disponibles" con detección de discos sin usar
 - Hot-plug: añadir disco al pool MergerFS en caliente (POST /storage/add-to-pool)
