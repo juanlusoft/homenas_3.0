@@ -87,6 +87,10 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.4.3 (30 Marzo 2026)
+- git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
+- git-check: devuelve el error real al frontend en lugar de mensaje genérico
+
 ### v6.4.2 (30 Marzo 2026)
 - Red: fix botón Guardar IP (URL incorrecta /interfaces/:id → /:id/config)
 - Tienda: botones de ordenación A→Z, Z→A y orden de integración (Default)

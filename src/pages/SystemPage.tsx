@@ -69,7 +69,7 @@ export default function SystemPage() {
         const data: GitCheckResult = await res.json();
         setGitCheck(data);
         if (data.error) {
-          setUpdateResult(t('sys.updateCheckFailed'));
+          setUpdateResult(`Error: ${data.error}`);
         } else if (data.hasUpdate) {
           setUpdateResult(`${data.count} ${t('sys.updatesAvailable')}`);
           // Notify sidebar
