@@ -1,4 +1,4 @@
-# HomePiNAS v6.4
+# HomePiNAS v6.4.1
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -86,6 +86,12 @@ pnpm lint         # ESLint 10
 ```
 
 ## 📋 Changelog
+
+### v6.4.1 (30 Marzo 2026)
+- Actualización desde git: botón "Buscar actualizaciones" comprueba commits pendientes en origin/main
+- Botón "Aplicar actualización" hace git pull + pnpm install + reinicio del servicio
+- Badge pulsante en sidebar encima del usuario cuando hay actualización disponible
+- Comprobación automática de updates al login y cada hora
 
 ### v6.3.0 (26 Marzo 2026)
 - File actions: download, rename, delete per file

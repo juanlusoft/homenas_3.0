@@ -105,6 +105,7 @@ export default function App() {
   const [username, setUsername] = useState('');
   const [userRole, setUserRole] = useState<'admin' | 'user' | 'readonly'>('admin');
   const [, setLangTick] = useState(0);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const { notifications, markRead, clearAll } = useNotifications();
   const ViewComponent = viewComponents[currentView];
 
@@ -178,6 +179,29 @@ export default function App() {
       setCurrentView('dashboard');
     }
   }, [userRole, currentView]);
+
+  // Check for app updates via git when logged in
+  useEffect(() => {
+    if (!loggedIn) return;
+    const check = () => {
+      const token = getToken();
+      if (!token) return;
+      fetch(`${API}/system/git-check`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) setUpdateAvailable(!!data.hasUpdate); })
+        .catch(() => {});
+    };
+    check();
+    const interval = setInterval(check, 60 * 60 * 1000); // every hour
+    return () => clearInterval(interval);
+  }, [loggedIn]);
+
+  // Listen for update-available events from SystemPage
+  useEffect(() => {
+    const handler = (e: Event) => setUpdateAvailable((e as CustomEvent<boolean>).detail);
+    window.addEventListener('homepinas:update-available', handler);
+    return () => window.removeEventListener('homepinas:update-available', handler);
+  }, []);
 
   const handleLogout = useCallback(() => {
     clearToken();
@@ -276,6 +300,20 @@ export default function App() {
           ))}
         </nav>
 
+        {/* Update badge */}
+        {updateAvailable && (
+          <button
+            onClick={() => navigate('system')}
+            className="mx-3 mb-2 flex items-center gap-2 rounded-lg px-3 py-2 bg-teal/10 border border-teal/30 hover:bg-teal/20 transition-colors"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal" />
+            </span>
+            <span className="text-xs font-medium text-teal">Actualización disponible</span>
+          </button>
+        )}
+
         {/* User + logout */}
         <div className="p-4 border-t border-[var(--outline-variant)]">
           <div className="flex items-center justify-between mb-2">
@@ -289,7 +327,7 @@ export default function App() {
               Logout
             </button>
           </div>
-          <p className="text-xs text-[var(--text-disabled)]">v6.4.0 · Stitch</p>
+          <p className="text-xs text-[var(--text-disabled)]">v6.4.1 · Stitch</p>
         </div>
       </aside>
 
@@ -346,7 +384,7 @@ export default function App() {
         </div>
 
         <footer className="py-4 text-center text-xs text-[var(--text-disabled)]">
-          HomePiNAS v3.5.0 · Luminous Obsidian · Stitch Design System
+          HomePiNAS v6.4.1 · Luminous Obsidian · Stitch Design System
         </footer>
       </main>
     </div>

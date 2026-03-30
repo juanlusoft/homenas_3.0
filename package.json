@@ -1,7 +1,7 @@
 {
   "name": "homenas-3-0",
   "private": true,
-  "version": "6.4.0",
+  "version": "6.4.1",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite\" \"tsx watch server/index.ts\"",
@@ -111,6 +111,7 @@
   "description": "HomePiNAS v3 - NAS Dashboard with Stitch Luminous Obsidian Design System",
   "pnpm": {
     "onlyBuiltDependencies": [
+      "bcrypt",
       "better-sqlite3",
       "esbuild"
     ]

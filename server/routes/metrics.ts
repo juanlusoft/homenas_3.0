@@ -63,7 +63,7 @@ metricsRouter.get('/diagnostics', requireAuth, async (_req, res) => {
   }
 });
 
-/** GET /api/system/updates — Check for package updates */
+/** GET /api/system/updates — Check for package updates (apt) */
 metricsRouter.get('/updates', requireAuth, async (_req, res) => {
   try {
     const { execFile: ef } = await import('child_process');
@@ -77,6 +77,40 @@ metricsRouter.get('/updates', requireAuth, async (_req, res) => {
     res.json({ count: updates.length, packages: updates });
   } catch {
     res.json({ count: 0, packages: [], error: 'Could not check updates' });
+  }
+});
+
+/** GET /api/system/git-check — Check for app updates via git */
+metricsRouter.get('/git-check', requireAuth, async (_req, res) => {
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify: p } = await import('util');
+    const exec = p(ef);
+    await exec('git', ['fetch', 'origin', 'main'], { cwd: process.cwd(), timeout: 15000 });
+    const { stdout } = await exec('git', ['log', 'HEAD..origin/main', '--oneline'], { cwd: process.cwd(), timeout: 5000 });
+    const commits = stdout.trim().split('\n').filter(Boolean);
+    res.json({ hasUpdate: commits.length > 0, count: commits.length, commits });
+  } catch {
+    res.json({ hasUpdate: false, count: 0, commits: [], error: 'Could not check for updates' });
+  }
+});
+
+/** POST /api/system/git-update — Apply app update via git pull */
+metricsRouter.post('/git-update', requireAdmin, async (req, res) => {
+  audit('service_action', { user: req.user?.username, details: 'App update via git pull' });
+  try {
+    const { execFile: ef } = await import('child_process');
+    const { promisify: p } = await import('util');
+    const exec = p(ef);
+    const { stdout: pullOut } = await exec('git', ['pull', 'origin', 'main'], { cwd: process.cwd(), timeout: 60000 });
+    await exec('pnpm', ['install', '--frozen-lockfile'], { cwd: process.cwd(), timeout: 120000 });
+    res.json({ success: true, output: pullOut });
+    setTimeout(async () => {
+      await exec('sudo', ['systemctl', 'restart', 'homepinas-v3'], { timeout: 5000 }).catch(() => {});
+    }, 2000);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Update failed';
+    res.status(500).json({ success: false, error: msg });
   }
 });
 

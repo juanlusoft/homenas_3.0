@@ -37,6 +37,13 @@ function formatUptime(seconds: number): string {
 
 const goTo = (view: string) => window.dispatchEvent(new CustomEvent('homepinas:navigate', { detail: view }));
 
+interface GitCheckResult {
+  hasUpdate: boolean;
+  count: number;
+  commits: string[];
+  error?: string;
+}
+
 export default function SystemPage() {
   const [diagResult, setDiagResult] = useState<string>('');
   const [updatesResult, setUpdatesResult] = useState<string>('');
@@ -46,33 +53,59 @@ export default function SystemPage() {
   []);
   const { data: info, loading: infoLoading } = useAPI<SystemInfo>(fetchInfo);
   const { metrics, isConnected } = useLiveMetrics();
-  const [updating, setUpdating] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
+  const [gitCheck, setGitCheck] = useState<GitCheckResult | null>(null);
+  const [applying, setApplying] = useState(false);
   const [diagRunning, setDiagRunning] = useState(false);
 
   const checkUpdates = useCallback(async () => {
-    setUpdating(true);
+    setChecking(true);
     setUpdateResult(null);
+    setGitCheck(null);
     try {
-      const res = await authFetch('/system/updates');
+      const res = await authFetch('/system/git-check');
       if (res.ok) {
-        const data = await res.json();
-        if (data.count > 0) {
-          setUpdateResult(`${data.count} ${t('sys.updatesAvailable')}: ${data.packages.slice(0, 5).join(', ')}${data.count > 5 ? '...' : ''}`);
-          setUpdatesResult(`${data.count} ${t('sys.updatesAvailable')}: ${data.packages.slice(0, 5).join(', ')}${data.count > 5 ? '...' : ''}`);
+        const data: GitCheckResult = await res.json();
+        setGitCheck(data);
+        if (data.error) {
+          setUpdateResult(t('sys.updateCheckFailed'));
+        } else if (data.hasUpdate) {
+          setUpdateResult(`${data.count} ${t('sys.updatesAvailable')}`);
+          // Notify sidebar
+          window.dispatchEvent(new CustomEvent('homepinas:update-available', { detail: true }));
         } else {
           setUpdateResult(t('sys.upToDate'));
-          setUpdatesResult(t('sys.upToDate'));
+          window.dispatchEvent(new CustomEvent('homepinas:update-available', { detail: false }));
         }
       } else {
         setUpdateResult(t('sys.updateCheckFailed'));
-        setUpdatesResult(t('sys.updateCheckFailed'));
       }
     } catch {
       setUpdateResult(t('sys.updateCheckFailed'));
-      setUpdatesResult(t('sys.updateCheckFailed'));
     } finally {
-      setUpdating(false);
+      setChecking(false);
+    }
+  }, []);
+
+  const applyUpdate = useCallback(async () => {
+    if (!confirm('¿Aplicar la actualización? El servicio se reiniciará automáticamente.')) return;
+    setApplying(true);
+    setUpdatesResult('Aplicando actualización...');
+    try {
+      const res = await authFetch('/system/git-update', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setUpdatesResult('Actualización aplicada. Reiniciando servicio...');
+        setGitCheck(null);
+        window.dispatchEvent(new CustomEvent('homepinas:update-available', { detail: false }));
+      } else {
+        setUpdatesResult(`Error: ${data.error}`);
+      }
+    } catch {
+      setUpdatesResult('Error al aplicar la actualización');
+    } finally {
+      setApplying(false);
     }
   }, []);
 
@@ -200,8 +233,8 @@ export default function SystemPage() {
           <StitchButton size="sm" variant="ghost" onClick={runDiagnostics} disabled={diagRunning}>
             {diagRunning ? '...' : t('sys.diagnostics')}
           </StitchButton>
-          <StitchButton size="sm" variant="ghost" onClick={checkUpdates} disabled={updating}>
-            {updating ? '...' : t('sys.checkUpdates')}
+          <StitchButton size="sm" variant="ghost" onClick={checkUpdates} disabled={checking}>
+            {checking ? '...' : t('sys.checkUpdates')}
           </StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={() => goTo('logs')}>{t('sys.viewLogs')}</StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={() => goTo('settings')}>{t('sys.configuration')}</StitchButton>
@@ -216,6 +249,30 @@ export default function SystemPage() {
           <h3 className="font-display text-sm font-semibold text-teal mb-2">Diagnostics</h3>
           <pre className="bg-surface-void rounded-lg p-3 font-mono text-xs text-[var(--text-primary)] max-h-60 overflow-auto">{diagResult}</pre>
           <StitchButton size="sm" variant="ghost" className="mt-2" onClick={() => setDiagResult('')}>Close</StitchButton>
+        </GlassCard>
+      )}
+
+      {gitCheck && gitCheck.hasUpdate && (
+        <GlassCard elevation="low">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display text-sm font-semibold text-teal">
+              🔄 {gitCheck.count} actualización{gitCheck.count !== 1 ? 'es' : ''} disponible{gitCheck.count !== 1 ? 's' : ''}
+            </h3>
+            <StitchButton size="sm" onClick={applyUpdate} disabled={applying}>
+              {applying ? 'Aplicando...' : 'Aplicar actualización'}
+            </StitchButton>
+          </div>
+          <ul className="space-y-1 max-h-48 overflow-auto">
+            {gitCheck.commits.map((c, i) => (
+              <li key={i} className="font-mono text-xs text-[var(--text-secondary)] bg-surface-void rounded px-2 py-1">{c}</li>
+            ))}
+          </ul>
+        </GlassCard>
+      )}
+
+      {gitCheck && !gitCheck.hasUpdate && !gitCheck.error && (
+        <GlassCard elevation="low">
+          <p className="text-sm text-[var(--text-secondary)]">✅ HomePiNAS está al día.</p>
         </GlassCard>
       )}
 
