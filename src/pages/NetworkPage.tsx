@@ -73,6 +73,8 @@ export default function NetworkPage() {
 
   const [editIface, setEditIface] = useState<string | null>(null);
   const [netForm, setNetForm] = useState({ mode: 'dhcp', ip: '', netmask: '255.255.255.0', gateway: '', dns: '' });
+  const [netSaving, setNetSaving] = useState(false);
+  const [netError, setNetError] = useState<string | null>(null);
   const [vpnOpen, setVpnOpen] = useState(false);
   const [vpnForm, setVpnForm] = useState({ listenPort: '51820', endpoint: '', dns: '1.1.1.1', allowedIps: '0.0.0.0/0' });
   const [vpnSaving, setVpnSaving] = useState(false);
@@ -80,11 +82,23 @@ export default function NetworkPage() {
 
   const handleSaveNetwork = useCallback(async () => {
     if (!editIface) return;
-    await fetchAPI(`/network/${editIface}/config`, {
-      method: 'PUT',
-      body: JSON.stringify(netForm),
-    });
-    setEditIface(null);
+    setNetSaving(true);
+    setNetError(null);
+    try {
+      const result = await fetchAPI<{ success: boolean; error?: string }>(`/network/${editIface}/config`, {
+        method: 'PUT',
+        body: JSON.stringify(netForm),
+      });
+      if (result.success) {
+        setEditIface(null);
+      } else {
+        setNetError(result.error || 'Error al guardar la configuración');
+      }
+    } catch (e) {
+      setNetError(e instanceof Error ? e.message : 'Error de conexión');
+    } finally {
+      setNetSaving(false);
+    }
   }, [editIface, netForm]);
 
   const handleSaveVpn = useCallback(async () => {
@@ -184,9 +198,10 @@ export default function NetworkPage() {
       </Modal>
 
       {/* Edit Interface Modal */}
-      <Modal open={!!editIface} onClose={() => setEditIface(null)} title={`${t('net.edit')}: ${editIface}`}
-        actions={<><StitchButton size="sm" variant="ghost" onClick={() => setEditIface(null)}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={handleSaveNetwork}>{t('common.save')}</StitchButton></>}>
+      <Modal open={!!editIface} onClose={() => { setEditIface(null); setNetError(null); }} title={`${t('net.edit')}: ${editIface}`}
+        actions={<><StitchButton size="sm" variant="ghost" onClick={() => { setEditIface(null); setNetError(null); }}>{t('common.cancel')}</StitchButton><StitchButton size="sm" onClick={handleSaveNetwork} disabled={netSaving}>{netSaving ? '...' : t('common.save')}</StitchButton></>}>
         <p className="text-xs text-orange mb-3">{t('net.editWarning')}</p>
+        {netError && <p className="text-xs text-[var(--error)] bg-[var(--error)]/10 rounded-lg px-3 py-2 mb-3 font-mono">{netError}</p>}
         <div className="space-y-3">
           <div className="flex gap-2">
             {(['dhcp', 'static'] as const).map(mode => (

@@ -78,31 +78,44 @@ networkRouter.put('/:iface/config', requireAdmin, async (req, res) => {
   const { mode, ip, netmask, gateway, dns } = req.body;
 
   try {
+    // Resolve nmcli connection profile name by device (may differ from interface name)
+    let connName = ifaceName;
+    try {
+      const { stdout } = await execFileAsync('nmcli', ['-g', 'NAME,DEVICE', 'con', 'show'], { timeout: 5000 });
+      const line = stdout.split('\n').find(l => l.split(':').pop() === ifaceName);
+      if (line) connName = line.split(':').slice(0, -1).join(':');
+    } catch { /* nmcli may not be available, fall back to interface name */ }
+
     if (mode === 'dhcp') {
-      // Switch to DHCP
       await execFileAsync('sudo', [
-        'nmcli', 'con', 'mod', ifaceName,
+        'nmcli', 'con', 'mod', connName,
         'ipv4.method', 'auto',
+        'ipv4.addresses', '',
+        'ipv4.gateway', '',
+        'ipv4.dns', '',
       ], { timeout: 10000 });
     } else if (mode === 'static' && ip) {
-      // Set static IP
       const cidr = netmaskToCidr(netmask || '255.255.255.0');
       await execFileAsync('sudo', [
-        'nmcli', 'con', 'mod', ifaceName,
+        'nmcli', 'con', 'mod', connName,
         'ipv4.method', 'manual',
         'ipv4.addresses', `${ip}/${cidr}`,
         ...(gateway ? ['ipv4.gateway', gateway] : []),
         ...(dns ? ['ipv4.dns', dns] : []),
       ], { timeout: 10000 });
+    } else {
+      res.status(400).json({ success: false, error: 'Invalid mode or missing IP for static configuration' });
+      return;
     }
 
-    // Restart the connection
-    await execFileAsync('sudo', ['nmcli', 'con', 'down', ifaceName], { timeout: 5000 }).catch(() => {});
-    await execFileAsync('sudo', ['nmcli', 'con', 'up', ifaceName], { timeout: 10000 });
+    // Restart the connection to apply changes
+    await execFileAsync('sudo', ['nmcli', 'con', 'down', connName], { timeout: 5000 }).catch(() => {});
+    await execFileAsync('sudo', ['nmcli', 'con', 'up', connName], { timeout: 15000 });
 
     res.json({ success: true });
   } catch (e) {
-    res.json({ success: false, error: 'Failed to configure network' });
+    const msg = e instanceof Error ? e.message : 'Failed to configure network';
+    res.status(500).json({ success: false, error: msg });
   }
 });
 
