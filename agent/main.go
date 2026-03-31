@@ -386,13 +386,10 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) (int64, error) {
 		return 0, fmt.Errorf("backup share credentials are not configured")
 	}
 
-	// Mount SMB share if dest is a UNC path (\\server\share\folder)
 	if strings.HasPrefix(dest, `\\`) {
-		// Extract \\server\share part (first two components after \\)
 		parts := strings.SplitN(strings.TrimPrefix(dest, `\\`), `\`, 3)
 		if len(parts) >= 2 {
 			uncShare := `\\` + parts[0] + `\` + parts[1]
-			// Correct net use syntax: net use \\server\share password /user:username /persistent:no
 			mountCmd := exec.Command("net", "use", uncShare, dc.BackupPassword, "/user:"+dc.BackupUsername, "/persistent:no")
 			if out, err := mountCmd.CombinedOutput(); err != nil {
 				slog.Warn("net use failed (may already be mounted)", "share", uncShare, "err", err, "out", string(out))
@@ -411,23 +408,37 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) (int64, error) {
 		basePercent := (i * 90) / total
 		reportProgress(cfg, basePercent, src, "")
 
-		// Create destination directory (MkdirAll on UNC paths may fail silently — robocopy handles creation)
 		if err := os.MkdirAll(fullDest, 0755); err != nil {
 			slog.Warn("mkdir dest failed (robocopy will create it)", "dest", fullDest, "err", err)
 		}
 
 		start := time.Now()
-		// /MIR mirrors source to dest (creates dirs, removes deleted files)
-		// /R:2 /W:5 = 2 retries, 5s wait; /NP /NFL /NDL /NC /NJS /NJH = quiet output
-		flags := []string{src, fullDest, "/MIR", "/R:2", "/W:5", "/NP", "/NFL", "/NDL", "/NC", "/NJS", "/NJH"}
+		flags := []string{
+			src,
+			fullDest,
+			"/MIR",
+			"/COPY:DT",
+			"/DCOPY:T",
+			"/XJ",
+			"/R:2",
+			"/W:5",
+			"/NP",
+			"/NFL",
+			"/NDL",
+			"/NC",
+			"/NJS",
+			"/NJH",
+		}
 		cmd := exec.Command("robocopy", flags...)
 		slog.Info("robocopy", "src", src, "dest", fullDest)
-		if err := cmd.Run(); err != nil {
-			// robocopy exit codes 0-7 are success/warnings (files copied, skipped, etc.)
-			// Exit code >= 8 means actual errors
+		out, err := cmd.CombinedOutput()
+		if err != nil {
 			if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() <= 7 {
 				elapsed := time.Since(start).Round(time.Second)
 				donePercent := ((i + 1) * 90) / total
+				if len(out) > 0 {
+					slog.Info("robocopy output", "src", src, "output", strings.TrimSpace(string(out)))
+				}
 				reportProgress(cfg, donePercent, filepath.Base(src)+" ✓", elapsed.String())
 				continue
 			}
@@ -435,9 +446,13 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) (int64, error) {
 			if cmd.ProcessState != nil {
 				exitCode = cmd.ProcessState.ExitCode()
 			}
-			return 0, fmt.Errorf("robocopy %s: exit %d", src, exitCode)
+			return 0, fmt.Errorf("robocopy %s: exit %d: %s", src, exitCode, strings.TrimSpace(string(out)))
 		}
+
 		elapsed := time.Since(start).Round(time.Second)
+		if len(out) > 0 {
+			slog.Info("robocopy output", "src", src, "output", strings.TrimSpace(string(out)))
+		}
 		totalSize += dirSize(fullDest)
 		donePercent := ((i + 1) * 90) / total
 		reportProgress(cfg, donePercent, filepath.Base(src)+" ✓", elapsed.String())
