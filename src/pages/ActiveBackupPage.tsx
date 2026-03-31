@@ -19,7 +19,15 @@ export default function ActiveBackupPage() {
   const [generatingPlatform, setGeneratingPlatform] = useState<string | null>(null);
   const [backupType, setBackupType] = useState<'full' | 'incremental' | 'folders'>('incremental');
   const [deviceName, setDeviceName] = useState('');
-  const [installData, setInstallData] = useState<{ platform: string; command: string; deviceID: string } | null>(null);
+  const [backupUsername, setBackupUsername] = useState('');
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupShare, setBackupShare] = useState('active-backup');
+  const [platformArch, setPlatformArch] = useState<{ windows: 'amd64'; mac: 'amd64' | 'arm64'; linux: 'amd64' | 'arm64' }>({
+    windows: 'amd64',
+    mac: 'arm64',
+    linux: 'amd64',
+  });
+  const [installData, setInstallData] = useState<{ platform: string; arch: string; command: string; deviceID: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const fetchDevices = useCallback(() =>
@@ -74,28 +82,39 @@ export default function ActiveBackupPage() {
     setGeneratingPlatform(platform);
     setInstallData(null);
     try {
-      const nameParam = deviceName.trim() ? `&name=${encodeURIComponent(deviceName.trim())}` : '';
-      const res = await authFetch(`/active-backup/agent/generate/${platform}?backupType=${backupType}${nameParam}`);
+      const arch = platformArch[platform];
+      const res = await authFetch(`/active-backup/agent/generate/${platform}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: deviceName.trim(),
+          arch,
+          backupType,
+          backupUsername: backupUsername.trim(),
+          backupPassword,
+          backupShare: backupShare.trim() || 'active-backup',
+        }),
+      });
       const text = await res.text();
       if (!res.ok) {
         alert(`Error del servidor (${res.status}): ${text.slice(0, 200)}`);
         return;
       }
-      let data: { installCommand: string; deviceID: string };
+      let data: { installCommand: string; deviceID: string; arch?: string };
       try {
         data = JSON.parse(text);
       } catch {
         alert(`Respuesta inesperada del servidor:\n${text.slice(0, 300)}`);
         return;
       }
-      setInstallData({ platform, command: data.installCommand, deviceID: data.deviceID });
+      setInstallData({ platform, arch: data.arch || arch, command: data.installCommand, deviceID: data.deviceID });
       refreshPending();
     } catch (err) {
       alert(`Error de conexión con el NAS: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setGeneratingPlatform(null);
     }
-  }, [backupType, refreshPending]);
+  }, [backupPassword, backupShare, backupType, backupUsername, deviceName, platformArch, refreshPending]);
 
   const handleCopyCommand = useCallback(() => {
     if (!installData) return;
@@ -107,11 +126,12 @@ export default function ActiveBackupPage() {
 
   const handleDownloadBinary = useCallback(async (platform: 'windows' | 'mac' | 'linux') => {
     const apiPlatform = platform === 'mac' ? 'darwin' : platform;
+    const arch = platformArch[platform];
     const filename = platform === 'windows' ? 'agent-windows-amd64.exe'
-      : platform === 'mac' ? 'agent-darwin-arm64'
-      : 'agent-linux-amd64';
+      : platform === 'mac' ? `agent-darwin-${arch}`
+      : `agent-linux-${arch}`;
     try {
-      const res = await authFetch(`/active-backup/agent/binary/${apiPlatform}`);
+      const res = await authFetch(`/active-backup/agent/binary/${apiPlatform}?arch=${arch}`);
       if (!res.ok) { alert('Binario no encontrado. Ejecuta agent/build.sh en el Mac Studio.'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -123,7 +143,7 @@ export default function ActiveBackupPage() {
     } catch {
       alert('Error descargando el agente.');
     }
-  }, []);
+  }, [platformArch]);
 
   // Detail view
   const selected = devices?.find(d => d.id === selectedDevice);
@@ -214,7 +234,15 @@ export default function ActiveBackupPage() {
       {/* Agent install modal */}
       <Modal
         open={agentModalOpen}
-        onClose={() => { setAgentModalOpen(false); setInstallData(null); setDeviceName(''); }}
+        onClose={() => {
+          setAgentModalOpen(false);
+          setInstallData(null);
+          setDeviceName('');
+          setBackupUsername('');
+          setBackupPassword('');
+          setBackupShare('active-backup');
+          setPlatformArch({ windows: 'amd64', mac: 'arm64', linux: 'amd64' });
+        }}
         title={installData ? 'Comando de instalación' : 'Generar agente de backup'}
         actions={
           installData
@@ -277,6 +305,38 @@ export default function ActiveBackupPage() {
               className="w-full mb-4 rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-teal"
             />
 
+            <div className="grid grid-cols-1 gap-3 mb-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Usuario SMB</p>
+                <input
+                  type="text"
+                  value={backupUsername}
+                  onChange={e => setBackupUsername(e.target.value)}
+                  placeholder="Usuario con acceso al share"
+                  className="w-full rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-teal"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Contrasena SMB</p>
+                <input
+                  type="password"
+                  value={backupPassword}
+                  onChange={e => setBackupPassword(e.target.value)}
+                  placeholder="Contrasena del share"
+                  className="w-full rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-teal"
+                />
+              </div>
+            </div>
+
+            <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Share SMB</p>
+            <input
+              type="text"
+              value={backupShare}
+              onChange={e => setBackupShare(e.target.value)}
+              placeholder="active-backup"
+              className="w-full mb-4 rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-teal"
+            />
+
             <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Tipo de backup</p>
             <div className="grid grid-cols-3 gap-2 mb-4">
               {([
@@ -313,13 +373,31 @@ export default function ActiveBackupPage() {
                     <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
                     <p className="text-xs text-[var(--text-secondary)]">{sub}</p>
                     <p className="text-xs text-teal font-mono mt-0.5">{hint}</p>
+                    {platform !== 'windows' && (
+                      <div className="mt-2 flex gap-1">
+                        {(['amd64', 'arm64'] as const).map(arch => (
+                          <button
+                            key={arch}
+                            type="button"
+                            onClick={() => setPlatformArch(prev => ({ ...prev, [platform]: arch }))}
+                            className={`rounded-md border px-2 py-0.5 text-[10px] transition-colors ${
+                              platformArch[platform] === arch
+                                ? 'border-teal/40 bg-teal/10 text-teal'
+                                : 'border-[var(--outline-variant)] text-[var(--text-secondary)]'
+                            }`}
+                          >
+                            {arch}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5 shrink-0">
                     <button
-                      disabled={generatingPlatform !== null || !deviceName.trim()}
+                      disabled={generatingPlatform !== null || !deviceName.trim() || !backupUsername.trim() || !backupPassword.trim()}
                       onClick={() => handleGenerateAgent(platform)}
                       className="rounded-lg bg-teal/10 border border-teal/30 px-2.5 py-1 text-xs font-medium text-teal hover:bg-teal/20 disabled:opacity-50 transition-colors whitespace-nowrap"
-                      title={!deviceName.trim() ? 'Escribe un nombre para el equipo primero' : ''}
+                      title={!deviceName.trim() ? 'Escribe un nombre para el equipo primero' : !backupUsername.trim() || !backupPassword.trim() ? 'Configura usuario y contrasena SMB' : platform === 'windows' ? 'Windows usa amd64' : `Arquitectura seleccionada: ${platformArch[platform]}`}
                     >
                       {generatingPlatform === platform ? '...' : '⚡ Instalar silencioso'}
                     </button>

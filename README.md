@@ -91,6 +91,13 @@ El agente trabaja a nivel de fichero (rsync / robocopy), **no** crea imágenes d
 | macOS 12+ | rsync → SSH | LaunchDaemon (root) | `agent-darwin-arm64` / `agent-darwin-amd64` |
 | Linux | rsync → SSH | systemd service | `agent-linux-arm64` / `agent-linux-amd64` |
 
+Notas actuales del flujo:
+- El host del NAS para Active Backup ya no estÃ¡ fijado a una IP concreta: se deriva dinÃ¡micamente del host/URL del panel.
+- Las credenciales SMB ya no estÃ¡n hardcodeadas en el agente: se introducen al generar el instalador.
+- macOS y Linux montan el share SMB real del NAS antes de ejecutar `rsync`.
+- La descarga manual del agente desde la UI permite elegir arquitectura en macOS y Linux (`amd64` / `arm64`).
+- El comando de instalaciÃ³n silenciosa de macOS y Linux autodetecta la arquitectura del cliente remoto antes de descargar el binario.
+
 Para recompilar los binarios (requiere Go 1.22+). Opciones:
 
 ```bash
@@ -136,6 +143,13 @@ pnpm lint         # ESLint 10
 ```
 
 ## 📋 Changelog
+
+### v6.6.2 (31 Marzo 2026)
+- Active Backup: eliminados los hardcodes de entorno en Windows (`juanlu`, `mimora`, `192.168.1.81`) â€” usuario SMB, contraseÃ±a y host del NAS ahora se configuran dinÃ¡micamente al generar el agente
+- Active Backup: macOS y Linux dejan de usar una ruta local falsa (`/mnt/storage/...`) y montan el share SMB real del NAS antes de ejecutar `rsync`
+- Active Backup: selector de arquitectura en la UI para descarga manual de agentes macOS/Linux (`amd64` / `arm64`)
+- Active Backup: el comando de instalaciÃ³n silenciosa de macOS/Linux autodetecta la arquitectura del cliente remoto
+- Active Backup: binarios recompilados de nuevo para Windows amd64, Linux amd64/arm64 y macOS amd64/arm64
 
 ### v6.6.1 (31 Marzo 2026)
 - Active Backup: fix crítico — robocopy en Windows usaba `C:` como nombre de directorio destino en la ruta UNC, provocando que Windows interpretara el segmento como referencia a unidad (no como carpeta). `filepath.Base("C:\\")` devuelve `"C:"` → ahora se sanitiza a `"C"` → ruta correcta `\\NAS\active-backup\device\C\`

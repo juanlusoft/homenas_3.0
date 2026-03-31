@@ -39,6 +39,10 @@ type DeviceConfig struct {
 	BackupType    string   `json:"backupType"`
 	BackupPaths   []string `json:"backupPaths"`
 	BackupDest    string   `json:"backupDest"` // rsync dest or SMB UNC
+	BackupHost    string   `json:"backupHost"`
+	BackupShare   string   `json:"backupShare"`
+	BackupUsername string  `json:"backupUsername"`
+	BackupPassword string  `json:"backupPassword"`
 	BackupHour    int      `json:"backupHour"`
 	TriggerBackup bool     `json:"triggerBackup"`
 }
@@ -298,10 +302,22 @@ func runBackup(cfg *Config, dc *DeviceConfig) error {
 }
 
 func runBackupUnix(cfg *Config, dc *DeviceConfig) error {
-	dest := dc.BackupDest
-	if dest == "" {
-		return fmt.Errorf("backup destination not configured")
+	if dc.BackupHost == "" || dc.BackupShare == "" || dc.BackupUsername == "" || dc.BackupPassword == "" {
+		return fmt.Errorf("backup share credentials are not configured")
 	}
+
+	folder := strings.Trim(dc.BackupDest, "/\\")
+	if folder == "" {
+		return fmt.Errorf("backup destination folder not configured")
+	}
+
+	mountPoint, cleanup, err := mountSMBShare(dc)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	destRoot := filepath.Join(mountPoint, filepath.FromSlash(folder))
 	total := len(dc.BackupPaths)
 	for i, src := range dc.BackupPaths {
 		// Ensure trailing slash on src so rsync copies contents, not the dir itself
@@ -312,7 +328,15 @@ func runBackupUnix(cfg *Config, dc *DeviceConfig) error {
 		reportProgress(cfg, basePercent, src, "")
 
 		start := time.Now()
-		args := []string{"-az", "--delete", "--timeout=60", src, dest}
+		leaf := filepath.Base(strings.TrimSuffix(src, "/"))
+		if leaf == "." || leaf == string(filepath.Separator) || leaf == "" {
+			leaf = "backup"
+		}
+		dest := filepath.Join(destRoot, leaf)
+		if err := os.MkdirAll(dest, 0755); err != nil {
+			return fmt.Errorf("create destination %s: %w", dest, err)
+		}
+		args := []string{"-az", "--delete", "--timeout=60", src, dest + string(filepath.Separator)}
 		cmd := exec.Command("rsync", args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -335,6 +359,9 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 	if dest == "" {
 		return fmt.Errorf("backup destination not configured")
 	}
+	if dc.BackupUsername == "" || dc.BackupPassword == "" {
+		return fmt.Errorf("backup share credentials are not configured")
+	}
 
 	// Mount SMB share if dest is a UNC path (\\server\share\folder)
 	if strings.HasPrefix(dest, `\\`) {
@@ -343,7 +370,7 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 		if len(parts) >= 2 {
 			uncShare := `\\` + parts[0] + `\` + parts[1]
 			// Correct net use syntax: net use \\server\share password /user:username /persistent:no
-			mountCmd := exec.Command("net", "use", uncShare, "mimora", "/user:juanlu", "/persistent:no")
+			mountCmd := exec.Command("net", "use", uncShare, dc.BackupPassword, "/user:"+dc.BackupUsername, "/persistent:no")
 			if out, err := mountCmd.CombinedOutput(); err != nil {
 				slog.Warn("net use failed (may already be mounted)", "share", uncShare, "err", err, "out", string(out))
 			} else {
@@ -397,6 +424,69 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 
 	reportProgress(cfg, 100, "Completado", "")
 	return nil
+}
+
+func mountSMBShare(dc *DeviceConfig) (string, func(), error) {
+	mountPoint, err := os.MkdirTemp("", "homepinas-backup-*")
+	if err != nil {
+		return "", func() {}, fmt.Errorf("create temp mount point: %w", err)
+	}
+
+	cleanup := func() {
+		switch runtime.GOOS {
+		case "darwin":
+			exec.Command("umount", mountPoint).Run()
+		default:
+			exec.Command("umount", mountPoint).Run()
+		}
+		os.RemoveAll(mountPoint)
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		smbURL := fmt.Sprintf("//%s:%s@%s/%s",
+			url.PathEscape(dc.BackupUsername),
+			url.PathEscape(dc.BackupPassword),
+			dc.BackupHost,
+			url.PathEscape(dc.BackupShare),
+		)
+		if out, err := exec.Command("mount_smbfs", smbURL, mountPoint).CombinedOutput(); err != nil {
+			cleanup()
+			return "", func() {}, fmt.Errorf("mount_smbfs: %w: %s", err, strings.TrimSpace(string(out)))
+		}
+	default:
+		credFile, err := os.CreateTemp("", "homepinas-creds-*")
+		if err != nil {
+			cleanup()
+			return "", func() {}, fmt.Errorf("create credentials file: %w", err)
+		}
+		credPath := credFile.Name()
+		if _, err := credFile.WriteString(fmt.Sprintf("username=%s\npassword=%s\n", dc.BackupUsername, dc.BackupPassword)); err != nil {
+			credFile.Close()
+			os.Remove(credPath)
+			cleanup()
+			return "", func() {}, fmt.Errorf("write credentials file: %w", err)
+		}
+		credFile.Close()
+		if err := os.Chmod(credPath, 0600); err != nil {
+			os.Remove(credPath)
+			cleanup()
+			return "", func() {}, fmt.Errorf("chmod credentials file: %w", err)
+		}
+		cleanup = func() {
+			exec.Command("umount", mountPoint).Run()
+			os.Remove(credPath)
+			os.RemoveAll(mountPoint)
+		}
+		share := fmt.Sprintf("//%s/%s", dc.BackupHost, dc.BackupShare)
+		opts := fmt.Sprintf("credentials=%s,vers=3.0", credPath)
+		if out, err := exec.Command("mount", "-t", "cifs", share, mountPoint, "-o", opts).CombinedOutput(); err != nil {
+			cleanup()
+			return "", func() {}, fmt.Errorf("mount cifs: %w: %s", err, strings.TrimSpace(string(out)))
+		}
+	}
+
+	return mountPoint, cleanup, nil
 }
 
 // ── Report ────────────────────────────────────────────────────────────────────
