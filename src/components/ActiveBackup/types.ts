@@ -26,6 +26,7 @@ export interface BackupDevice {
 
 export interface PendingAgent {
   id: string;
+  name: string;
   hostname: string;
   os: string;
   ip: string;

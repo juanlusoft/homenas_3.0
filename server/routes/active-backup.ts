@@ -45,6 +45,7 @@ interface BackupVersion {
 
 interface PendingAgent {
   id: string;
+  name: string;
   hostname: string;
   os: string;
   ip: string;
@@ -108,6 +109,7 @@ activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => 
 
     const token = crypto.randomBytes(32).toString('hex');
     const id = crypto.randomUUID().slice(0, 8);
+    const customName = ((req.query.name as string) || '').trim();
 
     // Determine NAS URL — prefer X-Forwarded-Proto/Host (behind nginx), fall back to request info
     const proto = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
@@ -117,6 +119,7 @@ activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => 
     // Pre-register device as pending
     pendingAgents.set(id, {
       id,
+      name: customName || `${platform}-${id}`,
       hostname: `pending-${platform}-${id}`,
       os: platform === 'windows' ? 'Windows' : platform === 'mac' ? 'macOS' : 'Linux',
       ip: 'unknown',
@@ -192,7 +195,7 @@ activeBackupRouter.post('/agent/activate', (req, res) => {
 
   const device: Device = {
     id,
-    name: hostname,
+    name: matchedPending?.name || hostname,
     hostname,
     os: agentOS || 'unknown',
     ip,
@@ -258,7 +261,7 @@ activeBackupRouter.get('/agent/:id/config', (req, res) => {
     backupEnabled: device.approved,
     backupType: device.backupType,
     backupPaths: paths,
-    backupDest: device.approved ? `/mnt/storage/active-backup/${device.id}/` : '',
+    backupDest: device.approved ? `/mnt/storage/active-backup/${device.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}/` : '',
     backupHour: 2,
     schedule: device.schedule,
     triggerBackup,
@@ -451,7 +454,7 @@ activeBackupRouter.post('/pending/:id/approve', requireAdmin, (req, res) => {
 
   const token = crypto.randomBytes(32).toString('hex');
   const device: Device = {
-    id: pending.id, name: pending.hostname, hostname: pending.hostname,
+    id: pending.id, name: pending.name || pending.hostname, hostname: pending.hostname,
     os: pending.os, ip: pending.ip, token,
     backupType: 'folders', backupPaths: [], schedule: '0 2 * * *',
     status: 'online', lastSeen: new Date().toISOString(),

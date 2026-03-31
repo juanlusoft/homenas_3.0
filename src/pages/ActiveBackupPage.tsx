@@ -18,6 +18,7 @@ export default function ActiveBackupPage() {
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [generatingPlatform, setGeneratingPlatform] = useState<string | null>(null);
   const [backupType, setBackupType] = useState<'full' | 'incremental' | 'folders'>('incremental');
+  const [deviceName, setDeviceName] = useState('');
   const [installData, setInstallData] = useState<{ platform: string; command: string; deviceID: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -64,7 +65,8 @@ export default function ActiveBackupPage() {
     setGeneratingPlatform(platform);
     setInstallData(null);
     try {
-      const res = await authFetch(`/active-backup/agent/generate/${platform}?backupType=${backupType}`);
+      const nameParam = deviceName.trim() ? `&name=${encodeURIComponent(deviceName.trim())}` : '';
+      const res = await authFetch(`/active-backup/agent/generate/${platform}?backupType=${backupType}${nameParam}`);
       const text = await res.text();
       if (!res.ok) {
         alert(`Error del servidor (${res.status}): ${text.slice(0, 200)}`);
@@ -168,8 +170,8 @@ export default function ActiveBackupPage() {
             {pending.map(agent => (
               <div key={agent.id} className="flex items-center justify-between py-2 border-b border-[var(--outline-variant)]">
                 <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">{agent.hostname}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{agent.os} · {agent.ip}</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{agent.name || agent.hostname}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{agent.os} · {agent.hostname} · {agent.ip}</p>
                 </div>
                 <div className="flex gap-2">
                   <StitchButton size="sm" onClick={() => handleApprove(agent.id)}>{t('ab.approve')}</StitchButton>
@@ -202,7 +204,7 @@ export default function ActiveBackupPage() {
       {/* Agent install modal */}
       <Modal
         open={agentModalOpen}
-        onClose={() => { setAgentModalOpen(false); setInstallData(null); }}
+        onClose={() => { setAgentModalOpen(false); setInstallData(null); setDeviceName(''); }}
         title={installData ? 'Comando de instalación' : 'Generar agente de backup'}
         actions={
           installData
@@ -256,6 +258,15 @@ export default function ActiveBackupPage() {
               Genera un comando de instalación con token único. El cliente lo ejecuta como administrador y el agente binario se instala como servicio del sistema — sin ventanas, sin scripts visibles.
             </p>
 
+            <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Nombre del equipo</p>
+            <input
+              type="text"
+              value={deviceName}
+              onChange={e => setDeviceName(e.target.value)}
+              placeholder="Ej: PC-Juanlu, Portatil-Trabajo, NAS-Salón…"
+              className="w-full mb-4 rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-teal"
+            />
+
             <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Tipo de backup</p>
             <div className="grid grid-cols-3 gap-2 mb-4">
               {([
@@ -295,9 +306,10 @@ export default function ActiveBackupPage() {
                   </div>
                   <div className="flex flex-col gap-1.5 shrink-0">
                     <button
-                      disabled={generatingPlatform !== null}
+                      disabled={generatingPlatform !== null || !deviceName.trim()}
                       onClick={() => handleGenerateAgent(platform)}
                       className="rounded-lg bg-teal/10 border border-teal/30 px-2.5 py-1 text-xs font-medium text-teal hover:bg-teal/20 disabled:opacity-50 transition-colors whitespace-nowrap"
+                      title={!deviceName.trim() ? 'Escribe un nombre para el equipo primero' : ''}
                     >
                       {generatingPlatform === platform ? '...' : '⚡ Instalar silencioso'}
                     </button>
