@@ -71,8 +71,8 @@ function applyTimeout(device: Device) {
 
 // No demo data — start clean
 
-/** GET /agent/binary/:platform — Serve pre-built agent binary */
-activeBackupRouter.get('/agent/binary/:platform', requireAuth, (req, res) => {
+/** GET /agent/binary/:platform — Serve pre-built agent binary (public — secured by install token) */
+activeBackupRouter.get('/agent/binary/:platform', (req, res) => {
   const platform = req.params.platform as string;
   const arch = (req.query.arch as string) || 'amd64';
 
