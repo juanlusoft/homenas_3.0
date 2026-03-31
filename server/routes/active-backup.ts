@@ -287,7 +287,15 @@ activeBackupRouter.get('/agent/:id/config', (req, res) => {
     backupEnabled: device.approved,
     backupType: device.backupType,
     backupPaths: paths,
-    backupDest: device.approved ? `/mnt/storage/active-backup/${device.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}/` : '',
+    backupDest: device.approved ? (() => {
+      const folder = device.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const nasIP = '192.168.1.81';
+      // Windows agents use SMB UNC path; Unix agents use local NFS/mount path
+      const isWindows = device.os.toLowerCase().includes('windows');
+      return isWindows
+        ? `\\\\${nasIP}\\active-backup\\${folder}`
+        : `/mnt/storage/active-backup/${folder}/`;
+    })() : '',
     backupHour: 2,
     schedule: device.schedule,
     triggerBackup,

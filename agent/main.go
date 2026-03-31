@@ -287,29 +287,52 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 	if dest == "" {
 		return fmt.Errorf("backup destination not configured")
 	}
+
+	// Mount SMB share if dest is a UNC path (\\server\share\folder)
+	if strings.HasPrefix(dest, `\\`) {
+		// Extract \\server\share part
+		parts := strings.SplitN(strings.TrimPrefix(dest, `\\`), `\`, 3)
+		if len(parts) >= 2 {
+			uncShare := `\\` + parts[0] + `\` + parts[1]
+			// Mount with credentials (use NAS user)
+			mountCmd := exec.Command("net", "use", uncShare,
+				"/user:juanlu", "mimora", "/persistent:no")
+			if out, err := mountCmd.CombinedOutput(); err != nil {
+				slog.Warn("net use failed (may already be mounted)", "err", err, "out", string(out))
+			}
+			// Ensure dest folder exists
+			os.MkdirAll(dest, 0755)
+		}
+	}
+
 	total := len(dc.BackupPaths)
 	for i, src := range dc.BackupPaths {
-		// Robocopy: dest sub-folder named after the last path component
 		leaf := filepath.Base(src)
 		fullDest := filepath.Join(dest, leaf)
 
 		basePercent := (i * 90) / total
 		reportProgress(cfg, basePercent, src, "")
 
+		if err := os.MkdirAll(fullDest, 0755); err != nil {
+			slog.Warn("mkdir dest failed", "err", err)
+		}
+
+		start := time.Now()
 		flags := []string{src, fullDest, "/MIR", "/R:2", "/W:5", "/NP", "/NFL", "/NDL", "/NC", "/NJS", "/NJH"}
 		cmd := exec.Command("robocopy", flags...)
 		slog.Info("robocopy", "src", src, "dest", fullDest)
 		if err := cmd.Run(); err != nil {
-			// robocopy exit codes 0-7 are success/warning; >=8 = errors
 			if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() <= 7 {
+				elapsed := time.Since(start).Round(time.Second)
 				donePercent := ((i + 1) * 90) / total
-				reportProgress(cfg, donePercent, src+" ✓", "")
+				reportProgress(cfg, donePercent, filepath.Base(src)+" ✓", elapsed.String())
 				continue
 			}
 			return fmt.Errorf("robocopy %s: exit %d", src, cmd.ProcessState.ExitCode())
 		}
+		elapsed := time.Since(start).Round(time.Second)
 		donePercent := ((i + 1) * 90) / total
-		reportProgress(cfg, donePercent, src+" ✓", "")
+		reportProgress(cfg, donePercent, filepath.Base(src)+" ✓", elapsed.String())
 	}
 
 	reportProgress(cfg, 100, "Completado", "")
@@ -318,10 +341,29 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 
 // ── Report ────────────────────────────────────────────────────────────────────
 
+func dirSize(path string) int64 {
+	var size int64
+	filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err == nil && !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size
+}
+
 func reportResult(cfg *Config, success bool, message string) {
+	// Calculate backup size
+	var size int64
+	dc, _ := getDeviceConfig(cfg)
+	if dc != nil && dc.BackupDest != "" {
+		size = dirSize(dc.BackupDest)
+	}
+
 	body := map[string]interface{}{
 		"success": success,
 		"message": message,
+		"size":    size,
 		"time":    time.Now().UTC().Format(time.RFC3339),
 		"os":      runtime.GOOS,
 	}
