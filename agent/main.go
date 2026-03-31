@@ -12,7 +12,9 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,6 +54,7 @@ type ActivateRequest struct {
 	Hostname string `json:"hostname"`
 	OS       string `json:"os"`
 	Arch     string `json:"arch"`
+	IP       string `json:"ip"` // agent reports its own outbound IP
 }
 
 type ActivateResponse struct {
@@ -175,6 +178,47 @@ func apiPost(url, authToken string, body interface{}, out interface{}) error {
 	return nil
 }
 
+// ── IP detection ──────────────────────────────────────────────────────────────
+
+// getOutboundIP detects the local IP that would be used to connect to the NAS.
+// This avoids the server capturing 127.0.0.1 from the nginx proxy.
+func getOutboundIP(nasURL string) string {
+	u, err := url.Parse(nasURL)
+	if err != nil {
+		return getLocalIP()
+	}
+	host := u.Hostname()
+	port := u.Port()
+	if port == "" {
+		if u.Scheme == "https" {
+			port = "443"
+		} else {
+			port = "80"
+		}
+	}
+	// TCP dial to NAS: OS picks the correct outbound interface
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), 5*time.Second)
+	if err != nil {
+		return getLocalIP()
+	}
+	defer conn.Close()
+	return conn.LocalAddr().(*net.TCPAddr).IP.String()
+}
+
+// getLocalIP returns the first non-loopback IPv4 address as fallback.
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+			return ipnet.IP.String()
+		}
+	}
+	return ""
+}
+
 // ── Activation ────────────────────────────────────────────────────────────────
 
 func activate(cfg *Config) error {
@@ -199,11 +243,15 @@ func activate(cfg *Config) error {
 		}
 	}
 
+	myIP := getOutboundIP(cfg.NasURL)
+	slog.Info("detected outbound IP", "ip", myIP)
+
 	req := ActivateRequest{
 		Token:    cfg.Token,
 		Hostname: hostname,
 		OS:       osName,
 		Arch:     runtime.GOARCH,
+		IP:       myIP,
 	}
 
 	var resp ActivateResponse
@@ -233,10 +281,10 @@ func getDeviceConfig(cfg *Config) (*DeviceConfig, error) {
 // ── Backup execution ──────────────────────────────────────────────────────────
 
 func runBackup(cfg *Config, dc *DeviceConfig) error {
-	slog.Info("starting backup", "type", dc.BackupType, "dest", dc.BackupDest)
+	slog.Info("starting backup", "type", dc.BackupType, "dest", dc.BackupDest, "paths", dc.BackupPaths)
 
 	if len(dc.BackupPaths) == 0 {
-		return fmt.Errorf("no backup paths configured")
+		return fmt.Errorf("no backup paths configured — set paths from the dashboard")
 	}
 
 	reportProgress(cfg, 0, "Iniciando backup...", "")
@@ -290,18 +338,17 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 
 	// Mount SMB share if dest is a UNC path (\\server\share\folder)
 	if strings.HasPrefix(dest, `\\`) {
-		// Extract \\server\share part
+		// Extract \\server\share part (first two components after \\)
 		parts := strings.SplitN(strings.TrimPrefix(dest, `\\`), `\`, 3)
 		if len(parts) >= 2 {
 			uncShare := `\\` + parts[0] + `\` + parts[1]
-			// Mount with credentials (use NAS user)
-			mountCmd := exec.Command("net", "use", uncShare,
-				"/user:juanlu", "mimora", "/persistent:no")
+			// Correct net use syntax: net use \\server\share password /user:username /persistent:no
+			mountCmd := exec.Command("net", "use", uncShare, "mimora", "/user:juanlu", "/persistent:no")
 			if out, err := mountCmd.CombinedOutput(); err != nil {
-				slog.Warn("net use failed (may already be mounted)", "err", err, "out", string(out))
+				slog.Warn("net use failed (may already be mounted)", "share", uncShare, "err", err, "out", string(out))
+			} else {
+				slog.Info("SMB share mounted", "share", uncShare)
 			}
-			// Ensure dest folder exists
-			os.MkdirAll(dest, 0755)
 		}
 	}
 
@@ -313,22 +360,31 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 		basePercent := (i * 90) / total
 		reportProgress(cfg, basePercent, src, "")
 
+		// Create destination directory (MkdirAll on UNC paths may fail silently — robocopy handles creation)
 		if err := os.MkdirAll(fullDest, 0755); err != nil {
-			slog.Warn("mkdir dest failed", "err", err)
+			slog.Warn("mkdir dest failed (robocopy will create it)", "dest", fullDest, "err", err)
 		}
 
 		start := time.Now()
+		// /MIR mirrors source to dest (creates dirs, removes deleted files)
+		// /R:2 /W:5 = 2 retries, 5s wait; /NP /NFL /NDL /NC /NJS /NJH = quiet output
 		flags := []string{src, fullDest, "/MIR", "/R:2", "/W:5", "/NP", "/NFL", "/NDL", "/NC", "/NJS", "/NJH"}
 		cmd := exec.Command("robocopy", flags...)
 		slog.Info("robocopy", "src", src, "dest", fullDest)
 		if err := cmd.Run(); err != nil {
+			// robocopy exit codes 0-7 are success/warnings (files copied, skipped, etc.)
+			// Exit code >= 8 means actual errors
 			if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() <= 7 {
 				elapsed := time.Since(start).Round(time.Second)
 				donePercent := ((i + 1) * 90) / total
 				reportProgress(cfg, donePercent, filepath.Base(src)+" ✓", elapsed.String())
 				continue
 			}
-			return fmt.Errorf("robocopy %s: exit %d", src, cmd.ProcessState.ExitCode())
+			exitCode := -1
+			if cmd.ProcessState != nil {
+				exitCode = cmd.ProcessState.ExitCode()
+			}
+			return fmt.Errorf("robocopy %s: exit %d", src, exitCode)
 		}
 		elapsed := time.Since(start).Round(time.Second)
 		donePercent := ((i + 1) * 90) / total
@@ -353,7 +409,7 @@ func dirSize(path string) int64 {
 }
 
 func reportResult(cfg *Config, success bool, message string) {
-	// Calculate backup size
+	// Calculate backup size from destination
 	var size int64
 	dc, _ := getDeviceConfig(cfg)
 	if dc != nil && dc.BackupDest != "" {
@@ -419,9 +475,9 @@ func runDaemon() {
 		dc, err := getDeviceConfig(cfg)
 		if err != nil {
 			errStr := err.Error()
-			// If token rejected, re-activate (NAS may have restarted)
+			// If token rejected or device not found, re-activate (NAS may have restarted or data was cleared)
 			if strings.Contains(errStr, "401") || strings.Contains(errStr, "404") {
-				slog.Warn("token rejected, re-activating", "err", err)
+				slog.Warn("token rejected or device missing, re-activating", "err", err)
 				cfg.DeviceID = ""
 				cfg.AuthToken = ""
 				if saveErr := saveConfig(cfg); saveErr != nil {
@@ -455,7 +511,7 @@ func runDaemon() {
 			if dc.TriggerBackup {
 				reason = "manual trigger"
 			}
-			slog.Info("running backup", "reason", reason, "type", dc.BackupType)
+			slog.Info("running backup", "reason", reason, "type", dc.BackupType, "paths", dc.BackupPaths)
 			if err := runBackup(cfg, dc); err != nil {
 				slog.Error("backup failed", "err", err)
 				reportResult(cfg, false, err.Error())
@@ -525,7 +581,7 @@ func installWindows(binPath string) error {
 	args := []string{
 		"/Create", "/F",
 		"/TN", taskName,
-		"/TR", fmt.Sprintf(`"%s" --run`, binPath),
+		"/TR", binPath + " --run",
 		"/SC", "ONSTART",
 		"/RU", "SYSTEM",
 		"/DELAY", "0001:00",

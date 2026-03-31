@@ -50,6 +50,15 @@ export default function ActiveBackupPage() {
     refresh();
   }, [refresh]);
 
+  const handleSavePaths = useCallback(async (id: string, paths: string[]) => {
+    await authFetch(`/active-backup/devices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backupPaths: paths }),
+    });
+    refresh();
+  }, [refresh]);
+
   const handleApprove = useCallback(async (id: string) => {
     await authFetch(`/active-backup/pending/${id}/approve`, { method: 'POST' });
     refresh();
@@ -126,6 +135,7 @@ export default function ActiveBackupPage() {
         onBackup={handleBackup}
         onDelete={handleDelete}
         onRename={handleRename}
+        onSavePaths={handleSavePaths}
       />
     );
   }

@@ -12,7 +12,7 @@ export interface BackupDevice {
   hostname: string;
   os: string;
   ip: string;
-  backupType: 'full' | 'folders';
+  backupType: 'full' | 'incremental' | 'folders';
   backupPaths: string[];
   schedule: string;
   status: 'online' | 'offline' | 'backing-up';
