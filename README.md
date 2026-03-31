@@ -1,4 +1,4 @@
-# HomePiNAS v6.5.7
+# HomePiNAS v6.5.9
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -91,10 +91,17 @@ El agente trabaja a nivel de fichero (rsync / robocopy), **no** crea imágenes d
 | macOS 12+ | rsync → SSH | LaunchDaemon (root) | `agent-darwin-arm64` / `agent-darwin-amd64` |
 | Linux | rsync → SSH | systemd service | `agent-linux-arm64` / `agent-linux-amd64` |
 
-Para recompilar los binarios (requiere Go 1.22+ en Mac Studio):
+Para recompilar los binarios (requiere Go 1.22+). Opciones:
 
 ```bash
+# Opción A: en el Mac Studio
 bash agent/build.sh
+
+# Opción B: en el NAS (Go instalado en /usr/local/go)
+ssh juanlu@192.168.1.81
+export PATH=$PATH:/usr/local/go/bin
+cd /opt/homepinas-v3/agent
+bash build.sh
 ```
 
 ---
@@ -156,6 +163,19 @@ pnpm lint         # ESLint 10
 ### v6.4.3 (30 Marzo 2026)
 - git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
 - git-check: devuelve el error real al frontend en lugar de mensaje genérico
+
+### v6.5.9 (31 Marzo 2026)
+- Active Backup: agente Windows monta el share SMB con `net use` antes de robocopy (autenticación como SYSTEM)
+- Active Backup: backend detecta OS Windows y envía ruta UNC `\\NAS\active-backup\folder` en lugar de ruta Linux
+- Active Backup: agente Go calcula el tamaño real del backup con `dirSize()` y lo reporta al completar
+- Active Backup: progreso reporta tiempo transcurrido por carpeta
+- Go instalado en NAS (`/usr/local/go`) — ahora se puede compilar allí sin el Mac Studio
+
+### v6.5.8 (31 Marzo 2026)
+- Active Backup: persistencia de dispositivos en disco (`data/active-backup.json`) — los registros sobreviven a reinicios del servicio
+- Active Backup: agente Go detecta 401/404 en poll de config y se reactiva automáticamente sin reinstalar
+- Active Backup: agente Go ignora certificado TLS autofirmado del NAS (`InsecureSkipVerify`)
+- Active Backup: binarios recompilados con todas las correcciones de conectividad
 
 ### v6.5.7 (31 Marzo 2026)
 - Active Backup: renombrar dispositivo desde DeviceDetail (icono lápiz junto al nombre)
