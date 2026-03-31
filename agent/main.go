@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -119,7 +120,12 @@ func saveConfig(cfg *Config) error {
 
 // ── HTTP helpers ──────────────────────────────────────────────────────────────
 
-var httpClient = &http.Client{Timeout: 30 * time.Second}
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // NAS uses self-signed cert
+	},
+}
 
 func apiGet(url, authToken string, out interface{}) error {
 	req, err := http.NewRequest("GET", url, nil)
