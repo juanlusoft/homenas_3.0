@@ -56,11 +56,22 @@ export default function ActiveBackupPage() {
     setInstallData(null);
     try {
       const res = await authFetch(`/active-backup/agent/generate/${platform}?backupType=${backupType}`);
-      const data = await res.json();
+      const text = await res.text();
+      if (!res.ok) {
+        alert(`Error del servidor (${res.status}): ${text.slice(0, 200)}`);
+        return;
+      }
+      let data: { installCommand: string; deviceID: string };
+      try {
+        data = JSON.parse(text);
+      } catch {
+        alert(`Respuesta inesperada del servidor:\n${text.slice(0, 300)}`);
+        return;
+      }
       setInstallData({ platform, command: data.installCommand, deviceID: data.deviceID });
       refreshPending();
-    } catch {
-      alert('Error generando el agente. Comprueba la conexión con el NAS.');
+    } catch (err) {
+      alert(`Error de conexión con el NAS: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setGeneratingPlatform(null);
     }

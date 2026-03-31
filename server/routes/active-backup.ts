@@ -82,53 +82,56 @@ activeBackupRouter.get('/agent/binary/:platform', requireAuth, (req, res) => {
 
 /** GET /agent/generate/:platform — Generate one-liner install command (token-based, references pre-built binary) */
 activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => {
-  const platform = req.params.platform as 'linux' | 'mac' | 'windows';
-  const backupType = (req.query.backupType as string) || 'incremental';
-  if (!['linux', 'mac', 'windows'].includes(platform)) {
-    return res.status(400).json({ error: 'Invalid platform. Use: linux, mac, windows' });
+  try {
+    const platform = req.params.platform as 'linux' | 'mac' | 'windows';
+    const backupType = (req.query.backupType as string) || 'incremental';
+    if (!['linux', 'mac', 'windows'].includes(platform)) {
+      return res.status(400).json({ error: 'Invalid platform. Use: linux, mac, windows' });
+    }
+    if (!['full', 'incremental', 'folders'].includes(backupType)) {
+      return res.status(400).json({ error: 'Invalid backupType. Use: full, incremental, folders' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const id = crypto.randomUUID().slice(0, 8);
+
+    // Determine NAS URL — prefer X-Forwarded-Proto/Host (behind nginx), fall back to request info
+    const proto = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
+    const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'homepinas.local';
+    const nasUrl = `${proto}://${host}`;
+
+    // Pre-register device as pending
+    pendingAgents.set(id, {
+      id,
+      hostname: `pending-${platform}-${id}`,
+      os: platform === 'windows' ? 'Windows' : platform === 'mac' ? 'macOS' : 'Linux',
+      ip: 'unknown',
+      requestedAt: new Date().toISOString(),
+    });
+
+    const binaryPlatform = platform === 'windows' ? 'windows' : platform === 'mac' ? 'darwin' : 'linux';
+    const binaryUrl = `${nasUrl}/api/active-backup/agent/binary/${binaryPlatform}`;
+    const installArgs = `--install --nas ${nasUrl} --token ${token} --backup-type ${backupType}`;
+
+    const installCommands: Record<string, string> = {
+      windows: `powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $f='$env:TEMP\\hp-agent.exe'; Invoke-WebRequest '${binaryUrl}' -OutFile $f; Start-Process $f '${installArgs}' -Verb RunAs -Wait }"`,
+      mac:     `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
+      linux:   `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
+    };
+
+    return res.json({
+      deviceID: id,
+      token,
+      nasURL: nasUrl,
+      backupType,
+      platform,
+      binaryURL: binaryUrl,
+      installCommand: installCommands[platform] ?? '',
+    });
+  } catch (err) {
+    console.error('[active-backup] generate error:', err);
+    return res.status(500).json({ error: String(err) });
   }
-  if (!['full', 'incremental', 'folders'].includes(backupType)) {
-    return res.status(400).json({ error: 'Invalid backupType. Use: full, incremental, folders' });
-  }
-
-  const token = crypto.randomBytes(32).toString('hex');
-  const id = crypto.randomUUID().slice(0, 8);
-
-  // Determine NAS URL — prefer X-Forwarded-Proto/Host (behind nginx), fall back to request info
-  const proto = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
-  const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'homepinas.local';
-  const nasUrl = `${proto}://${host}`;
-
-  // Pre-register device as pending
-  pendingAgents.set(id, {
-    id,
-    hostname: `pending-${platform}-${id}`,
-    os: platform === 'windows' ? 'Windows' : platform === 'mac' ? 'macOS' : 'Linux',
-    ip: 'unknown',
-    requestedAt: new Date().toISOString(),
-  });
-
-  // Return install commands for all platforms + download URLs
-  const binaryPlatform = platform === 'windows' ? 'windows' : platform === 'mac' ? 'darwin' : 'linux';
-  const binaryFile   = platform === 'windows' ? 'agent-windows-amd64.exe' : platform === 'mac' ? 'agent-darwin-arm64' : 'agent-linux-amd64';
-  const binaryUrl    = `${nasUrl}/api/active-backup/agent/binary/${binaryPlatform}`;
-  const installArgs  = `--install --nas ${nasUrl} --token ${token} --backup-type ${backupType}`;
-
-  const installCommands = {
-    windows: `powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $f='$env:TEMP\\hp-agent.exe'; Invoke-WebRequest '${binaryUrl}' -OutFile $f; Start-Process $f '${installArgs}' -Verb RunAs -Wait }"`,
-    mac:     `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
-    linux:   `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
-  };
-
-  return res.json({
-    deviceID: id,
-    token,
-    nasURL: nasUrl,
-    backupType,
-    platform,
-    binaryURL: binaryUrl,
-    installCommand: installCommands[platform as 'windows' | 'mac' | 'linux'],
-  });
 });
 
 /** POST /agent/activate — Binary agent activation (called by Go agent on first run) */
