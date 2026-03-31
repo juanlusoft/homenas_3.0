@@ -376,6 +376,21 @@ func runDaemon() {
 	for {
 		dc, err := getDeviceConfig(cfg)
 		if err != nil {
+			errStr := err.Error()
+			// If token rejected, re-activate (NAS may have restarted)
+			if strings.Contains(errStr, "401") || strings.Contains(errStr, "404") {
+				slog.Warn("token rejected, re-activating", "err", err)
+				cfg.DeviceID = ""
+				cfg.AuthToken = ""
+				if saveErr := saveConfig(cfg); saveErr != nil {
+					slog.Warn("failed to clear config", "err", saveErr)
+				}
+				if actErr := activate(cfg); actErr != nil {
+					slog.Warn("re-activation failed, retrying in 1m", "err", actErr)
+					time.Sleep(time.Minute)
+				}
+				continue
+			}
 			slog.Warn("config poll failed", "err", err)
 			time.Sleep(5 * time.Minute)
 			continue
