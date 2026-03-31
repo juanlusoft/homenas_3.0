@@ -259,7 +259,7 @@ export default function ActiveBackupPage() {
         actions={
           installData
             ? <StitchButton size="sm" variant="ghost" onClick={() => setInstallData(null)}>← Atrás</StitchButton>
-            : <StitchButton size="sm" variant="ghost" onClick={() => setAgentModalOpen(false)}>{t('common.cancel')}</StitchButton>
+            : <StitchButton size="sm" variant="ghost" onClick={() => setAgentModalOpen(false)}>{t('common.close')}</StitchButton>
         }
       >
         {installData ? (

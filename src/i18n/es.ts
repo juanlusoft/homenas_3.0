@@ -288,6 +288,7 @@ export const es: Record<string, string> = {
   'common.running': 'Ejecutándose',
   'common.stopped': 'Parado',
   'common.cancel': 'Cancelar',
+  'common.close': 'Cerrar',
   'common.save': 'Guardar',
   'common.edit': 'Editar',
   'common.delete': 'Eliminar',
