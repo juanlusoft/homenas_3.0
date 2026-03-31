@@ -131,7 +131,7 @@ activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => 
     const installArgs = `--install --nas ${nasUrl} --token ${token} --backup-type ${backupType}`;
 
     const installCommands: Record<string, string> = {
-      windows: `powershell -NoProfile -ExecutionPolicy Bypass -Command "& { \`$f='C:\\Windows\\Temp\\hp-agent.exe'; Invoke-WebRequest '${binaryUrl}' -OutFile \`$f; Start-Process \`$f '${installArgs}' -Verb RunAs -Wait }"`,
+      windows: `powershell -NoProfile -ExecutionPolicy Bypass -Command "& { \`$f='C:\\Windows\\Temp\\hp-agent.exe'; try { Invoke-WebRequest '${binaryUrl}' -OutFile \`$f -SkipCertificateCheck } catch { [Net.ServicePointManager]::ServerCertificateValidationCallback = {\`$true}; (New-Object Net.WebClient).DownloadFile('${binaryUrl}', \`$f) }; Start-Process \`$f '${installArgs}' -Verb RunAs -Wait }"`,
       mac:     `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
       linux:   `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
     };
