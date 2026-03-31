@@ -74,6 +74,26 @@ export default function ActiveBackupPage() {
     });
   }, [installData]);
 
+  const handleDownloadBinary = useCallback(async (platform: 'windows' | 'mac' | 'linux') => {
+    const apiPlatform = platform === 'mac' ? 'darwin' : platform;
+    const filename = platform === 'windows' ? 'agent-windows-amd64.exe'
+      : platform === 'mac' ? 'agent-darwin-arm64'
+      : 'agent-linux-amd64';
+    try {
+      const res = await authFetch(`/active-backup/agent/binary/${apiPlatform}`);
+      if (!res.ok) { alert('Binario no encontrado. Ejecuta agent/build.sh en el Mac Studio.'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Error descargando el agente.');
+    }
+  }, []);
+
   // Detail view
   const selected = devices?.find(d => d.id === selectedDevice);
   if (selected) {
@@ -192,6 +212,14 @@ export default function ActiveBackupPage() {
                 </button>
               </div>
             </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDownloadBinary(installData.platform as 'windows' | 'mac' | 'linux')}
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-[var(--outline-variant)] px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-surface-void transition-colors"
+              >
+                ↓ Descargar binario ({installData.platform === 'windows' ? '.exe' : installData.platform === 'mac' ? 'darwin-arm64' : 'linux-amd64'})
+              </button>
+            </div>
             <div className="rounded-lg bg-surface-void border border-[var(--outline-variant)] px-3 py-2 text-xs text-[var(--text-secondary)] space-y-1">
               <p><strong>El agente Go:</strong></p>
               <p>• Se instala silenciosamente como servicio del sistema</p>
@@ -233,28 +261,33 @@ export default function ActiveBackupPage() {
             <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Sistema operativo</p>
             <div className="grid grid-cols-1 gap-3">
               {([
-                { platform: 'windows', icon: '🪟', label: 'Windows', sub: 'Windows 10/11 · Ejecutar PowerShell como Admin', hint: 'Servicio del sistema · robocopy' },
+                { platform: 'windows', icon: '🪟', label: 'Windows', sub: 'Windows 10/11 · PowerShell como Admin', hint: 'Servicio del sistema · robocopy' },
                 { platform: 'mac', icon: '🍎', label: 'macOS', sub: 'macOS 12+ · Intel y Apple Silicon', hint: 'LaunchDaemon · rsync' },
                 { platform: 'linux', icon: '🐧', label: 'Linux', sub: 'Debian, Ubuntu, Fedora · x64/arm64', hint: 'systemd service · rsync' },
               ] as const).map(({ platform, icon, label, sub, hint }) => (
-                <button
-                  key={platform}
-                  disabled={generatingPlatform !== null}
-                  onClick={() => handleGenerateAgent(platform)}
-                  className="flex items-center gap-4 rounded-xl border border-[var(--outline-variant)] px-4 py-3 hover:bg-teal/5 hover:border-teal/30 transition-colors text-left disabled:opacity-50"
-                >
+                <div key={platform} className="flex items-center gap-2 rounded-xl border border-[var(--outline-variant)] px-4 py-3">
                   <span className="text-3xl">{icon}</span>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
                     <p className="text-xs text-[var(--text-secondary)]">{sub}</p>
                     <p className="text-xs text-teal font-mono mt-0.5">{hint}</p>
                   </div>
-                  {generatingPlatform === platform ? (
-                    <span className="text-xs text-teal animate-pulse">Generando...</span>
-                  ) : (
-                    <span className="text-xs text-[var(--text-disabled)]">→ Generar</span>
-                  )}
-                </button>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <button
+                      disabled={generatingPlatform !== null}
+                      onClick={() => handleGenerateAgent(platform)}
+                      className="rounded-lg bg-teal/10 border border-teal/30 px-2.5 py-1 text-xs font-medium text-teal hover:bg-teal/20 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    >
+                      {generatingPlatform === platform ? '...' : '⚡ Instalar silencioso'}
+                    </button>
+                    <button
+                      onClick={() => handleDownloadBinary(platform)}
+                      className="rounded-lg border border-[var(--outline-variant)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:bg-surface-void transition-colors whitespace-nowrap"
+                    >
+                      ↓ Descargar binario
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </>
