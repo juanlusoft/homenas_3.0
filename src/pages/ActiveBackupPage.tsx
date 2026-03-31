@@ -307,15 +307,15 @@ export default function ActiveBackupPage() {
 
       {/* How it works */}
       <GlassCard elevation="low">
-        <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-3">{t('ab.howItWorks')}</h3>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 text-center text-sm">
+        <h3 className="font-display text-sm font-semibold text-[var(--text-primary)] mb-4">{t('ab.howItWorks')}</h3>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 text-center text-sm mb-6">
           <div>
-            <p className="text-2xl mb-2">📥</p>
+            <p className="text-2xl mb-2">⚡</p>
             <p className="font-medium text-[var(--text-primary)]">{t('ab.step1')}</p>
             <p className="text-xs text-[var(--text-secondary)]">{t('ab.step1desc')}</p>
           </div>
           <div>
-            <p className="text-2xl mb-2">🔍</p>
+            <p className="text-2xl mb-2">✅</p>
             <p className="font-medium text-[var(--text-primary)]">{t('ab.step2')}</p>
             <p className="text-xs text-[var(--text-secondary)]">{t('ab.step2desc')}</p>
           </div>
@@ -325,6 +325,24 @@ export default function ActiveBackupPage() {
             <p className="text-xs text-[var(--text-secondary)]">{t('ab.step3desc')}</p>
           </div>
         </div>
+
+        {/* Backup types explanation */}
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-3">{t('ab.backupTypesTitle')}</h4>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {([
+            { icon: '💿', titleKey: 'ab.typeFullTitle', descKey: 'ab.typeFullDesc' },
+            { icon: '🔄', titleKey: 'ab.typeIncrTitle', descKey: 'ab.typeIncrDesc' },
+            { icon: '📁', titleKey: 'ab.typeFoldersTitle', descKey: 'ab.typeFoldersDesc' },
+          ]).map(({ icon, titleKey, descKey }) => (
+            <div key={titleKey} className="rounded-lg bg-surface-void border border-[var(--outline-variant)] p-3">
+              <p className="text-lg mb-1">{icon} <span className="text-sm font-semibold text-[var(--text-primary)]">{t(titleKey)}</span></p>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{t(descKey)}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-[var(--text-secondary)] italic border-t border-[var(--outline-variant)] pt-3">
+          ℹ️ {t('ab.sizeNote')}
+        </p>
       </GlassCard>
     </div>
   );

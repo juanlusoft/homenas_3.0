@@ -104,4 +104,20 @@ export const en: Record<string, string> = {
   'sys.updateCheckFailed': 'Failed to check for updates',
   // Network
   'net.configure': 'Configure',
+  // Active Backup
+  'ab.howItWorks': 'How Active Backup Works',
+  'ab.step1': '1. Deploy Agent',
+  'ab.step1desc': 'Admin generates a token and installs the agent on the remote machine with a single command',
+  'ab.step2': '2. Approve Device',
+  'ab.step2desc': 'The machine appears under Pending — admin approves it from the dashboard',
+  'ab.step3': '3. Automatic Backup',
+  'ab.step3desc': 'Agent runs daily backup at 02:00 and reports the result back to the NAS',
+  'ab.backupTypesTitle': 'Backup Types',
+  'ab.typeFullTitle': 'Full Disk',
+  'ab.typeFullDesc': 'First run: copies all files on the system. Subsequent runs: only changed files. Size equals used space, not total disk capacity.',
+  'ab.typeIncrTitle': 'Incremental',
+  'ab.typeIncrDesc': 'First run: copies the entire home directory. Subsequent runs: only new or modified files. Much faster and lighter from the second backup onwards.',
+  'ab.typeFoldersTitle': 'Folders',
+  'ab.typeFoldersDesc': 'Copies only Documents, Desktop and Pictures. First run copies all contents; subsequent runs copy only changes. The fastest option to protect what matters.',
+  'ab.sizeNote': 'Backup size is always the actual used space — never the full disk capacity.',
 };

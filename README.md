@@ -1,4 +1,4 @@
-# HomePiNAS v6.5.2
+# HomePiNAS v6.5.5
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -55,6 +55,49 @@ Accede por: `https://<IP-del-NAS>`
 | 🔧 Ajustes | SSH + HTTPS + Fan + Telegram + SMTP + DDNS |
 | 👤 Usuarios | CRUD + roles + 2FA TOTP |
 | 🔔 Notificaciones | Historial real + alertas automáticas |
+
+## Active Backup — Cómo funciona
+
+### Flujo
+
+1. **Generar agente** — En el dashboard ve a *Active Backup → Descargar Agente*, elige tipo de backup y SO. El NAS genera un token único y muestra un comando de instalación.
+2. **Ejecutar en el equipo remoto** — El admin copia el comando y lo ejecuta con permisos de administrador. El agente binario (compilado en Go) se descarga del NAS y se instala como servicio del sistema de forma silenciosa.
+3. **Aprobar dispositivo** — El equipo aparece en *Pendientes* en el dashboard. El admin lo aprueba.
+4. **Backup automático** — A partir de ese momento el agente hace backup diario a las 02:00 y reporta el resultado al NAS.
+
+El agente es invisible: no aparece en la barra de tareas, ni en el Dock, ni en ningún menú. Se ejecuta al arrancar el sistema aunque no haya sesión de usuario abierta.
+
+### Tipos de backup
+
+| Tipo | Qué copia | Primera ejecución | Siguientes ejecuciones |
+|------|-----------|-------------------|------------------------|
+| **Disco completo** | Todos los ficheros del sistema (`/` o `C:\`) | Copia todo lo que está ocupado en disco | Solo ficheros nuevos o modificados |
+| **Incremental** | Directorio home (`$HOME` / `%USERPROFILE%`) | Copia todo el home | Solo cambios desde el último backup |
+| **Carpetas** | Documentos, Escritorio, Imágenes | Copia el contenido de esas carpetas | Solo cambios en esas carpetas |
+
+**Sobre el tamaño del backup:**
+
+El agente trabaja a nivel de fichero (rsync / robocopy), **no** crea imágenes de disco.
+
+- El tamaño ocupado en el NAS es el del **espacio real utilizado**, nunca el tamaño total del disco.
+- Ejemplo: disco de 2 TB con 400 GB de datos → backup ocupa ~400 GB.
+- No es restaurable a metal desnudo (no sustituye a clonezilla o dd). Es un backup de ficheros.
+
+### Plataformas del agente
+
+| SO | Mecanismo de backup | Servicio del sistema | Binario |
+|----|--------------------|--------------------|---------|
+| Windows 10/11 | robocopy → SMB share | Tarea Programada (SYSTEM) | `agent-windows-amd64.exe` |
+| macOS 12+ | rsync → SSH | LaunchDaemon (root) | `agent-darwin-arm64` / `agent-darwin-amd64` |
+| Linux | rsync → SSH | systemd service | `agent-linux-arm64` / `agent-linux-amd64` |
+
+Para recompilar los binarios (requiere Go 1.22+ en Mac Studio):
+
+```bash
+bash agent/build.sh
+```
+
+---
 
 ## Wizard de Primer Inicio
 
@@ -114,13 +157,26 @@ pnpm lint         # ESLint 10
 - git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
 - git-check: devuelve el error real al frontend en lugar de mensaje genérico
 
+### v6.5.5 (31 Marzo 2026)
+- Active Backup: mejor manejo de errores en la generación del agente (muestra el error real del servidor)
+
+### v6.5.4 (31 Marzo 2026)
+- Active Backup: botón "Descargar binario" en el modal (descarga directa desde el NAS)
+
+### v6.5.3 (31 Marzo 2026)
+- Active Backup: agente Go compilado para Win/Mac/Linux (reemplaza los scripts .ps1/.sh)
+- El agente se instala como servicio silencioso del sistema (sin ventanas, sin scripts visibles)
+- Windows: Windows Task Scheduler (SYSTEM) · macOS: LaunchDaemon · Linux: systemd
+- Flujo plug & play: admin genera comando de una línea → cliente lo ejecuta como admin → listo
+- Binarios precompilados en `agent/dist/` (arm64 + amd64 para cada plataforma)
+- Backend: endpoints `/agent/activate`, `/agent/:id/config`, `/agent/:id/report` para el protocolo Go
+- Backend: `/agent/binary/:platform` sirve el binario directamente desde el NAS
+
 ### v6.5.2 (30 Marzo 2026)
 - Active Backup: generación de agentes para Windows (.ps1), macOS (.sh) y Linux (.sh)
 - Agentes con token único preconfigurado y registro automático en el NAS
 - 3 tipos de backup: disco completo, incremental y carpetas específicas
-- Windows: robocopy a SMB share + Tarea Programada a las 02:00
-- macOS: rsync + launchd plist diario a las 02:00
-- Linux: rsync + cron diario a las 02:00
+- Windows: robocopy + Tarea Programada · macOS: rsync + launchd · Linux: rsync + cron
 
 ### v6.5.1 (30 Marzo 2026)
 - Tienda: descripciones de todas las apps traducidas al español/inglés según idioma seleccionado
