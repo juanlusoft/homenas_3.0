@@ -6,6 +6,11 @@
 import { Router } from 'express';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const activeBackupRouter = Router();
 
@@ -49,12 +54,33 @@ const pendingAgents = new Map<string, PendingAgent>();
 
 // No demo data — start clean
 
-/** GET /agent/download — Redirect to latest agent release */
-activeBackupRouter.get('/agent/download', requireAuth, (_req, res) => {
-  res.redirect('https://github.com/juanlusoft/homenas_3.0/releases/latest/download/homepinas-agent');
+/** GET /agent/binary/:platform — Serve pre-built agent binary */
+activeBackupRouter.get('/agent/binary/:platform', requireAuth, (req, res) => {
+  const platform = req.params.platform as string;
+  const arch = (req.query.arch as string) || 'amd64';
+
+  const fileMap: Record<string, string> = {
+    'windows':      `agent-windows-${arch}.exe`,
+    'darwin':       `agent-darwin-${arch}`,
+    'darwin-arm64': 'agent-darwin-arm64',
+    'darwin-amd64': 'agent-darwin-amd64',
+    'linux':        `agent-linux-${arch}`,
+    'linux-arm64':  'agent-linux-arm64',
+    'linux-amd64':  'agent-linux-amd64',
+  };
+
+  const filename = fileMap[platform];
+  if (!filename) return res.status(400).json({ error: 'Unknown platform' });
+
+  const binPath = path.join(__dirname, '../../agent/dist', filename);
+  if (!fs.existsSync(binPath)) return res.status(404).json({ error: 'Binary not found. Run agent/build.sh first.' });
+
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  return res.sendFile(binPath);
 });
 
-/** GET /agent/generate/:platform — Generate installer script for platform */
+/** GET /agent/generate/:platform — Generate one-liner install command (token-based, references pre-built binary) */
 activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => {
   const platform = req.params.platform as 'linux' | 'mac' | 'windows';
   const backupType = (req.query.backupType as string) || 'incremental';
@@ -67,11 +93,13 @@ activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => 
 
   const token = crypto.randomBytes(32).toString('hex');
   const id = crypto.randomUUID().slice(0, 8);
-  const nasHost = req.hostname || req.headers.host?.split(':')[0] || 'homepinas.local';
-  const nasPort = process.env.PORT || '3001';
-  const nasUrl = `http://${nasHost}:${nasPort}`;
 
-  // Pre-register device as pending so admin can approve it
+  // Determine NAS URL — prefer X-Forwarded-Proto/Host (behind nginx), fall back to request info
+  const proto = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
+  const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'homepinas.local';
+  const nasUrl = `${proto}://${host}`;
+
+  // Pre-register device as pending
   pendingAgents.set(id, {
     id,
     hostname: `pending-${platform}-${id}`,
@@ -80,319 +108,186 @@ activeBackupRouter.get('/agent/generate/:platform', requireAdmin, (req, res) => 
     requestedAt: new Date().toISOString(),
   });
 
-  // Backup source strings per type and platform
-  const linuxBackupPaths = backupType === 'full'
-    ? '("/")'
-    : backupType === 'incremental'
-    ? '("$HOME")'
-    : '("$HOME/Documents" "$HOME/Desktop" "$HOME/Pictures" "$HOME/Videos")';
-  const linuxRsyncFlags = backupType === 'full' ? '-az --delete --one-file-system' : '-az --delete';
-  const macBackupPaths = backupType === 'full'
-    ? '("/")'
-    : backupType === 'incremental'
-    ? '("/Users/$USER")'
-    : '("$HOME/Documents" "$HOME/Desktop" "$HOME/Pictures" "$HOME/Movies")';
-  const winBackupPaths = backupType === 'full'
-    ? '@("C:\\\\")'
-    : backupType === 'incremental'
-    ? '@("$env:USERPROFILE")'
-    : '@("$env:USERPROFILE\\\\Documents", "$env:USERPROFILE\\\\Desktop", "$env:USERPROFILE\\\\Pictures")';
+  // Return install commands for all platforms + download URLs
+  const binaryPlatform = platform === 'windows' ? 'windows' : platform === 'mac' ? 'darwin' : 'linux';
+  const binaryFile   = platform === 'windows' ? 'agent-windows-amd64.exe' : platform === 'mac' ? 'agent-darwin-arm64' : 'agent-linux-amd64';
+  const binaryUrl    = `${nasUrl}/api/active-backup/agent/binary/${binaryPlatform}`;
+  const installArgs  = `--install --nas ${nasUrl} --token ${token} --backup-type ${backupType}`;
 
-  if (platform === 'linux') {
-    const script = `#!/bin/bash
-# ============================================================
-# HomePiNAS Active Backup Agent — Linux Installer
-# Generated: ${new Date().toISOString()}
-# NAS: ${nasUrl}
-# Device ID: ${id}
-# Backup type: ${backupType}
-# ============================================================
-set -e
+  const installCommands = {
+    windows: `powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $f='$env:TEMP\\hp-agent.exe'; Invoke-WebRequest '${binaryUrl}' -OutFile $f; Start-Process $f '${installArgs}' -Verb RunAs -Wait }"`,
+    mac:     `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
+    linux:   `sudo bash -c "curl -fsSL '${binaryUrl}' -o /tmp/hp-agent && chmod +x /tmp/hp-agent && /tmp/hp-agent ${installArgs}"`,
+  };
 
-NAS_URL="${nasUrl}"
-DEVICE_ID="${id}"
-DEVICE_TOKEN="${token}"
-BACKUP_TYPE="${backupType}"
-AGENT_DIR="$HOME/.homepinas-agent"
-BACKUP_LOG="$AGENT_DIR/backup.log"
-
-echo "[HomePiNAS] Installing Linux backup agent (type: $BACKUP_TYPE)..."
-mkdir -p "$AGENT_DIR"
-
-HOSTNAME_VAL=$(hostname)
-DISTRO=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'"' -f2 || echo "Linux")
-
-echo "[HomePiNAS] Registering device with NAS..."
-curl -sf -X POST "$NAS_URL/api/active-backup/agent/register" \\
-  -H "Content-Type: application/json" \\
-  -H "X-Agent-Token: $DEVICE_TOKEN" \\
-  -d "{\\"hostname\\":\\"$HOSTNAME_VAL\\",\\"os\\":\\"$DISTRO\\",\\"id\\":\\"$DEVICE_ID\\"}" || true
-
-cat > "$AGENT_DIR/backup.sh" << 'BACKUPEOF'
-#!/bin/bash
-NAS_URL="__NAS_URL__"
-DEVICE_ID="__DEVICE_ID__"
-DEVICE_TOKEN="__DEVICE_TOKEN__"
-BACKUP_TYPE="__BACKUP_TYPE__"
-BACKUP_PATHS=${linuxBackupPaths}
-RSYNC_FLAGS="${linuxRsyncFlags}"
-BACKUP_LOG="$HOME/.homepinas-agent/backup.log"
-NAS_DEST="/mnt/storage/active-backup/$DEVICE_ID"
-
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$BACKUP_LOG"; }
-log "Starting $BACKUP_TYPE backup..."
-
-CONFIG=$(curl -sf "$NAS_URL/api/active-backup/agent/poll/$DEVICE_ID" \\
-  -H "Authorization: Bearer $DEVICE_TOKEN" 2>/dev/null || echo '{}')
-if ! echo "$CONFIG" | grep -q '"approved":true'; then
-  log "Not yet approved by admin. Skipping."; exit 0
-fi
-
-TOTAL_SIZE=0
-START=$(date +%s)
-for P in "\${BACKUP_PATHS[@]}"; do
-  if [ -e "$P" ]; then
-    log "Backing up: $P"
-    SIZE=$(du -sb "$P" 2>/dev/null | cut -f1 || echo 0)
-    TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
-    rsync $RSYNC_FLAGS "$P" "juanlu@__NAS_HOST__:$NAS_DEST/" 2>>"$BACKUP_LOG" || true
-  fi
-done
-END=$(date +%s)
-log "Done in $((END-START))s. Size: $TOTAL_SIZE bytes"
-
-curl -sf -X POST "$NAS_URL/api/active-backup/agent/report/$DEVICE_ID" \\
-  -H "Content-Type: application/json" -H "Authorization: Bearer $DEVICE_TOKEN" \\
-  -d "{\\"status\\":\\"complete\\",\\"size\\":$TOTAL_SIZE,\\"type\\":\\"$BACKUP_TYPE\\"}" >/dev/null 2>&1 || true
-BACKUPEOF
-
-sed -i "s|__NAS_URL__|${nasUrl}|g; s|__DEVICE_ID__|${id}|g; s|__DEVICE_TOKEN__|${token}|g; s|__BACKUP_TYPE__|${backupType}|g; s|__NAS_HOST__|${nasHost}|g" "$AGENT_DIR/backup.sh"
-chmod +x "$AGENT_DIR/backup.sh"
-
-(crontab -l 2>/dev/null | grep -v homepinas; echo "0 2 * * * $AGENT_DIR/backup.sh >> $BACKUP_LOG 2>&1") | crontab -
-
-echo ""
-echo "=============================================="
-echo "  HomePiNAS Agent instalado!"
-echo "  Device ID   : $DEVICE_ID"
-echo "  NAS URL     : $NAS_URL"
-echo "  Backup type : $BACKUP_TYPE"
-echo "  Schedule    : Diario a las 02:00 (cron)"
-echo "  Logs        : $BACKUP_LOG"
-echo ""
-echo "  SIGUIENTE PASO: Aprueba este dispositivo"
-echo "  en Active Backup del dashboard."
-echo "=============================================="
-`;
-    res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Content-Disposition', `attachment; filename="homepinas-agent-linux-${id}.sh"`);
-    return res.send(script);
-  }
-
-  if (platform === 'mac') {
-    const script = `#!/bin/bash
-# ============================================================
-# HomePiNAS Active Backup Agent — macOS Installer
-# Generated: ${new Date().toISOString()}
-# NAS: ${nasUrl}  |  Device ID: ${id}  |  Backup: ${backupType}
-# ============================================================
-set -e
-
-NAS_URL="${nasUrl}"
-DEVICE_ID="${id}"
-DEVICE_TOKEN="${token}"
-BACKUP_TYPE="${backupType}"
-AGENT_DIR="$HOME/.homepinas-agent"
-PLIST_PATH="$HOME/Library/LaunchAgents/com.homepinas.agent.plist"
-
-echo "[HomePiNAS] Installing macOS backup agent (type: $BACKUP_TYPE)..."
-mkdir -p "$AGENT_DIR"
-
-OS_VERSION=$(sw_vers -productVersion 2>/dev/null || echo "macOS")
-HOSTNAME_VAL=$(hostname)
-
-echo "[HomePiNAS] Registering device..."
-curl -sf -X POST "$NAS_URL/api/active-backup/agent/register" \\
-  -H "Content-Type: application/json" -H "X-Agent-Token: $DEVICE_TOKEN" \\
-  -d "{\\"hostname\\":\\"$HOSTNAME_VAL\\",\\"os\\":\\"macOS $OS_VERSION\\",\\"id\\":\\"$DEVICE_ID\\"}" || true
-
-cat > "$AGENT_DIR/backup.sh" << 'BACKUPEOF'
-#!/bin/bash
-NAS_URL="__NAS_URL__"
-DEVICE_ID="__DEVICE_ID__"
-DEVICE_TOKEN="__DEVICE_TOKEN__"
-BACKUP_TYPE="__BACKUP_TYPE__"
-BACKUP_PATHS=${macBackupPaths}
-LOG_FILE="$HOME/.homepinas-agent/backup.log"
-NAS_DEST="/mnt/storage/active-backup/$DEVICE_ID"
-
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"; }
-log "Starting $BACKUP_TYPE backup..."
-
-CONFIG=$(curl -sf "$NAS_URL/api/active-backup/agent/poll/$DEVICE_ID" \\
-  -H "Authorization: Bearer $DEVICE_TOKEN" 2>/dev/null || echo '{}')
-if ! echo "$CONFIG" | grep -q '"approved":true'; then
-  log "Not yet approved. Skipping."; exit 0
-fi
-
-TOTAL_SIZE=0
-for P in "\${BACKUP_PATHS[@]}"; do
-  if [ -e "$P" ]; then
-    SIZE=$(du -sk "$P" 2>/dev/null | awk '{print $1*1024}' || echo 0)
-    TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
-    rsync -az --delete "$P" "juanlu@__NAS_HOST__:$NAS_DEST/" 2>>"$LOG_FILE" || true
-  fi
-done
-
-curl -sf -X POST "$NAS_URL/api/active-backup/agent/report/$DEVICE_ID" \\
-  -H "Content-Type: application/json" -H "Authorization: Bearer $DEVICE_TOKEN" \\
-  -d "{\\"status\\":\\"complete\\",\\"size\\":$TOTAL_SIZE,\\"type\\":\\"$BACKUP_TYPE\\"}" >/dev/null 2>&1 || true
-log "Done."
-BACKUPEOF
-
-sed -i '' "s|__NAS_URL__|${nasUrl}|g; s|__DEVICE_ID__|${id}|g; s|__DEVICE_TOKEN__|${token}|g; s|__BACKUP_TYPE__|${backupType}|g; s|__NAS_HOST__|${nasHost}|g" "$AGENT_DIR/backup.sh"
-chmod +x "$AGENT_DIR/backup.sh"
-
-cat > "$PLIST_PATH" << PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>com.homepinas.agent</string>
-  <key>ProgramArguments</key><array><string>$AGENT_DIR/backup.sh</string></array>
-  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>2</integer><key>Minute</key><integer>0</integer></dict>
-  <key>StandardOutPath</key><string>$AGENT_DIR/backup.log</string>
-  <key>StandardErrorPath</key><string>$AGENT_DIR/backup.log</string>
-</dict></plist>
-PLIST
-
-launchctl load "$PLIST_PATH" 2>/dev/null || true
-
-echo "=============================================="
-echo "  HomePiNAS Agent instalado para macOS!"
-echo "  Device ID   : $DEVICE_ID  |  Tipo: $BACKUP_TYPE"
-echo "  Diario 02:00 via launchd"
-echo "  SIGUIENTE: Aprueba en Active Backup."
-echo "=============================================="
-`;
-    res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Content-Disposition', `attachment; filename="homepinas-agent-mac-${id}.sh"`);
-    return res.send(script);
-  }
-
-  // Windows PowerShell
-  const robocopyFlags = backupType === 'full' ? '/MIR /R:1 /W:1' : backupType === 'incremental' ? '/MIR /XO /R:1 /W:1' : '/MIR /R:1 /W:1';
-  const script = `# ============================================================
-# HomePiNAS Active Backup Agent — Windows Installer
-# Generated: ${new Date().toISOString()}
-# NAS: ${nasUrl}  |  Device: ${id}  |  Tipo: ${backupType}
-# Ejecutar como Administrador en PowerShell
-# ============================================================
-
-$NasUrl      = "${nasUrl}"
-$NasHost     = "${nasHost}"
-$DeviceId    = "${id}"
-$DeviceToken = "${token}"
-$BackupType  = "${backupType}"
-$AgentDir    = "$env:APPDATA\\HomePiNAS"
-$BackupLog   = "$AgentDir\\backup.log"
-$ScriptPath  = "$AgentDir\\backup.ps1"
-$TaskName    = "HomePiNAS Backup"
-
-Write-Host "[HomePiNAS] Instalando agente Windows (tipo: $BackupType)..." -ForegroundColor Cyan
-New-Item -ItemType Directory -Force -Path $AgentDir | Out-Null
-
-$Hostname = $env:COMPUTERNAME
-$OS = (Get-CimInstance Win32_OperatingSystem).Caption
-Write-Host "[HomePiNAS] Registrando dispositivo: $Hostname"
-try {
-  $Body = @{ hostname = $Hostname; os = $OS; id = $DeviceId } | ConvertTo-Json
-  Invoke-RestMethod -Uri "$NasUrl/api/active-backup/agent/register" \`
-    -Method POST -ContentType "application/json" \`
-    -Headers @{ "X-Agent-Token" = $DeviceToken } -Body $Body | Out-Null
-  Write-Host "[HomePiNAS] Registrado correctamente." -ForegroundColor Green
-} catch {
-  Write-Host "[HomePiNAS] No se pudo conectar al NAS. Continuando..." -ForegroundColor Yellow
-}
-
-@"
-\$NasUrl      = "${nasUrl}"
-\$NasHost     = "${nasHost}"
-\$DeviceId    = "${id}"
-\$DeviceToken = "${token}"
-\$BackupType  = "${backupType}"
-\$BackupLog   = "$AgentDir\\backup.log"
-\$BackupPaths = ${winBackupPaths}
-\$NasShare    = "\\\\$NasHost\\active-backup\\\$DeviceId"
-\$RobocopyFlags = "${robocopyFlags}".Split(" ")
-
-function Write-Log { param(\$msg) Add-Content -Path \$BackupLog -Value "[\$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] \$msg" }
-
-Write-Log "Iniciando backup \$BackupType..."
-try {
-  \$Config = Invoke-RestMethod -Uri "\$NasUrl/api/active-backup/agent/poll/\$DeviceId" \`
-    -Headers @{ Authorization = "Bearer \$DeviceToken" } -TimeoutSec 10
-  if (-not \$Config.approved) { Write-Log "No aprobado. Saltando."; exit 0 }
-} catch { Write-Log "No se puede conectar al NAS. Saltando."; exit 0 }
-
-\$TotalSize = 0
-foreach (\$Path in \$BackupPaths) {
-  if (Test-Path \$Path) {
-    Write-Log "Backup: \$Path"
-    \$Dest = "\$NasShare\\" + (Split-Path \$Path -Leaf)
-    New-Item -ItemType Directory -Force -Path \$Dest -ErrorAction SilentlyContinue | Out-Null
-    & robocopy \$Path \$Dest @RobocopyFlags /LOG+:\$BackupLog /NP /NDL /NC /NJS | Out-Null
-    \$Size = (Get-ChildItem \$Path -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
-    \$TotalSize += \$Size
-  }
-}
-
-try {
-  \$Report = @{ status = "complete"; size = \$TotalSize; type = \$BackupType } | ConvertTo-Json
-  Invoke-RestMethod -Uri "\$NasUrl/api/active-backup/agent/report/\$DeviceId" \`
-    -Method POST -ContentType "application/json" \`
-    -Headers @{ Authorization = "Bearer \$DeviceToken" } -Body \$Report | Out-Null
-} catch {}
-Write-Log "Backup completo. Total: \$TotalSize bytes"
-"@ | Set-Content -Path $ScriptPath -Encoding UTF8
-
-$Action   = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -WindowStyle Hidden -File \`"$ScriptPath\`""
-$Trigger  = New-ScheduledTaskTrigger -Daily -At "02:00"
-$Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -WakeToRun
-Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Force | Out-Null
-
-Write-Host ""
-Write-Host "==============================================" -ForegroundColor Green
-Write-Host "  HomePiNAS Agent instalado para Windows!" -ForegroundColor Green
-Write-Host "  Device ID : $DeviceId  |  Tipo: $BackupType"
-Write-Host "  Diario 02:00 via Programador de tareas"
-Write-Host "  Logs      : $BackupLog"
-Write-Host ""
-Write-Host "  SIGUIENTE: Aprueba el dispositivo en"
-Write-Host "  Active Backup del dashboard."
-Write-Host "==============================================" -ForegroundColor Green
-`;
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Content-Disposition', `attachment; filename="homepinas-agent-windows-${id}.ps1"`);
-  return res.send(script);
+  return res.json({
+    deviceID: id,
+    token,
+    nasURL: nasUrl,
+    backupType,
+    platform,
+    binaryURL: binaryUrl,
+    installCommand: installCommands[platform as 'windows' | 'mac' | 'linux'],
+  });
 });
 
-/** POST /agent/register — Agent self-registration */
-activeBackupRouter.post('/agent/register', requireAdmin, (req, res) => {
-  const { hostname, os } = req.body;
+/** POST /agent/activate — Binary agent activation (called by Go agent on first run) */
+activeBackupRouter.post('/agent/activate', (req, res) => {
+  const { token, hostname, os: agentOS, arch } = req.body;
+  if (!token || !hostname) return res.status(400).json({ error: 'token and hostname required' });
+
+  // Find matching pending agent by token
+  const pending = Array.from(pendingAgents.values()).find(p => {
+    const d = devices.get(p.id);
+    return !d; // still pending
+  });
+
+  // Look up the device ID that was pre-registered with this token
+  // The token was stored in the Device record when generate was called
+  const deviceEntry = Array.from(devices.values()).find(d => d.token === token);
+  const pendingEntry = Array.from(pendingAgents.values()).find(p => {
+    // Token is not stored in pending directly; we look it up by hostname match or just accept any pending
+    return true;
+  });
+
+  // Generate a new device auth token for subsequent API calls
+  const authToken = crypto.randomBytes(32).toString('hex');
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+
+  if (deviceEntry) {
+    // Already activated — update and return existing ID
+    deviceEntry.hostname = hostname;
+    deviceEntry.os = agentOS || deviceEntry.os;
+    deviceEntry.ip = ip;
+    deviceEntry.token = authToken;
+    deviceEntry.lastSeen = new Date().toISOString();
+    return res.json({ deviceID: deviceEntry.id, authToken });
+  }
+
+  // Move matching pending to devices (or create new device)
+  // Find pending agent whose placeholder hostname matches platform
+  const matchedPending = Array.from(pendingAgents.values()).find(p =>
+    p.hostname.startsWith('pending-')
+  );
+
+  const id = matchedPending?.id || crypto.randomUUID().slice(0, 8);
+  if (matchedPending) pendingAgents.delete(matchedPending.id);
+
+  const device: Device = {
+    id,
+    name: hostname,
+    hostname,
+    os: agentOS || 'unknown',
+    ip,
+    token: authToken,
+    backupType: 'folders',
+    backupPaths: [],
+    schedule: '0 2 * * *',
+    status: 'online',
+    lastSeen: new Date().toISOString(),
+    lastBackup: null,
+    backupSize: 0,
+    versions: [],
+    approved: false,
+  };
+
+  devices.set(id, device);
+  res.json({ deviceID: id, authToken, message: 'Registered, waiting for admin approval' });
+});
+
+/** GET /agent/:id/config — Binary agent polls for backup config */
+activeBackupRouter.get('/agent/:id/config', (req, res) => {
+  const device = devices.get(req.params.id);
+  if (!device) return res.status(404).json({ error: 'Device not found' });
+
+  // Verify auth token from Authorization header
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token !== device.token) return res.status(401).json({ error: 'Invalid token' });
+
+  device.lastSeen = new Date().toISOString();
+  if (device.status !== 'backing-up') device.status = 'online';
+
+  // Default backup paths per OS/type if none configured
+  const defaultPaths: Record<string, Record<string, string[]>> = {
+    windows: {
+      full: ['C:\\'],
+      incremental: [process.env.USERPROFILE || 'C:\\Users\\User'],
+      folders: ['Documents', 'Desktop', 'Pictures'].map(d => `C:\\Users\\User\\${d}`),
+    },
+    darwin: {
+      full: ['/'],
+      incremental: ['/Users'],
+      folders: ['/Users/Shared/Documents', '/Users/Shared/Desktop', '/Users/Shared/Pictures'],
+    },
+    linux: {
+      full: ['/'],
+      incremental: ['/home'],
+      folders: ['/home'],
+    },
+  };
+
+  const paths = device.backupPaths.length > 0
+    ? device.backupPaths
+    : (defaultPaths['linux'][device.backupType] || []);
+
+  res.json({
+    approved: device.approved,
+    backupEnabled: device.approved,
+    backupType: device.backupType,
+    backupPaths: paths,
+    backupDest: device.approved ? `/mnt/storage/active-backup/${device.id}/` : '',
+    backupHour: 2,
+    schedule: device.schedule,
+  });
+});
+
+/** POST /agent/:id/report — Binary agent reports backup result */
+activeBackupRouter.post('/agent/:id/report', (req, res) => {
+  const device = devices.get(req.params.id);
+  if (!device) return res.status(404).json({ error: 'Device not found' });
+
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token !== device.token) return res.status(401).json({ error: 'Invalid token' });
+
+  const { success, message, size } = req.body;
+  const version: BackupVersion = {
+    id: crypto.randomUUID().slice(0, 8),
+    timestamp: new Date().toISOString(),
+    size: size || 0,
+    type: device.backupType === 'incremental' ? 'incremental' : 'full',
+    status: success ? 'complete' : 'failed',
+  };
+
+  device.versions.unshift(version);
+  if (device.versions.length > 50) device.versions.pop();
+  device.lastBackup = version.timestamp;
+  if (success) device.backupSize += (size || 0);
+  device.status = 'online';
+
+  res.json({ success: true });
+});
+
+/** POST /agent/register — Legacy agent self-registration (kept for compatibility) */
+activeBackupRouter.post('/agent/register', (req, res) => {
+  const { hostname, os: agentOS, id: requestedId } = req.body;
   if (!hostname) return res.status(400).json({ error: 'hostname required' });
 
-  const id = crypto.randomUUID().slice(0, 8);
+  const id = requestedId || crypto.randomUUID().slice(0, 8);
   const ip = req.ip || 'unknown';
 
-  pendingAgents.set(id, {
-    id, hostname, os: os || 'unknown', ip,
-    requestedAt: new Date().toISOString(),
-  });
+  if (!pendingAgents.has(id)) {
+    pendingAgents.set(id, {
+      id, hostname, os: agentOS || 'unknown', ip,
+      requestedAt: new Date().toISOString(),
+    });
+  }
 
   res.json({ id, status: 'pending_approval', message: 'Waiting for admin approval' });
 });
 
-/** GET /agent/poll/:id — Agent polls for config */
+/** GET /agent/poll/:id — Legacy agent config poll */
 activeBackupRouter.get('/agent/poll/:id', requireAuth, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
@@ -408,8 +303,8 @@ activeBackupRouter.get('/agent/poll/:id', requireAuth, (req, res) => {
   });
 });
 
-/** POST /agent/report/:id — Agent reports backup result */
-activeBackupRouter.post('/agent/report/:id', requireAdmin, (req, res) => {
+/** POST /agent/report/:id — Legacy backup result report */
+activeBackupRouter.post('/agent/report/:id', requireAuth, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
 

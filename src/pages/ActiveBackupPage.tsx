@@ -18,6 +18,8 @@ export default function ActiveBackupPage() {
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [generatingPlatform, setGeneratingPlatform] = useState<string | null>(null);
   const [backupType, setBackupType] = useState<'full' | 'incremental' | 'folders'>('incremental');
+  const [installData, setInstallData] = useState<{ platform: string; command: string; deviceID: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const fetchDevices = useCallback(() =>
     authFetch('/active-backup/devices').then(r => r.json() as Promise<BackupDevice[]>), []);
@@ -49,25 +51,28 @@ export default function ActiveBackupPage() {
     refreshPending();
   }, [refreshPending]);
 
-  const handleDownloadAgent = useCallback(async (platform: 'linux' | 'mac' | 'windows') => {
+  const handleGenerateAgent = useCallback(async (platform: 'linux' | 'mac' | 'windows') => {
     setGeneratingPlatform(platform);
+    setInstallData(null);
     try {
       const res = await authFetch(`/active-backup/agent/generate/${platform}?backupType=${backupType}`);
-      const blob = await res.blob();
-      const ext = platform === 'windows' ? 'ps1' : 'sh';
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `homepinas-agent-${platform}.${ext}`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const data = await res.json();
+      setInstallData({ platform, command: data.installCommand, deviceID: data.deviceID });
       refreshPending();
     } catch {
       alert('Error generando el agente. Comprueba la conexión con el NAS.');
     } finally {
       setGeneratingPlatform(null);
     }
-  }, [refreshPending]);
+  }, [backupType, refreshPending]);
+
+  const handleCopyCommand = useCallback(() => {
+    if (!installData) return;
+    navigator.clipboard.writeText(installData.command).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [installData]);
 
   // Detail view
   const selected = devices?.find(d => d.id === selectedDevice);
@@ -153,75 +158,107 @@ export default function ActiveBackupPage() {
         </div>
       )}
 
-      {/* Agent download modal */}
+      {/* Agent install modal */}
       <Modal
         open={agentModalOpen}
-        onClose={() => setAgentModalOpen(false)}
-        title="Generar agente de backup"
-        actions={<StitchButton size="sm" variant="ghost" onClick={() => setAgentModalOpen(false)}>{t('common.cancel')}</StitchButton>}
+        onClose={() => { setAgentModalOpen(false); setInstallData(null); }}
+        title={installData ? 'Comando de instalación' : 'Generar agente de backup'}
+        actions={
+          installData
+            ? <StitchButton size="sm" variant="ghost" onClick={() => setInstallData(null)}>← Atrás</StitchButton>
+            : <StitchButton size="sm" variant="ghost" onClick={() => setAgentModalOpen(false)}>{t('common.cancel')}</StitchButton>
+        }
       >
-        <p className="text-xs text-[var(--text-secondary)] mb-4">
-          Selecciona el tipo de backup y el sistema operativo del equipo remoto. Se generará un instalador con token único preconfigurado. Ejecútalo como administrador y aprueba el dispositivo desde esta pantalla.
-        </p>
-
-        {/* Backup type selector */}
-        <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Tipo de backup</p>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {([
-            { type: 'full', icon: '💿', label: 'Disco completo', desc: 'Todo el disco, imagen completa' },
-            { type: 'incremental', icon: '🔄', label: 'Incremental', desc: 'Solo cambios desde el último backup' },
-            { type: 'folders', icon: '📁', label: 'Carpetas', desc: 'Carpetas específicas elegidas' },
-          ] as const).map(({ type, icon, label, desc }) => (
-            <button
-              key={type}
-              onClick={() => setBackupType(type)}
-              className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center transition-colors ${
-                backupType === type
-                  ? 'bg-teal/10 border-teal/40 text-teal'
-                  : 'border-[var(--outline-variant)] text-[var(--text-secondary)] hover:bg-surface-void'
-              }`}
-            >
-              <span className="text-xl">{icon}</span>
-              <span className="text-xs font-semibold">{label}</span>
-              <span className="text-[10px] leading-tight opacity-70">{desc}</span>
-            </button>
-          ))}
-        </div>
-
-        <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Sistema operativo</p>
-        <div className="grid grid-cols-1 gap-3">
-          {([
-            { platform: 'windows', icon: '🪟', label: 'Windows', sub: 'PowerShell (.ps1) · Ejecutar como Administrador', hint: 'robocopy + Tarea Programada' },
-            { platform: 'mac', icon: '🍎', label: 'macOS', sub: 'Shell script (.sh) · macOS 12+', hint: 'rsync + launchd' },
-            { platform: 'linux', icon: '🐧', label: 'Linux', sub: 'Shell script (.sh) · Debian/Ubuntu/Fedora', hint: 'rsync + cron' },
-          ] as const).map(({ platform, icon, label, sub, hint }) => (
-            <button
-              key={platform}
-              disabled={generatingPlatform !== null}
-              onClick={() => handleDownloadAgent(platform)}
-              className="flex items-center gap-4 rounded-xl border border-[var(--outline-variant)] px-4 py-3 hover:bg-teal/5 hover:border-teal/30 transition-colors text-left disabled:opacity-50"
-            >
-              <span className="text-3xl">{icon}</span>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
-                <p className="text-xs text-[var(--text-secondary)]">{sub}</p>
-                <p className="text-xs text-teal font-mono mt-0.5">{hint}</p>
+        {installData ? (
+          /* Step 2: show install command */
+          <div className="space-y-4">
+            <div className="rounded-lg bg-teal/5 border border-teal/20 px-3 py-2 text-xs text-[var(--text-secondary)] space-y-1">
+              <p>✅ Token generado · Device ID: <span className="font-mono text-teal">{installData.deviceID}</span></p>
+              <p>📋 El agente aparecerá en <strong>Pendientes</strong> en cuanto el cliente lo ejecute</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[var(--text-secondary)] mb-1 uppercase tracking-wider">
+                {installData.platform === 'windows' ? 'PowerShell (Administrador)' : installData.platform === 'mac' ? 'Terminal (macOS)' : 'Terminal (Linux)'}
+              </p>
+              <div className="relative rounded-lg bg-surface-void border border-[var(--outline-variant)] p-3">
+                <pre className="text-xs text-[var(--text-primary)] font-mono whitespace-pre-wrap break-all leading-relaxed pr-16">
+                  {installData.command}
+                </pre>
+                <button
+                  onClick={handleCopyCommand}
+                  className="absolute top-2 right-2 rounded-md bg-teal/10 border border-teal/30 px-2 py-1 text-xs text-teal hover:bg-teal/20 transition-colors"
+                >
+                  {copied ? '✓ Copiado' : 'Copiar'}
+                </button>
               </div>
-              {generatingPlatform === platform ? (
-                <span className="text-xs text-teal animate-pulse">Generando...</span>
-              ) : (
-                <span className="text-xs text-[var(--text-disabled)]">↓ Descargar</span>
-              )}
-            </button>
-          ))}
-        </div>
-        <div className="mt-4 rounded-lg bg-teal/5 border border-teal/20 px-3 py-2 text-xs text-[var(--text-secondary)] space-y-1">
-          <p>📋 <strong>Pasos:</strong></p>
-          <p>1. Descarga el instalador para tu sistema</p>
-          <p>2. Ejecútalo en el equipo remoto (requiere permisos de administrador)</p>
-          <p>3. Vuelve aquí y aprueba el dispositivo en "Pendientes"</p>
-          <p>4. El equipo comenzará a hacer backup automáticamente</p>
-        </div>
+            </div>
+            <div className="rounded-lg bg-surface-void border border-[var(--outline-variant)] px-3 py-2 text-xs text-[var(--text-secondary)] space-y-1">
+              <p><strong>El agente Go:</strong></p>
+              <p>• Se instala silenciosamente como servicio del sistema</p>
+              <p>• No aparece en la barra de tareas ni en el Dock</p>
+              <p>• Se ejecuta al iniciar el sistema aunque no haya sesión abierta</p>
+              <p>• Backups diarios a las 02:00 con reintentos automáticos</p>
+            </div>
+          </div>
+        ) : (
+          /* Step 1: choose type + platform */
+          <>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              Genera un comando de instalación con token único. El cliente lo ejecuta como administrador y el agente binario se instala como servicio del sistema — sin ventanas, sin scripts visibles.
+            </p>
+
+            <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Tipo de backup</p>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {([
+                { type: 'full', icon: '💿', label: 'Disco completo', desc: 'Backup de todo el disco' },
+                { type: 'incremental', icon: '🔄', label: 'Incremental', desc: 'Solo cambios recientes' },
+                { type: 'folders', icon: '📁', label: 'Carpetas', desc: 'Docs, Desktop, Imágenes' },
+              ] as const).map(({ type, icon, label, desc }) => (
+                <button
+                  key={type}
+                  onClick={() => setBackupType(type)}
+                  className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center transition-colors ${
+                    backupType === type
+                      ? 'bg-teal/10 border-teal/40 text-teal'
+                      : 'border-[var(--outline-variant)] text-[var(--text-secondary)] hover:bg-surface-void'
+                  }`}
+                >
+                  <span className="text-xl">{icon}</span>
+                  <span className="text-xs font-semibold">{label}</span>
+                  <span className="text-[10px] leading-tight opacity-70">{desc}</span>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Sistema operativo</p>
+            <div className="grid grid-cols-1 gap-3">
+              {([
+                { platform: 'windows', icon: '🪟', label: 'Windows', sub: 'Windows 10/11 · Ejecutar PowerShell como Admin', hint: 'Servicio del sistema · robocopy' },
+                { platform: 'mac', icon: '🍎', label: 'macOS', sub: 'macOS 12+ · Intel y Apple Silicon', hint: 'LaunchDaemon · rsync' },
+                { platform: 'linux', icon: '🐧', label: 'Linux', sub: 'Debian, Ubuntu, Fedora · x64/arm64', hint: 'systemd service · rsync' },
+              ] as const).map(({ platform, icon, label, sub, hint }) => (
+                <button
+                  key={platform}
+                  disabled={generatingPlatform !== null}
+                  onClick={() => handleGenerateAgent(platform)}
+                  className="flex items-center gap-4 rounded-xl border border-[var(--outline-variant)] px-4 py-3 hover:bg-teal/5 hover:border-teal/30 transition-colors text-left disabled:opacity-50"
+                >
+                  <span className="text-3xl">{icon}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">{sub}</p>
+                    <p className="text-xs text-teal font-mono mt-0.5">{hint}</p>
+                  </div>
+                  {generatingPlatform === platform ? (
+                    <span className="text-xs text-teal animate-pulse">Generando...</span>
+                  ) : (
+                    <span className="text-xs text-[var(--text-disabled)]">→ Generar</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </Modal>
 
       {/* How it works */}
