@@ -1,4 +1,4 @@
-# HomePiNAS v6.5.5
+# HomePiNAS v6.5.7
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -156,6 +156,18 @@ pnpm lint         # ESLint 10
 ### v6.4.3 (30 Marzo 2026)
 - git-check: usa ruta absoluta del repo en lugar de process.cwd() (fix en producción)
 - git-check: devuelve el error real al frontend en lugar de mensaje genérico
+
+### v6.5.7 (31 Marzo 2026)
+- Active Backup: renombrar dispositivo desde DeviceDetail (icono lápiz junto al nombre)
+- Active Backup: barra de progreso en DeviceCard y DeviceDetail durante backup activo
+- Active Backup: botón "Backup Now" envía señal al agente (triggerBackup) en lugar de solo cambiar estado
+- Active Backup: agente Go reporta progreso por ruta (0→90%) y al finalizar (100%) via POST /agent/:id/progress
+- Active Backup: timeout automático — si el agente lleva >30 min sin heartbeat, estado vuelve a offline
+- Backend: PUT /devices/:id para renombrar + POST /agent/:id/progress para progreso en tiempo real
+- Agente Go recompilado con soporte de trigger manual y reporte de progreso
+
+### v6.5.6 (31 Marzo 2026)
+- security: protect metrics routes, unify frontend fetch, remove shell in network.ts
 
 ### v6.5.5 (31 Marzo 2026)
 - Active Backup: mejor manejo de errores en la generación del agente (muestra el error real del servidor)

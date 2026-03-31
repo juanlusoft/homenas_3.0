@@ -97,6 +97,32 @@ export function DeviceCard({ device, onBackup, onSelect }: DeviceCardProps) {
         </div>
       </div>
 
+      {/* Progress bar when backing-up */}
+      {device.status === 'backing-up' && (
+        <div className="mt-3 space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-teal font-medium animate-pulse">⟳ Backing up…</span>
+            {device.backupProgress?.speed && (
+              <span className="text-[var(--text-secondary)] font-mono">{device.backupProgress.speed}</span>
+            )}
+            <span className="text-[var(--text-secondary)] font-mono">
+              {device.backupProgress?.percent ?? 0}%
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-surface-void overflow-hidden">
+            <div
+              className="h-full rounded-full bg-teal transition-all duration-500"
+              style={{ width: `${device.backupProgress?.percent ?? 0}%` }}
+            />
+          </div>
+          {device.backupProgress?.currentFile && (
+            <p className="text-[10px] text-[var(--text-disabled)] font-mono truncate">
+              {device.backupProgress.currentFile}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-2 mt-4" onClick={e => e.stopPropagation()}>
         <StitchButton size="sm" onClick={() => onBackup(device.id)} disabled={device.status === 'backing-up'}>
           {device.status === 'backing-up' ? '⏳ Running...' : '▶ Backup Now'}

@@ -21,6 +21,7 @@ export interface BackupDevice {
   backupSize: number;
   versions: BackupVersion[];
   approved: boolean;
+  backupProgress: { percent: number; currentFile: string; speed: string } | null;
 }
 
 export interface PendingAgent {

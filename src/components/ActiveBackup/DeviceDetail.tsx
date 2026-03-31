@@ -2,6 +2,7 @@
  * Device detail panel — backup versions, paths, restore actions
  */
 
+import { useState, useRef } from 'react';
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { t } from '@/i18n';
 import type { BackupDevice } from './types';
@@ -18,22 +19,84 @@ interface DeviceDetailProps {
   onClose: () => void;
   onBackup: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, name: string) => void;
 }
 
-export function DeviceDetail({ device, onClose, onBackup, onDelete }: DeviceDetailProps) {
+export function DeviceDetail({ device, onClose, onBackup, onDelete, onRename }: DeviceDetailProps) {
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(device.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = () => {
+    setNameValue(device.name);
+    setEditingName(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  };
+
+  const commitRename = () => {
+    const trimmed = nameValue.trim();
+    if (trimmed && trimmed !== device.name) onRename(device.id, trimmed);
+    setEditingName(false);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-xl font-bold text-[var(--text-primary)]">{device.name}</h2>
+          {editingName ? (
+            <input
+              ref={inputRef}
+              value={nameValue}
+              onChange={e => setNameValue(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setEditingName(false); }}
+              className="font-display text-xl font-bold bg-surface-void border border-teal/40 rounded px-2 py-0.5 text-[var(--text-primary)] outline-none focus:border-teal"
+              autoFocus
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-xl font-bold text-[var(--text-primary)]">{device.name}</h2>
+              <button
+                onClick={startEdit}
+                className="text-[var(--text-disabled)] hover:text-teal transition-colors"
+                title="Rename device"
+              >
+                ✏️
+              </button>
+            </div>
+          )}
           <p className="text-sm text-[var(--text-secondary)]">{device.hostname} · {device.os}</p>
         </div>
         <div className="flex gap-2">
-          <StitchButton size="sm" onClick={() => onBackup(device.id)}>{t('ab.backupNow')}</StitchButton>
+          <StitchButton size="sm" onClick={() => onBackup(device.id)} disabled={device.status === 'backing-up'}>{t('ab.backupNow')}</StitchButton>
           <StitchButton size="sm" variant="ghost" onClick={onClose}>{t('ab.back')}</StitchButton>
         </div>
       </div>
+
+      {/* Progress when backing-up */}
+      {device.status === 'backing-up' && (
+        <GlassCard elevation="low">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-display text-sm font-semibold text-teal animate-pulse">⟳ Backup en progreso</h3>
+            <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
+              {device.backupProgress?.speed && <span className="font-mono">{device.backupProgress.speed}</span>}
+              <span className="font-mono font-semibold text-teal">{device.backupProgress?.percent ?? 0}%</span>
+            </div>
+          </div>
+          <div className="h-2 rounded-full bg-surface-void overflow-hidden mb-2">
+            <div
+              className="h-full rounded-full bg-teal transition-all duration-500"
+              style={{ width: `${device.backupProgress?.percent ?? 0}%` }}
+            />
+          </div>
+          {device.backupProgress?.currentFile && (
+            <p className="text-xs text-[var(--text-disabled)] font-mono truncate">
+              {device.backupProgress.currentFile}
+            </p>
+          )}
+        </GlassCard>
+      )}
 
       {/* Config */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

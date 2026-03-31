@@ -31,6 +31,8 @@ interface Device {
   backupSize: number;
   versions: BackupVersion[];
   approved: boolean;
+  pendingBackup: boolean;
+  backupProgress: { percent: number; currentFile: string; speed: string } | null;
 }
 
 interface BackupVersion {
@@ -51,6 +53,18 @@ interface PendingAgent {
 
 const devices = new Map<string, Device>();
 const pendingAgents = new Map<string, PendingAgent>();
+
+// Auto-reset devices stuck in backing-up > 30 min with no heartbeat
+function applyTimeout(device: Device) {
+  if (device.status === 'backing-up') {
+    const lastSeen = device.lastSeen ? new Date(device.lastSeen).getTime() : 0;
+    if (Date.now() - lastSeen > 30 * 60 * 1000) {
+      device.status = 'offline';
+      device.backupProgress = null;
+      device.pendingBackup = false;
+    }
+  }
+}
 
 // No demo data — start clean
 
@@ -192,6 +206,8 @@ activeBackupRouter.post('/agent/activate', (req, res) => {
     backupSize: 0,
     versions: [],
     approved: false,
+    pendingBackup: false,
+    backupProgress: null,
   };
 
   devices.set(id, device);
@@ -210,6 +226,9 @@ activeBackupRouter.get('/agent/:id/config', (req, res) => {
 
   device.lastSeen = new Date().toISOString();
   if (device.status !== 'backing-up') device.status = 'online';
+
+  const triggerBackup = device.pendingBackup;
+  if (device.pendingBackup) device.pendingBackup = false;
 
   // Default backup paths per OS/type if none configured
   const defaultPaths: Record<string, Record<string, string[]>> = {
@@ -242,6 +261,7 @@ activeBackupRouter.get('/agent/:id/config', (req, res) => {
     backupDest: device.approved ? `/mnt/storage/active-backup/${device.id}/` : '',
     backupHour: 2,
     schedule: device.schedule,
+    triggerBackup,
   });
 });
 
@@ -268,6 +288,29 @@ activeBackupRouter.post('/agent/:id/report', (req, res) => {
   device.lastBackup = version.timestamp;
   if (success) device.backupSize += (size || 0);
   device.status = 'online';
+  device.backupProgress = null;
+  device.pendingBackup = false;
+
+  res.json({ success: true });
+});
+
+/** POST /agent/:id/progress — Binary agent reports backup progress */
+activeBackupRouter.post('/agent/:id/progress', (req, res) => {
+  const device = devices.get(req.params.id);
+  if (!device) return res.status(404).json({ error: 'Device not found' });
+
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (token !== device.token) return res.status(401).json({ error: 'Invalid token' });
+
+  const { percent, currentFile, speed } = req.body;
+  device.backupProgress = {
+    percent: typeof percent === 'number' ? Math.min(100, Math.max(0, percent)) : 0,
+    currentFile: currentFile || '',
+    speed: speed || '',
+  };
+  device.status = 'backing-up';
+  device.lastSeen = new Date().toISOString();
 
   res.json({ success: true });
 });
@@ -331,13 +374,16 @@ activeBackupRouter.post('/agent/report/:id', requireAuth, (req, res) => {
 
 /** GET /devices — List all registered devices */
 activeBackupRouter.get('/devices', requireAuth, (_req, res) => {
-  res.json(Array.from(devices.values()));
+  const list = Array.from(devices.values());
+  list.forEach(applyTimeout);
+  res.json(list);
 });
 
 /** GET /devices/:id — Single device detail */
 activeBackupRouter.get('/devices/:id', requireAuth, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
+  applyTimeout(device);
   res.json(device);
 });
 
@@ -353,10 +399,20 @@ activeBackupRouter.post('/devices', requireAdmin, (req, res) => {
     backupPaths: backupPaths || [], schedule: schedule || '0 2 * * *',
     status: 'offline', lastSeen: '', lastBackup: null,
     backupSize: 0, versions: [], approved: true,
+    pendingBackup: false, backupProgress: null,
   };
 
   devices.set(id, device);
   res.json({ id, token });
+});
+
+/** PUT /devices/:id — Rename device */
+activeBackupRouter.put('/devices/:id', requireAdmin, (req, res) => {
+  const device = devices.get(req.params.id);
+  if (!device) return res.status(404).json({ error: 'Device not found' });
+  const { name } = req.body;
+  if (name && typeof name === 'string') device.name = name.trim();
+  res.json({ success: true, device });
 });
 
 /** DELETE /devices/:id — Remove device */
@@ -369,8 +425,11 @@ activeBackupRouter.delete('/devices/:id', requireAdmin, (req, res) => {
 activeBackupRouter.post('/devices/:id/backup', requireAdmin, (req, res) => {
   const device = devices.get(req.params.id);
   if (!device) return res.status(404).json({ error: 'Device not found' });
+  if (!device.approved) return res.status(400).json({ error: 'Device not approved' });
   device.status = 'backing-up';
-  res.json({ success: true, message: 'Backup triggered' });
+  device.pendingBackup = true;
+  device.backupProgress = { percent: 0, currentFile: 'Waiting for agent...', speed: '' };
+  res.json({ success: true, message: 'Backup triggered — agent will start shortly' });
 });
 
 /** GET /devices/:id/versions — List backup versions */
@@ -397,6 +456,7 @@ activeBackupRouter.post('/pending/:id/approve', requireAdmin, (req, res) => {
     backupType: 'folders', backupPaths: [], schedule: '0 2 * * *',
     status: 'online', lastSeen: new Date().toISOString(),
     lastBackup: null, backupSize: 0, versions: [], approved: true,
+    pendingBackup: false, backupProgress: null,
   };
 
   devices.set(device.id, device);

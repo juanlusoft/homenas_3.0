@@ -26,7 +26,7 @@ export default function ActiveBackupPage() {
   const fetchPending = useCallback(() =>
     authFetch('/active-backup/pending').then(r => r.json() as Promise<PendingAgent[]>), []);
 
-  const { data: devices, loading, refresh } = useAPI<BackupDevice[]>(fetchDevices, 5000);
+  const { data: devices, loading, refresh } = useAPI<BackupDevice[]>(fetchDevices, 3000);
   const { data: pending, refresh: refreshPending } = useAPI<PendingAgent[]>(fetchPending, 10000);
 
   const handleBackup = useCallback(async (id: string) => {
@@ -37,6 +37,15 @@ export default function ActiveBackupPage() {
   const handleDelete = useCallback(async (id: string) => {
     await authFetch(`/active-backup/devices/${id}`, { method: 'DELETE' });
     setSelectedDevice(null);
+    refresh();
+  }, [refresh]);
+
+  const handleRename = useCallback(async (id: string, name: string) => {
+    await authFetch(`/active-backup/devices/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
     refresh();
   }, [refresh]);
 
@@ -114,6 +123,7 @@ export default function ActiveBackupPage() {
         onClose={() => setSelectedDevice(null)}
         onBackup={handleBackup}
         onDelete={handleDelete}
+        onRename={handleRename}
       />
     );
   }

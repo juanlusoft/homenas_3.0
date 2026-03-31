@@ -37,6 +37,13 @@ type DeviceConfig struct {
 	BackupPaths   []string `json:"backupPaths"`
 	BackupDest    string   `json:"backupDest"` // rsync dest or SMB UNC
 	BackupHour    int      `json:"backupHour"`
+	TriggerBackup bool     `json:"triggerBackup"`
+}
+
+type ProgressReport struct {
+	Percent     int    `json:"percent"`
+	CurrentFile string `json:"currentFile"`
+	Speed       string `json:"speed"`
 }
 
 type ActivateRequest struct {
@@ -226,24 +233,31 @@ func runBackup(cfg *Config, dc *DeviceConfig) error {
 		return fmt.Errorf("no backup paths configured")
 	}
 
+	reportProgress(cfg, 0, "Iniciando backup...", "")
+
 	switch runtime.GOOS {
 	case "windows":
-		return runBackupWindows(dc)
+		return runBackupWindows(cfg, dc)
 	default:
-		return runBackupUnix(dc)
+		return runBackupUnix(cfg, dc)
 	}
 }
 
-func runBackupUnix(dc *DeviceConfig) error {
+func runBackupUnix(cfg *Config, dc *DeviceConfig) error {
 	dest := dc.BackupDest
 	if dest == "" {
 		return fmt.Errorf("backup destination not configured")
 	}
-	for _, src := range dc.BackupPaths {
+	total := len(dc.BackupPaths)
+	for i, src := range dc.BackupPaths {
 		// Ensure trailing slash on src so rsync copies contents, not the dir itself
 		if !strings.HasSuffix(src, "/") {
 			src += "/"
 		}
+		basePercent := (i * 90) / total
+		reportProgress(cfg, basePercent, src, "")
+
+		start := time.Now()
 		args := []string{"-az", "--delete", "--timeout=60", src, dest}
 		cmd := exec.Command("rsync", args...)
 		cmd.Stdout = os.Stdout
@@ -252,30 +266,47 @@ func runBackupUnix(dc *DeviceConfig) error {
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("rsync %s: %w", src, err)
 		}
+		elapsed := time.Since(start).Round(time.Second)
+
+		donePercent := ((i + 1) * 90) / total
+		reportProgress(cfg, donePercent, filepath.Base(strings.TrimSuffix(src, "/"))+" ✓", elapsed.String())
 	}
+
+	reportProgress(cfg, 100, "Completado", "")
 	return nil
 }
 
-func runBackupWindows(dc *DeviceConfig) error {
+func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 	dest := dc.BackupDest
 	if dest == "" {
 		return fmt.Errorf("backup destination not configured")
 	}
-	for _, src := range dc.BackupPaths {
+	total := len(dc.BackupPaths)
+	for i, src := range dc.BackupPaths {
 		// Robocopy: dest sub-folder named after the last path component
 		leaf := filepath.Base(src)
 		fullDest := filepath.Join(dest, leaf)
+
+		basePercent := (i * 90) / total
+		reportProgress(cfg, basePercent, src, "")
+
 		flags := []string{src, fullDest, "/MIR", "/R:2", "/W:5", "/NP", "/NFL", "/NDL", "/NC", "/NJS", "/NJH"}
 		cmd := exec.Command("robocopy", flags...)
 		slog.Info("robocopy", "src", src, "dest", fullDest)
 		if err := cmd.Run(); err != nil {
 			// robocopy exit codes 0-7 are success/warning; >=8 = errors
 			if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() <= 7 {
+				donePercent := ((i + 1) * 90) / total
+				reportProgress(cfg, donePercent, src+" ✓", "")
 				continue
 			}
 			return fmt.Errorf("robocopy %s: exit %d", src, cmd.ProcessState.ExitCode())
 		}
+		donePercent := ((i + 1) * 90) / total
+		reportProgress(cfg, donePercent, src+" ✓", "")
 	}
+
+	reportProgress(cfg, 100, "Completado", "")
 	return nil
 }
 
@@ -291,6 +322,14 @@ func reportResult(cfg *Config, success bool, message string) {
 	url := fmt.Sprintf("%s/api/active-backup/agent/%s/report", cfg.NasURL, cfg.DeviceID)
 	if err := apiPost(url, cfg.AuthToken, body, nil); err != nil {
 		slog.Warn("failed to report result", "err", err)
+	}
+}
+
+func reportProgress(cfg *Config, percent int, currentFile, speed string) {
+	p := ProgressReport{Percent: percent, CurrentFile: currentFile, Speed: speed}
+	url := fmt.Sprintf("%s/api/active-backup/agent/%s/progress", cfg.NasURL, cfg.DeviceID)
+	if err := apiPost(url, cfg.AuthToken, p, nil); err != nil {
+		slog.Warn("failed to report progress", "err", err)
 	}
 }
 
@@ -345,8 +384,15 @@ func runDaemon() {
 		today := time.Now().Format("2006-01-02")
 		hour := time.Now().Hour()
 
-		if dc.BackupEnabled && today != lastBackupDate && hour >= dc.BackupHour {
-			slog.Info("running scheduled backup", "type", dc.BackupType)
+		shouldBackup := dc.TriggerBackup ||
+			(dc.BackupEnabled && today != lastBackupDate && hour >= dc.BackupHour)
+
+		if shouldBackup {
+			reason := "scheduled"
+			if dc.TriggerBackup {
+				reason = "manual trigger"
+			}
+			slog.Info("running backup", "reason", reason, "type", dc.BackupType)
 			if err := runBackup(cfg, dc); err != nil {
 				slog.Error("backup failed", "err", err)
 				reportResult(cfg, false, err.Error())
