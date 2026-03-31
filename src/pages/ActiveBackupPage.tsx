@@ -1,10 +1,11 @@
 import { t } from '@/i18n';
 import { authFetch } from '@/api/authFetch';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { GlassCard, StitchButton, Modal } from '@/components/UI';
 import { DeviceCard, DeviceDetail } from '@/components/ActiveBackup';
 import { useAPI } from '@/hooks/useAPI';
 import type { BackupDevice, PendingAgent } from '@/components/ActiveBackup';
+import { getStoredUser } from '@/api/client';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1e12) return `${(bytes / 1e12).toFixed(1)} TB`;
@@ -37,6 +38,13 @@ export default function ActiveBackupPage() {
 
   const { data: devices, loading, refresh } = useAPI<BackupDevice[]>(fetchDevices, 3000);
   const { data: pending, refresh: refreshPending } = useAPI<PendingAgent[]>(fetchPending, 10000);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user?.username) {
+      setBackupUsername(prev => prev.trim() ? prev : user.username);
+    }
+  }, []);
 
   const handleBackup = useCallback(async (id: string) => {
     await authFetch(`/active-backup/devices/${id}/backup`, { method: 'POST' });
@@ -82,6 +90,10 @@ export default function ActiveBackupPage() {
     setGeneratingPlatform(platform);
     setInstallData(null);
     try {
+      if (!backupPassword.trim()) {
+        alert('Falta la contraseña SMB del NAS para generar el agente.');
+        return;
+      }
       const arch = platformArch[platform];
       const res = await authFetch(`/active-backup/agent/generate/${platform}`, {
         method: 'POST',
