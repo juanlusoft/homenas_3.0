@@ -1,7 +1,7 @@
 {
   "name": "homenas-3-0",
   "private": true,
-  "version": "6.6.0",
+  "version": "6.6.1",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite\" \"tsx watch server/index.ts\"",

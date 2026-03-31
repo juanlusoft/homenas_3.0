@@ -1,4 +1,4 @@
-# HomePiNAS v6.5.9
+# HomePiNAS v6.6.1
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -137,6 +137,22 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.6.1 (31 Marzo 2026)
+- Active Backup: fix crítico — robocopy en Windows usaba `C:` como nombre de directorio destino en la ruta UNC, provocando que Windows interpretara el segmento como referencia a unidad (no como carpeta). `filepath.Base("C:\\")` devuelve `"C:"` → ahora se sanitiza a `"C"` → ruta correcta `\\NAS\active-backup\device\C\`
+- Active Backup: todos los binarios del agente recompilados (Windows amd64, Linux amd64/arm64, macOS amd64/arm64)
+
+### v6.6.0 (31 Marzo 2026)
+- Active Backup: fix crítico de token — `approve` ahora actualiza el dispositivo existente (approved=true) en lugar de crear uno nuevo con token distinto. El bucle infinito de re-activación está corregido
+- Active Backup: agente Go detecta IP real de salida via TCP dial al NAS (evita capturar 127.0.0.1 del proxy Nginx)
+- Active Backup: deduplicación de dispositivos por hostname (no por hostname+IP) — evita duplicados cuando IP cambia
+- Active Backup: fallback de rutas por defecto usa el OS real del dispositivo (no siempre Linux)
+- Active Backup: `saveData()` correctamente llamado tras resetear `pendingBackup` en config poll
+- Active Backup: PUT /devices/:id acepta `backupPaths` y `schedule` para edición posterior
+- Active Backup: UI de edición de rutas de backup en DeviceDetail (añadir/editar/eliminar por ruta)
+- Active Backup: tipos de backup Windows corregidos (C:\\Users para incremental, carpetas reales para folders)
+- Active Backup: argumento `net use` en orden correcto (`\\share password /user:juanlu`)
+- Active Backup: schtasks /TR sin comillas manuales (causaban error de parámetro)
+
 ### v6.4.7 (30 Marzo 2026)
 - Instalador: añade ntfs-3g, exfat-fuse, exfatprogs, smartmontools, parted, gdisk, badblocks, rsync, snapraid, mergerfs
 - Instalador: sudoers completo para todos los comandos NAS (mount, umount, blkid, sgdisk, mkfs, badblocks, rsync, snapraid, nmcli, systemctl...)
@@ -169,7 +185,7 @@ pnpm lint         # ESLint 10
 - Active Backup: backend detecta OS Windows y envía ruta UNC `\\NAS\active-backup\folder` en lugar de ruta Linux
 - Active Backup: agente Go calcula el tamaño real del backup con `dirSize()` y lo reporta al completar
 - Active Backup: progreso reporta tiempo transcurrido por carpeta
-- Go instalado en NAS (`/usr/local/go`) — ahora se puede compilar allí sin el Mac Studio
+- Go instalado en NAS (`/usr/local/go`) — se puede compilar allí sin el Mac Studio
 
 ### v6.5.8 (31 Marzo 2026)
 - Active Backup: persistencia de dispositivos en disco (`data/active-backup.json`) — los registros sobreviven a reinicios del servicio

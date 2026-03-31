@@ -1,12 +1,12 @@
 # HomePiNAS – Estado y Pendientes
 
-> Actualizado: 31 Marzo 2026 · v6.5.9
+> Actualizado: 31 Marzo 2026 · v6.6.1
 
 ---
 
 ## ✅ COMPLETADO
 
-### Active Backup (módulo principal en desarrollo)
+### Active Backup (módulo principal — en fase de pruebas)
 - [x] Agente Go compilado para Win/Mac/Linux (arm64 + amd64)
 - [x] Agente se instala como servicio silencioso del sistema (schtasks SYSTEM / LaunchDaemon / systemd)
 - [x] Flujo plug & play: nombre del dispositivo obligatorio antes de generar comando
@@ -17,25 +17,35 @@
 - [x] Renombrar dispositivo (icono lápiz inline en DeviceDetail)
 - [x] Barra de progreso en tiempo real (0→100% + archivo actual + velocidad)
 - [x] Botón "Backup Now" envía triggerBackup al agente via poll de config
-- [x] Windows: ruta de destino UNC (`\\NAS\active-backup\folder`) via Samba
 - [x] Windows: agente monta el share SMB con `net use juanlu/mimora` antes de robocopy
+- [x] Windows: ruta de destino UNC (`\\NAS\active-backup\folder`) via Samba
+- [x] Windows: argumento `net use` en orden correcto (`\\share password /user:juanlu`)
+- [x] Windows: schtasks /TR sin comillas manuales
 - [x] Tamaño real del backup reportado al completar (`dirSize`)
 - [x] Timeout automático: dispositivos en backing-up >30 min vuelven a offline
 - [x] Share Samba `[active-backup]` configurado en el NAS (`/mnt/storage/active-backup`)
 - [x] Go instalado en NAS para compilar binarios sin Mac Studio
+- [x] **BUG 10 (CRÍTICO)**: `approve` actualiza el dispositivo existente (approved=true) — ya no crea nuevo token que rompía la auth del agente → bucle infinito de re-activación CORREGIDO
+- [x] **BUG 1**: fallback de rutas por defecto usa OS real del dispositivo (no siempre Linux)
+- [x] **BUG 3**: deduplicación por hostname (no hostname+IP) — evita duplicados al cambiar IP
+- [x] **BUG 2/8**: agente detecta IP real de salida via TCP dial al NAS (evita 127.0.0.1 del proxy)
+- [x] **BUG 5**: orden correcto de argumentos en `net use`
+- [x] **BUG 4**: `saveData()` llamado tras resetear pendingBackup en config poll
+- [x] PUT /devices/:id acepta `backupPaths` y `schedule` para edición desde DeviceDetail
+- [x] UI de edición de rutas de backup en DeviceDetail (añadir/editar/eliminar per-ruta)
+- [x] **BUG C: (CRÍTICO)**: `filepath.Base("C:\\")` devolvía `"C:"` → sanitizado a `"C"` → ruta UNC correcta `\\NAS\active-backup\device\C\` — robocopy ya no copia 0 bytes en backup full
 
 ---
 
 ## 🔴 PENDIENTE URGENTE
 
-### Active Backup
-- [ ] **backupPaths vacío**: el dispositivo actual tiene `backupPaths: []` — no se copiará nada
-  - Necesita UI para configurar las carpetas a hacer backup antes de aprobar
-  - O configurarlas desde DeviceDetail después de aprobar
-- [ ] **IP del agente aparece como 127.0.0.1**: revisar cómo detecta la IP en el agente Go
-  - Probablemente necesita detectar la IP de la interfaz real (no loopback)
-- [ ] **Reinstalar agente Windows**: el equipo `Minisforum-M1Pro` tiene el binario viejo sin SMB
-  - Pasos: `schtasks /Delete /TN "HomePiNAS Agent" /F` + borrar config + nuevo install
+### Active Backup — pendientes de prueba
+- [ ] **Verificar backup real en Windows**: comprobar que después del fix `C:` el backup full copia ficheros reales a `/mnt/storage/active-backup/`
+- [ ] **Reinstalar agente Windows**: el equipo `Minisforum-M1Pro` tiene el binario viejo sin el fix de `C:`
+  - Pasos: `schtasks /Delete /TN "HomePiNASAgent" /F` → borrar `C:\Program Files\HomePiNAS\` → nuevo install desde dashboard
+- [ ] **Schtasks SYSTEM falla (-2147024894)**: la tarea programada falla al ejecutarse como SYSTEM pero funciona manualmente
+  - Hipótesis: PATH o variables de entorno distintas como SYSTEM
+  - Workaround temporal: ejecutar manualmente con `& "C:\Program Files\HomePiNAS\agent.exe" --run`
 
 ---
 
@@ -52,19 +62,15 @@
 ### 3. Backup clásico
 - [ ] Botones `+ Nueva Tarea`, `Ejecutar Todo`, `Ejecutar Ahora`, `Configurar` — conectar a API
 
-### 4. Active Backup (UI mejoras)
-- [ ] Pantalla de configuración de rutas de backup por dispositivo (antes de aprobar o desde DeviceDetail)
-- [ ] Mostrar IP real del agente (no 127.0.0.1)
-- [ ] Historial de backups por dispositivo (versiones)
+### 4. Active Backup (mejoras futuras)
+- [ ] Historial de backups por dispositivo (versiones + fechas + tamaños)
+- [ ] Configurar schedule personalizado desde la UI (no solo 02:00 hardcoded)
+- [ ] Notificación Telegram/SMTP al completar/fallar backup
 
 ### 5. Servicios
 - [ ] Traducir estados: `running` → `en ejecución`, `dead` → `detenido`
-- [ ] Botón start/stop por cada servicio del sistema
 
-### 6. Tienda (Homestore)
-- [ ] Traducir estados y filtros al español
-
-### 7. Ajustes
+### 6. Ajustes
 - [ ] Toggle SSH con efecto real (systemctl)
 
 ---
@@ -73,18 +79,9 @@
 
 | Componente | Estado |
 |-----------|--------|
-| Servicio homepinas-v3 | ✅ activo (v6.5.9) |
+| Servicio homepinas-v3 | ✅ activo (v6.6.1) |
 | Samba `[active-backup]` | ✅ activo, `/mnt/storage/active-backup` |
 | Go 1.23.4 | ✅ instalado en `/usr/local/go` |
-| Dispositivo Minisforum-M1Pro | ⚠️ agente viejo, backupPaths vacío |
-
----
-
-## Notas técnicas
-
-- **Compilar binarios en NAS**: `ssh juanlu@192.168.1.81` → `export PATH=$PATH:/usr/local/go/bin` → `cd /opt/homepinas-v3/agent && bash build.sh`
-- **Actualizar NAS**: `ssh juanlu@192.168.1.81 "cd /opt/homepinas-v3 && git pull && pnpm run build && sudo systemctl restart homepinas-v3"`
-- **Ver logs en vivo**: `ssh juanlu@192.168.1.81 "sudo journalctl -u homepinas-v3 -f"`
-- **Ver datos Active Backup**: `ssh juanlu@192.168.1.81 "cat /opt/homepinas-v3/data/active-backup.json"`
-- **Agente Windows instala en**: `C:\Windows\Temp\hp-agent.exe` → config en `C:\ProgramData\HomePiNAS\config.json`
-- **Agente Windows log**: `C:\ProgramData\HomePiNAS\agent.log`
+| Binarios agente | ✅ recompilados con fix C: (31 Mar 17:34) |
+| Dispositivo Minisforum-M1Pro | ⚠️ necesita reinstalar agente (binario viejo) |
+| Schtasks SYSTEM | ⚠️ falla -2147024894 (workaround: ejecutar manual) |

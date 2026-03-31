@@ -327,7 +327,7 @@ export default function App() {
               Logout
             </button>
           </div>
-          <p className="text-xs text-[var(--text-disabled)]">v6.6.0 · Stitch</p>
+          <p className="text-xs text-[var(--text-disabled)]">v6.6.1 · Stitch</p>
         </div>
       </aside>
 
@@ -384,7 +384,7 @@ export default function App() {
         </div>
 
         <footer className="py-4 text-center text-xs text-[var(--text-disabled)]">
-          HomePiNAS v6.6.0 · Luminous Obsidian · Stitch Design System
+          HomePiNAS v6.6.1 · Luminous Obsidian · Stitch Design System
         </footer>
       </main>
     </div>
