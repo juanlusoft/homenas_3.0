@@ -354,8 +354,12 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 
 	total := len(dc.BackupPaths)
 	for i, src := range dc.BackupPaths {
-		leaf := filepath.Base(src)
-		fullDest := filepath.Join(dest, leaf)
+		// Sanitize directory name: remove trailing colons (drive roots like C: → C)
+		leaf := strings.TrimRight(filepath.Base(src), ":\\")
+		if leaf == "" {
+			leaf = "backup"
+		}
+		fullDest := dest + "\\" + leaf
 
 		basePercent := (i * 90) / total
 		reportProgress(cfg, basePercent, src, "")
