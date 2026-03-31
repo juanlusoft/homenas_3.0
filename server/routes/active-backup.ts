@@ -428,7 +428,7 @@ activeBackupRouter.post('/agent/:id/progress', (req, res) => {
 
 /** GET /devices — List all registered devices */
 activeBackupRouter.get('/devices', requireAuth, (_req, res) => {
-  const list = Array.from(devices.values());
+  const list = Array.from(devices.values()).filter(device => device.approved);
   list.forEach(applyTimeout);
   res.json(list);
 });
