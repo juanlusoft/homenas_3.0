@@ -52,7 +52,7 @@
 - [ ] **Validar cliente macOS real**: comprobar montaje SMB + `rsync` con binario correcto (`amd64` o `arm64`)
 - [ ] **Validar cliente Linux real**: comprobar montaje SMB + `rsync` con binario correcto (`amd64` o `arm64`)
 - [ ] **Schtasks SYSTEM falla (-2147024894)**: la tarea programada falla al ejecutarse como SYSTEM pero funciona manualmente
-  - HipÃ³tesis: PATH o variables de entorno distintas como SYSTEM
+  - DiagnÃ³stico actual: `/TR` queda sin comillas alrededor de `C:\Program Files\HomePiNAS\agent.exe --run` y Task Scheduler interpreta mal una ruta con espacios
   - Workaround temporal: ejecutar manualmente con `& "C:\Program Files\HomePiNAS\agent.exe" --run`
 
 ---

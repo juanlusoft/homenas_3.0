@@ -395,7 +395,7 @@ activeBackupRouter.post('/agent/:id/report', (req, res) => {
   device.versions.unshift(version);
   if (device.versions.length > 50) device.versions.pop();
   device.lastBackup = version.timestamp;
-  if (success) device.backupSize += (size || 0);
+  if (success) device.backupSize = Math.max(0, Number(size) || 0);
   device.status = 'online';
   device.backupProgress = null;
   device.pendingBackup = false;
@@ -617,7 +617,7 @@ activeBackupRouter.post('/agent/report/:id', requireAuth, (req, res) => {
   device.versions.unshift(version);
   if (device.versions.length > 50) device.versions.pop();
   device.lastBackup = version.timestamp;
-  device.backupSize += version.size;
+  device.backupSize = Math.max(0, Number(version.size) || 0);
   device.status = 'online';
 
   saveData();

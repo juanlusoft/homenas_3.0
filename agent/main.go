@@ -284,11 +284,11 @@ func getDeviceConfig(cfg *Config) (*DeviceConfig, error) {
 
 // ── Backup execution ──────────────────────────────────────────────────────────
 
-func runBackup(cfg *Config, dc *DeviceConfig) error {
+func runBackup(cfg *Config, dc *DeviceConfig) (int64, error) {
 	slog.Info("starting backup", "type", dc.BackupType, "dest", dc.BackupDest, "paths", dc.BackupPaths)
 
 	if len(dc.BackupPaths) == 0 {
-		return fmt.Errorf("no backup paths configured — set paths from the dashboard")
+		return 0, fmt.Errorf("no backup paths configured")
 	}
 
 	reportProgress(cfg, 0, "Iniciando backup...", "")
@@ -301,19 +301,44 @@ func runBackup(cfg *Config, dc *DeviceConfig) error {
 	}
 }
 
-func runBackupUnix(cfg *Config, dc *DeviceConfig) error {
+func backupTargetName(src string) string {
+	cleaned := strings.TrimSpace(src)
+	if cleaned == "" {
+		return "backup"
+	}
+	if runtime.GOOS == "windows" {
+		volume := filepath.VolumeName(cleaned)
+		rest := strings.TrimPrefix(cleaned, volume)
+		rest = strings.Trim(rest, `\/`)
+		if volume != "" && rest == "" {
+			return strings.TrimRight(volume, ":")
+		}
+	}
+	if cleaned == "/" {
+		return "root"
+	}
+	trimmed := strings.TrimRight(cleaned, `/\`)
+	leaf := filepath.Base(trimmed)
+	leaf = strings.Trim(leaf, `\/:`)
+	if leaf == "" || leaf == "." {
+		return "backup"
+	}
+	return leaf
+}
+
+func runBackupUnix(cfg *Config, dc *DeviceConfig) (int64, error) {
 	if dc.BackupHost == "" || dc.BackupShare == "" || dc.BackupUsername == "" || dc.BackupPassword == "" {
-		return fmt.Errorf("backup share credentials are not configured")
+		return 0, fmt.Errorf("backup share credentials are not configured")
 	}
 
 	folder := strings.Trim(dc.BackupDest, "/\\")
 	if folder == "" {
-		return fmt.Errorf("backup destination folder not configured")
+		return 0, fmt.Errorf("backup destination folder not configured")
 	}
 
 	mountPoint, cleanup, err := mountSMBShare(dc)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer cleanup()
 
@@ -328,13 +353,10 @@ func runBackupUnix(cfg *Config, dc *DeviceConfig) error {
 		reportProgress(cfg, basePercent, src, "")
 
 		start := time.Now()
-		leaf := filepath.Base(strings.TrimSuffix(src, "/"))
-		if leaf == "." || leaf == string(filepath.Separator) || leaf == "" {
-			leaf = "backup"
-		}
+		leaf := backupTargetName(src)
 		dest := filepath.Join(destRoot, leaf)
 		if err := os.MkdirAll(dest, 0755); err != nil {
-			return fmt.Errorf("create destination %s: %w", dest, err)
+			return 0, fmt.Errorf("create destination %s: %w", dest, err)
 		}
 		args := []string{"-az", "--delete", "--timeout=60", src, dest + string(filepath.Separator)}
 		cmd := exec.Command("rsync", args...)
@@ -342,7 +364,7 @@ func runBackupUnix(cfg *Config, dc *DeviceConfig) error {
 		cmd.Stderr = os.Stderr
 		slog.Info("rsync", "src", src, "dest", dest)
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("rsync %s: %w", src, err)
+			return 0, fmt.Errorf("rsync %s: %w", src, err)
 		}
 		elapsed := time.Since(start).Round(time.Second)
 
@@ -350,17 +372,18 @@ func runBackupUnix(cfg *Config, dc *DeviceConfig) error {
 		reportProgress(cfg, donePercent, filepath.Base(strings.TrimSuffix(src, "/"))+" ✓", elapsed.String())
 	}
 
+	size := dirSize(destRoot)
 	reportProgress(cfg, 100, "Completado", "")
-	return nil
+	return size, nil
 }
 
-func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
+func runBackupWindows(cfg *Config, dc *DeviceConfig) (int64, error) {
 	dest := dc.BackupDest
 	if dest == "" {
-		return fmt.Errorf("backup destination not configured")
+		return 0, fmt.Errorf("backup destination not configured")
 	}
 	if dc.BackupUsername == "" || dc.BackupPassword == "" {
-		return fmt.Errorf("backup share credentials are not configured")
+		return 0, fmt.Errorf("backup share credentials are not configured")
 	}
 
 	// Mount SMB share if dest is a UNC path (\\server\share\folder)
@@ -380,12 +403,9 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 	}
 
 	total := len(dc.BackupPaths)
+	var totalSize int64
 	for i, src := range dc.BackupPaths {
-		// Sanitize directory name: remove trailing colons (drive roots like C: → C)
-		leaf := strings.TrimRight(filepath.Base(src), ":\\")
-		if leaf == "" {
-			leaf = "backup"
-		}
+		leaf := backupTargetName(src)
 		fullDest := dest + "\\" + leaf
 
 		basePercent := (i * 90) / total
@@ -415,15 +435,16 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) error {
 			if cmd.ProcessState != nil {
 				exitCode = cmd.ProcessState.ExitCode()
 			}
-			return fmt.Errorf("robocopy %s: exit %d", src, exitCode)
+			return 0, fmt.Errorf("robocopy %s: exit %d", src, exitCode)
 		}
 		elapsed := time.Since(start).Round(time.Second)
+		totalSize += dirSize(fullDest)
 		donePercent := ((i + 1) * 90) / total
 		reportProgress(cfg, donePercent, filepath.Base(src)+" ✓", elapsed.String())
 	}
 
 	reportProgress(cfg, 100, "Completado", "")
-	return nil
+	return totalSize, nil
 }
 
 func mountSMBShare(dc *DeviceConfig) (string, func(), error) {
@@ -502,14 +523,7 @@ func dirSize(path string) int64 {
 	return size
 }
 
-func reportResult(cfg *Config, success bool, message string) {
-	// Calculate backup size from destination
-	var size int64
-	dc, _ := getDeviceConfig(cfg)
-	if dc != nil && dc.BackupDest != "" {
-		size = dirSize(dc.BackupDest)
-	}
-
+func reportResult(cfg *Config, success bool, message string, size int64) {
 	body := map[string]interface{}{
 		"success": success,
 		"message": message,
@@ -606,12 +620,12 @@ func runDaemon() {
 				reason = "manual trigger"
 			}
 			slog.Info("running backup", "reason", reason, "type", dc.BackupType, "paths", dc.BackupPaths)
-			if err := runBackup(cfg, dc); err != nil {
+			if size, err := runBackup(cfg, dc); err != nil {
 				slog.Error("backup failed", "err", err)
-				reportResult(cfg, false, err.Error())
+				reportResult(cfg, false, err.Error(), 0)
 			} else {
-				slog.Info("backup completed successfully")
-				reportResult(cfg, true, "Backup completed")
+				slog.Info("backup completed successfully", "size", size)
+				reportResult(cfg, true, "Backup completed", size)
 				lastBackupDate = today
 			}
 		}
@@ -672,10 +686,15 @@ func installWindows(binPath string) error {
 	// Remove existing task if any
 	exec.Command("schtasks", "/Delete", "/TN", taskName, "/F").Run()
 
+	// schtasks stores /TR as a single command line string.
+	// If the executable path contains spaces, Windows Task Scheduler running as
+	// SYSTEM can fail with 0x80070002 unless the binary path is quoted.
+	taskRun := fmt.Sprintf("\"%s\" --run", binPath)
+
 	args := []string{
 		"/Create", "/F",
 		"/TN", taskName,
-		"/TR", binPath + " --run",
+		"/TR", taskRun,
 		"/SC", "ONSTART",
 		"/RU", "SYSTEM",
 		"/DELAY", "0001:00",
