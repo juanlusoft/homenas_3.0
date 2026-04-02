@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-APP_VERSION="6.6.1"
+APP_VERSION="6.6.2"
 REPO_URL="https://github.com/juanlusoft/homenas_3.0.git"
 BRANCH="main"
 INSTALL_DIR="/opt/homepinas-v3"
@@ -26,6 +26,25 @@ ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
+# Returns 0 if package is already installed
+pkg_installed() { dpkg -l "$1" 2>/dev/null | grep -q "^ii"; }
+
+# Install a single apt package only if missing; returns 1 on failure (non-fatal)
+install_pkg() {
+    local pkg="$1"
+    if pkg_installed "$pkg"; then
+        ok "$pkg already installed"
+        return 0
+    fi
+    info "Installing $pkg..."
+    if apt-get install -y "$pkg" >/dev/null 2>&1; then
+        ok "$pkg installed"
+    else
+        warn "$pkg could not be installed — install manually if needed"
+        return 1
+    fi
+}
+
 # ── Pre-checks ──────────────────────────────────────────────
 
 echo -e "${GREEN}"
@@ -37,9 +56,22 @@ echo -e "${NC}"
 
 [ "$(id -u)" -ne 0 ] && error "Run as root: sudo bash install.sh"
 
+# ── Architecture detection ─────────────────────────────────
+RAW_ARCH=$(uname -m)
+case "$RAW_ARCH" in
+    aarch64|arm64)  SYS_ARCH="arm64" ;;
+    armv7l|armhf)   SYS_ARCH="armhf" ;;
+    x86_64)         SYS_ARCH="amd64" ;;
+    *)              SYS_ARCH="$RAW_ARCH" ;;
+esac
+DEBIAN_CODENAME=$(. /etc/os-release 2>/dev/null && echo "${VERSION_CODENAME:-unknown}")
+info "Architecture: $SYS_ARCH  |  Distro: $(. /etc/os-release 2>/dev/null && echo "${PRETTY_NAME:-Linux}")"
+
 # ── System update ──────────────────────────────────────────
 info "Updating system packages..."
-apt-get update -qq && apt-get upgrade -y -qq
+apt-get update -qq
+apt-get upgrade -y -qq
+apt-get dist-upgrade -y -qq
 ok "System updated"
 
 # Detect real user (for ownership)
@@ -222,22 +254,59 @@ EOF
 
 # ── Storage tools ─────────────────────────────────────────
 
-info "Installing storage tools (ntfs-3g, exfat, smartmontools, parted, badblocks)..."
-apt-get install -y \
-    ntfs-3g \
-    exfat-fuse \
-    exfatprogs \
-    smartmontools \
-    parted \
-    gdisk \
-    e2fsprogs \
-    util-linux \
-    rsync \
-    snapraid \
-    mergerfs 2>/dev/null || {
-    warn "Some storage tools could not be installed (non-critical). Install manually if needed."
+info "Checking and installing storage tools..."
+
+# Common packages — available in all Debian/Ubuntu/Raspbian repos
+for pkg in ntfs-3g exfat-fuse exfatprogs smartmontools parted gdisk e2fsprogs util-linux rsync; do
+    install_pkg "$pkg"
+done
+
+# snapraid — in Debian repos since Bullseye; fallback warn on older/unknown
+if pkg_installed snapraid; then
+    ok "snapraid already installed"
+elif apt-get install -y snapraid >/dev/null 2>&1; then
+    ok "snapraid installed"
+else
+    warn "snapraid not found in repos for $DEBIAN_CODENAME/$SYS_ARCH. Install manually: https://www.snapraid.it"
+fi
+
+# mergerfs — NOT in standard Debian repos; install from GitHub releases
+install_mergerfs() {
+    if pkg_installed mergerfs || command -v mergerfs &>/dev/null; then
+        ok "mergerfs already installed"
+        return 0
+    fi
+    info "Installing mergerfs from GitHub releases ($SYS_ARCH)..."
+    local ver
+    ver=$(curl -fsSL https://api.github.com/repos/trapexit/mergerfs/releases/latest \
+          | grep '"tag_name"' | head -1 | cut -d'"' -f4)
+    if [ -z "$ver" ]; then
+        warn "mergerfs: could not fetch latest version. Install manually: https://github.com/trapexit/mergerfs/releases"
+        return 1
+    fi
+    # Build candidate filenames (trapexit uses multiple naming conventions across releases)
+    local candidates=(
+        "mergerfs_${ver}_debian_${DEBIAN_CODENAME}_${SYS_ARCH}.deb"
+        "mergerfs_${ver}_debian-${DEBIAN_CODENAME}_${SYS_ARCH}.deb"
+        "mergerfs_${ver}_${SYS_ARCH}.deb"
+    )
+    local base_url="https://github.com/trapexit/mergerfs/releases/download/${ver}"
+    local downloaded=0
+    for fname in "${candidates[@]}"; do
+        if curl -fsSL --head "${base_url}/${fname}" -o /dev/null 2>/dev/null; then
+            curl -fsSL "${base_url}/${fname}" -o /tmp/mergerfs.deb && \
+                dpkg -i /tmp/mergerfs.deb && rm -f /tmp/mergerfs.deb && \
+                ok "mergerfs ${ver} installed" && downloaded=1 && break
+        fi
+    done
+    if [ "$downloaded" -eq 0 ]; then
+        warn "mergerfs: no pre-built .deb found for ${DEBIAN_CODENAME}/${SYS_ARCH} (ver ${ver})."
+        warn "Download manually: https://github.com/trapexit/mergerfs/releases"
+    fi
 }
-ok "Storage tools ready"
+install_mergerfs
+
+ok "Storage tools check complete"
 
 # ── Sudoers for smartctl ──────────────────────────────────
 
