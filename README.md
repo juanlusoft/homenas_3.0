@@ -1,4 +1,4 @@
-# HomePiNAS v6.6.1
+# HomePiNAS v6.6.2
 
 **Dashboard NAS completo · Diseño Stitch "Luminous Obsidian"**
 
@@ -144,12 +144,36 @@ pnpm lint         # ESLint 10
 
 ## 📋 Changelog
 
+### v6.6.4 (31 Marzo 2026)
+- Active Backup: creado `active-backup-core/` como servicio aislado para desarrollar y depurar el modulo fuera del dashboard principal
+- Active Backup: desplegado `active-backup-core` en el NAS de pruebas `192.168.1.81` escuchando en `http://192.168.1.81:3011`
+- Active Backup: validado el flujo aislado de Windows hasta copia real en NAS: token `v1.` correcto, activacion correcta, credenciales SMB persistidas y escritura real en `/mnt/storage/active-backup/m1pro-core`
+- Active Backup: velocidad medida en la prueba real por Wi-Fi de portatil Windows: ~`4.53 MB/s`; se decide no usar esa prueba para validar rendimiento ni esperar al final de un backup de muchas horas
+- Active Backup: prueba posterior con Windows por cable confirma que el flujo de instalacion/aprobacion ya esta cerrado; el bloqueo actual queda en `robocopy` sobre `C:\` contra Samba (`ERROR 87`) y en el solapamiento entre backup manual y programado
+- Active Backup: manana toca corregir en el agente la exclusion de ficheros/rutas conflictivos de Windows y la guarda para no lanzar dos backups simultaneos
+
+### v6.6.3 (31 Marzo 2026)
+- Active Backup: añadidos endpoints `GET /devices/:id/browse` y `GET /devices/:id/download` para explorar y descargar contenido real del backup desde el dashboard
+- Active Backup: `DeviceDetail` ya permite abrir carpetas del backup y descargar archivos individuales
+- Active Backup: portados los scripts de `recovery-usb/` desde el repo antiguo al proyecto actual
+- Active Backup: añadidos endpoints `GET /recovery/status`, `POST /recovery/build`, `GET /recovery/download` y `GET /recovery/scripts`
+- Active Backup: tarjeta nueva de `USB Recovery` en la UI con estado de ISO, descarga de scripts y trigger de build
+
 ### v6.6.2 (31 Marzo 2026)
+- Active Backup: tokens de instalación firmados (`v1.`) con `backupHost`, `backupShare`, `backupUsername`, `backupPassword` y `backupType`, para que el agente no pierda credenciales SMB si el backend reinicia entre "generar" y "activar"
+- Active Backup: incidencia detectada en el NAS de pruebas `192.168.1.81` — el endpoint `/api/active-backup/agent/generate/windows` seguía devolviendo tokens hexadecimales viejos hasta forzar el restart del proceso Node en memoria
 - Active Backup: eliminados los hardcodes de entorno en Windows (`juanlu`, `mimora`, `192.168.1.81`) â€” usuario SMB, contraseÃ±a y host del NAS ahora se configuran dinÃ¡micamente al generar el agente
 - Active Backup: macOS y Linux dejan de usar una ruta local falsa (`/mnt/storage/...`) y montan el share SMB real del NAS antes de ejecutar `rsync`
 - Active Backup: selector de arquitectura en la UI para descarga manual de agentes macOS/Linux (`amd64` / `arm64`)
 - Active Backup: el comando de instalaciÃ³n silenciosa de macOS/Linux autodetecta la arquitectura del cliente remoto
 - Active Backup: binarios recompilados de nuevo para Windows amd64, Linux amd64/arm64 y macOS amd64/arm64
+
+### v6.6.2 (2 Abril 2026)
+- Installer: detección de arquitectura al arrancar (arm64/armhf/amd64) y versión de Debian/Ubuntu
+- Installer: función `pkg_installed` + `install_pkg` — cada paquete se verifica individualmente antes de instalar; ya no falla silenciosamente si uno no existe
+- Installer: paquetes comunes instalados uno a uno en bucle para diagnóstico claro por paquete
+- Installer: `snapraid` tiene manejo propio — intenta apt, warn con URL si no está en repos
+- Installer: `mergerfs` ya no usa apt (no está en repos Debian estándar) — descarga .deb desde GitHub Releases detectando arquitectura y codename de Debian automáticamente
 
 ### v6.6.1 (31 Marzo 2026)
 - Active Backup: fix crítico — robocopy en Windows usaba `C:` como nombre de directorio destino en la ruta UNC, provocando que Windows interpretara el segmento como referencia a unidad (no como carpeta). `filepath.Base("C:\\")` devuelve `"C:"` → ahora se sanitiza a `"C"` → ruta correcta `\\NAS\active-backup\device\C\`
