@@ -1,0 +1,14 @@
+[Unit]
+Description=HomePinas Fan Controller (EMC2305)
+After=syslog.target
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fan-control.sh
+ExecStopPost=/bin/sh -c 'echo 255 > /sys/class/hwmon/hwmon3/pwm1'
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
