@@ -506,7 +506,7 @@ export default function ActiveBackupPage() {
             <p className="text-xs font-medium text-[var(--text-secondary)] mb-2 uppercase tracking-wider">Sistema operativo</p>
             <div className="grid grid-cols-1 gap-3">
               {([
-                { platform: 'windows', icon: '🪟', label: 'Windows', sub: 'Windows 10/11 · PowerShell como Admin', hint: 'Servicio del sistema · robocopy' },
+                { platform: 'windows', icon: '🪟', label: 'Windows', sub: 'Windows 10/11 · PowerShell como Admin', hint: 'Servicio del sistema · HTTPS' },
                 { platform: 'mac', icon: '🍎', label: 'macOS', sub: 'macOS 12+ · Intel y Apple Silicon', hint: 'LaunchDaemon · rsync' },
                 { platform: 'linux', icon: '🐧', label: 'Linux', sub: 'Debian, Ubuntu, Fedora · x64/arm64', hint: 'systemd service · rsync' },
               ] as const).map(({ platform, icon, label, sub, hint }) => (
