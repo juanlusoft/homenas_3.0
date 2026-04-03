@@ -352,3 +352,182 @@ activeBackupUploadRouter.get(
     }
   }
 );
+
+// ── Minimal uncompressed ZIP writer ──────────────────────────────────────────
+// Writes a STORE (no compression) ZIP to a Response stream.
+// Avoids any npm dependency. Sufficient for a restore download.
+
+function uint16LE(n: number): Buffer {
+  const b = Buffer.alloc(2);
+  b.writeUInt16LE(n, 0);
+  return b;
+}
+
+function uint32LE(n: number): Buffer {
+  const b = Buffer.alloc(4);
+  b.writeUInt32LE(n, 0);
+  return b;
+}
+
+function writeZipSnapshot(
+  res: Response,
+  manifest: { files: Array<{ path: string; size: number; chunks: string[] }> }
+): void {
+  const centralDir: Buffer[] = [];
+  let offset = 0;
+
+  const now = new Date();
+  const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xffff;
+  const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xffff;
+
+  for (const fileEntry of manifest.files) {
+    // Use forward slashes in ZIP paths (standard)
+    const zipPath = fileEntry.path.replace(/\\/g, '/');
+    const nameBytes = Buffer.from(zipPath, 'utf8');
+
+    // Compute CRC32 and collect data buffers
+    let crc = 0xffffffff;
+    const dataBuffers: Buffer[] = [];
+    let actualSize = 0;
+
+    for (const hash of fileEntry.chunks) {
+      const chunk = readChunk(hash);
+      dataBuffers.push(chunk);
+      actualSize += chunk.length;
+      // Update CRC32
+      for (let i = 0; i < chunk.length; i++) {
+        const byte = chunk[i];
+        crc ^= byte;
+        for (let j = 0; j < 8; j++) {
+          crc = (crc & 1) ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1;
+        }
+      }
+    }
+    crc = (crc ^ 0xffffffff) >>> 0;
+
+    // Local file header
+    const localHeader = Buffer.concat([
+      Buffer.from([0x50, 0x4b, 0x03, 0x04]), // signature
+      uint16LE(20),                           // version needed
+      uint16LE(0),                            // flags
+      uint16LE(0),                            // compression: STORE
+      uint16LE(dosTime),
+      uint16LE(dosDate),
+      uint32LE(crc),
+      uint32LE(actualSize),                   // compressed size = uncompressed
+      uint32LE(actualSize),
+      uint16LE(nameBytes.length),
+      uint16LE(0),                            // extra field length
+      nameBytes,
+    ]);
+
+    // Central directory entry (for end-of-archive)
+    centralDir.push(Buffer.concat([
+      Buffer.from([0x50, 0x4b, 0x01, 0x02]), // signature
+      uint16LE(20),                           // version made by
+      uint16LE(20),                           // version needed
+      uint16LE(0),                            // flags
+      uint16LE(0),                            // compression: STORE
+      uint16LE(dosTime),
+      uint16LE(dosDate),
+      uint32LE(crc),
+      uint32LE(actualSize),
+      uint32LE(actualSize),
+      uint16LE(nameBytes.length),
+      uint16LE(0),                            // extra
+      uint16LE(0),                            // comment
+      uint16LE(0),                            // disk start
+      uint16LE(0),                            // internal attrs
+      uint32LE(0),                            // external attrs
+      uint32LE(offset),                       // local header offset
+      nameBytes,
+    ]));
+
+    offset += localHeader.length + actualSize;
+
+    res.write(localHeader);
+    for (const buf of dataBuffers) res.write(buf);
+  }
+
+  // Write central directory
+  const cdStart = offset;
+  let cdSize = 0;
+  for (const entry of centralDir) {
+    res.write(entry);
+    cdSize += entry.length;
+  }
+
+  // End of central directory record
+  const eocd = Buffer.concat([
+    Buffer.from([0x50, 0x4b, 0x05, 0x06]), // signature
+    uint16LE(0),                            // disk number
+    uint16LE(0),                            // disk with CD
+    uint16LE(manifest.files.length),
+    uint16LE(manifest.files.length),
+    uint32LE(cdSize),
+    uint32LE(cdStart),
+    uint16LE(0),                            // comment length
+  ]);
+  res.write(eocd);
+  res.end();
+}
+
+// ── GET /upload/restore/snapshot ─────────────────────────────────────────────
+// Streams a full snapshot as an uncompressed ZIP.
+// Query params: deviceId, snapshotId
+
+activeBackupUploadRouter.get(
+  '/upload/restore/snapshot',
+  requireAuth,
+  (req: Request, res: Response) => {
+    const { deviceId, snapshotId } = req.query as { deviceId?: string; snapshotId?: string };
+
+    if (!deviceId || !snapshotId) {
+      res.status(400).json({ error: 'deviceId and snapshotId are required' });
+      return;
+    }
+
+    // Path traversal protection
+    if (!/^[\w-]+$/.test(deviceId) || !/^[\w\-:.]+$/.test(snapshotId)) {
+      res.status(400).json({ error: 'Invalid deviceId or snapshotId' });
+      return;
+    }
+
+    const manifestPath = path.join(
+      BACKUP_BASE_DIR, 'snapshots', deviceId, snapshotId, 'manifest.json'
+    );
+
+    if (!fs.existsSync(manifestPath)) {
+      res.status(404).json({ error: 'Snapshot not found' });
+      return;
+    }
+
+    let manifest: { files: Array<{ path: string; size: number; chunks: string[] }> };
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    } catch {
+      res.status(500).json({ error: 'Failed to read manifest' });
+      return;
+    }
+
+    if (!Array.isArray(manifest.files)) {
+      res.status(500).json({ error: 'Corrupt manifest' });
+      return;
+    }
+
+    const safeSnapshotId = snapshotId.replace(/[\r\n"]/g, '_');
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="snapshot-${safeSnapshotId}.zip"`);
+
+    try {
+      writeZipSnapshot(res, manifest);
+    } catch (err) {
+      console.error('[restore] snapshot ZIP error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'ZIP generation error' });
+      } else {
+        res.destroy();
+      }
+    }
+  }
+);
