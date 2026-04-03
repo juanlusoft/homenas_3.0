@@ -6,6 +6,7 @@ export type {
   BackupBrowseResponse,
   BackupDevice,
   BackupVersion,
+  EngineProgress,
   PendingAgent,
   RecoveryStatus,
 } from './types';
