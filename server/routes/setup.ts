@@ -130,6 +130,17 @@ setupRouter.get('/status', (_req: Request, res: Response) => {
   res.json({ setupCompleted: !!settings.setupCompleted });
 });
 
+/** GET /api/setup/current-ip — returns the current IP assigned to this machine (public) */
+setupRouter.get('/current-ip', async (_req: Request, res: Response) => {
+  try {
+    const { stdout } = await execFileAsync('hostname', ['-I'], { timeout: 3000 });
+    const ip = stdout.trim().split(/\s+/).find(s => s.includes('.') && !s.startsWith('127.')) ?? null;
+    res.json({ ip });
+  } catch {
+    res.json({ ip: null });
+  }
+});
+
 /** POST /api/setup/apply — first-time: public+rate-limited; re-setup: admin only */
 setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => {
   const settings = loadSettings();

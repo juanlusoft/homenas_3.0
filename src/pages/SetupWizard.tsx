@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { t, setLanguage } from '@/i18n';
 import { GlassCard, StitchButton } from '@/components/UI';
 import { StepStorage } from "@/components/Wizard/StepStorage";
@@ -240,6 +240,15 @@ function StepHostname({ data, update }: StepProps) {
 }
 
 function StepNetwork({ data, update }: StepProps) {
+  const [currentIp, setCurrentIp] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/setup/current-ip')
+      .then(r => r.json())
+      .then((d: { ip: string | null }) => setCurrentIp(d.ip))
+      .catch(() => {});
+  }, []);
+
   return (
     <div>
       <h2 className="font-display text-lg font-semibold text-[var(--text-primary)] mb-4">
@@ -257,6 +266,13 @@ function StepNetwork({ data, update }: StepProps) {
             </button>
           ))}
         </div>
+
+        {data.networkMode === 'dhcp' && currentIp && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal/5 border border-teal/20 text-sm">
+            <span className="text-[var(--text-secondary)]">IP actual asignada por el router:</span>
+            <span className="font-mono font-semibold text-teal">{currentIp}</span>
+          </div>
+        )}
 
         {data.networkMode === 'static' && (
           <div className="space-y-3">
