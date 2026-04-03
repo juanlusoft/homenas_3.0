@@ -33,6 +33,10 @@ function requireDeviceAuth(req: Request, res: Response, next: NextFunction): voi
     res.status(401).json({ error: 'Invalid device token' });
     return;
   }
+  if (!device.approved) {
+    res.status(403).json({ error: 'Device not yet approved by administrator' });
+    return;
+  }
   (req as DeviceRequest).device = device;
   next();
 }
@@ -88,6 +92,12 @@ activeBackupUploadRouter.post(
   requireDeviceAuth,
   (req: Request, res: Response) => {
     const { sha256 } = req.params;
+
+    if (!/^[a-f0-9]{64}$/.test(sha256)) {
+      res.status(400).json({ error: 'Invalid chunk hash format' });
+      return;
+    }
+
     const sessionId = req.headers['x-session-id'] as string | undefined;
 
     if (!sessionId) {
@@ -149,6 +159,15 @@ activeBackupUploadRouter.post(
     }
     if (session.deviceId !== device.id) {
       res.status(403).json({ error: 'Session belongs to a different device' });
+      return;
+    }
+
+    const missingChunks = session.neededChunks.filter(h => !session.uploadedChunks.has(h));
+    if (missingChunks.length > 0) {
+      res.status(409).json({
+        error: `${missingChunks.length} chunks have not been uploaded yet`,
+        missing_count: missingChunks.length,
+      });
       return;
     }
 
