@@ -2,9 +2,9 @@ import { t } from '@/i18n';
 import { authFetch } from '@/api/authFetch';
 import { useState, useCallback, useEffect } from 'react';
 import { GlassCard, StitchButton, Modal } from '@/components/UI';
-import { DeviceCard, DeviceDetail } from '@/components/ActiveBackup';
+import { DeviceCard, DeviceDetail, SnapshotExplorer } from '@/components/ActiveBackup';
 import { useAPI } from '@/hooks/useAPI';
-import type { BackupDevice, PendingAgent } from '@/components/ActiveBackup';
+import type { BackupDevice, EngineProgress, PendingAgent, RecoveryStatus } from '@/components/ActiveBackup';
 import { getStoredUser } from '@/api/client';
 
 function formatBytes(bytes: number): string {
@@ -16,6 +16,8 @@ function formatBytes(bytes: number): string {
 
 export default function ActiveBackupPage() {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [engineProgress, setEngineProgress] = useState<Record<string, EngineProgress>>({});
+  const [engineLoading, setEngineLoading] = useState<Record<string, boolean>>({});
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [generatingPlatform, setGeneratingPlatform] = useState<string | null>(null);
   const [backupType, setBackupType] = useState<'full' | 'incremental' | 'folders'>('incremental');
@@ -30,6 +32,9 @@ export default function ActiveBackupPage() {
   });
   const [installData, setInstallData] = useState<{ platform: string; arch: string; command: string; deviceID: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [recoveryStatus, setRecoveryStatus] = useState<RecoveryStatus | null>(null);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryBuilding, setRecoveryBuilding] = useState(false);
 
   const fetchDevices = useCallback(() =>
     authFetch('/active-backup/devices').then(r => r.json() as Promise<BackupDevice[]>), []);
@@ -45,6 +50,60 @@ export default function ActiveBackupPage() {
       setBackupUsername(prev => prev.trim() ? prev : user.username);
     }
   }, []);
+
+  const loadRecoveryStatus = useCallback(async () => {
+    setRecoveryLoading(true);
+    try {
+      const res = await authFetch('/active-backup/recovery/status');
+      const data = await res.json() as RecoveryStatus;
+      if (res.ok) setRecoveryStatus(data);
+    } finally {
+      setRecoveryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRecoveryStatus();
+  }, [loadRecoveryStatus]);
+
+  const loadEngineProgress = useCallback(async (id: string) => {
+    setEngineLoading(prev => ({ ...prev, [id]: true }));
+    try {
+      const res = await authFetch(`/active-backup/engine/${id}/progress`);
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json() as EngineProgress;
+      setEngineProgress(prev => ({ ...prev, [id]: data }));
+    } catch (err) {
+      console.warn('[engine] progress error', err);
+    } finally {
+      setEngineLoading(prev => ({ ...prev, [id]: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      devices?.filter(d => d.status === 'backing-up').forEach(d => void loadEngineProgress(d.id));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [devices, loadEngineProgress]);
+
+  useEffect(() => {
+    devices?.filter(d => d.status === 'backing-up').forEach(d => void loadEngineProgress(d.id));
+  }, [devices, loadEngineProgress]);
+
+  const handleEngineTrigger = useCallback(async (id: string) => {
+    setEngineLoading(prev => ({ ...prev, [id]: true }));
+    try {
+      const res = await authFetch(`/active-backup/engine/${id}/trigger`, { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text());
+      refresh();
+      void loadEngineProgress(id);
+    } catch (err) {
+      alert(`Error lanzando el motor de backup: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setEngineLoading(prev => ({ ...prev, [id]: false }));
+    }
+  }, [loadEngineProgress, refresh]);
 
   const handleBackup = useCallback(async (id: string) => {
     await authFetch(`/active-backup/devices/${id}/backup`, { method: 'POST' });
@@ -157,18 +216,46 @@ export default function ActiveBackupPage() {
     }
   }, [platformArch]);
 
+  const handleRecoveryDownload = useCallback((type: 'iso' | 'scripts') => {
+    window.open(`/api/active-backup/recovery/${type === 'iso' ? 'download' : 'scripts'}`, '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const handleBuildRecovery = useCallback(async () => {
+    setRecoveryBuilding(true);
+    try {
+      const res = await authFetch('/active-backup/recovery/build', { method: 'POST' });
+      const data = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) {
+        alert((data as { error?: string }).error || 'No se pudo iniciar la generación de la ISO.');
+        return;
+      }
+      setTimeout(() => { void loadRecoveryStatus(); }, 2000);
+    } finally {
+      setRecoveryBuilding(false);
+    }
+  }, [loadRecoveryStatus]);
+
   // Detail view
   const selected = devices?.find(d => d.id === selectedDevice);
   if (selected) {
     return (
-      <DeviceDetail
-        device={selected}
-        onClose={() => setSelectedDevice(null)}
-        onBackup={handleBackup}
-        onDelete={handleDelete}
-        onRename={handleRename}
-        onSavePaths={handleSavePaths}
-      />
+      <>
+        <DeviceDetail
+          device={selected}
+          onClose={() => setSelectedDevice(null)}
+          onBackup={handleBackup}
+          onDelete={handleDelete}
+          onRename={handleRename}
+          onSavePaths={handleSavePaths}
+        />
+        <div className="mt-6 space-y-3">
+          <h3 className="text-sm font-semibold">Snapshots HTTPS</h3>
+          <SnapshotExplorer
+            deviceId={selected.id}
+            deviceName={selected.name}
+          />
+        </div>
+      </>
     );
   }
 
@@ -238,10 +325,54 @@ export default function ActiveBackupPage() {
               device={device}
               onBackup={handleBackup}
               onSelect={setSelectedDevice}
+              engineProgress={engineProgress[device.id]}
+              engineLoading={Boolean(engineLoading[device.id])}
+              onEngineTrigger={handleEngineTrigger}
             />
           ))}
         </div>
       )}
+
+      <GlassCard elevation="mid">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)]">USB Recovery</p>
+            <h3 className="font-display text-xl font-bold text-[var(--text-primary)]">Recovery ISO y scripts de restauración</h3>
+            <p className="text-sm text-[var(--text-secondary)]">
+              {recoveryLoading
+                ? 'Comprobando estado de los recursos de recuperación...'
+                : recoveryStatus?.iso?.exists
+                  ? `ISO disponible · ${formatBytes(recoveryStatus.iso.size)} · ${new Date(recoveryStatus.iso.modified).toLocaleString()}`
+                  : 'Todavía no hay ISO generada. Los scripts ya están incluidos en el proyecto.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StitchButton size="sm" variant="ghost" onClick={() => handleRecoveryDownload('scripts')} disabled={!recoveryStatus?.scriptsAvailable}>
+              Descargar scripts
+            </StitchButton>
+            <StitchButton size="sm" variant="ghost" onClick={() => handleRecoveryDownload('iso')} disabled={!recoveryStatus?.iso?.exists}>
+              Descargar ISO
+            </StitchButton>
+            <StitchButton size="sm" onClick={handleBuildRecovery} disabled={recoveryBuilding || !recoveryStatus?.scriptsAvailable}>
+              {recoveryBuilding ? 'Generando...' : recoveryStatus?.iso?.exists ? 'Regenerar ISO' : 'Generar ISO'}
+            </StitchButton>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-3">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">Estado</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">{recoveryStatus?.iso?.exists ? 'ISO lista para descargar' : 'Pendiente de generar'}</p>
+          </div>
+          <div className="rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-3">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">Incluye</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">Detección del NAS, restauración interactiva y utilidades de disco</p>
+          </div>
+          <div className="rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-3">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">Compatibilidad</p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">Scripts portados del proyecto anterior. La generación real de ISO requiere ejecutarse en el NAS Linux.</p>
+          </div>
+        </div>
+      </GlassCard>
 
       {/* Agent install modal */}
       <Modal
