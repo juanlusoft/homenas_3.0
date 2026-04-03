@@ -573,7 +573,7 @@ export default function StoragePage() {
   const totalSize = disks?.reduce((acc, d) => acc + parseFloat(String(d.size)), 0) || 0;
   const totalUsed = disks?.reduce((acc, d) => acc + parseFloat(String(d.used)), 0) || 0;
   const healthyCount = disks?.filter((d) => d.health === 'healthy').length || 0;
-  const unusedDisks = availableDisks?.filter(d => !d.hasMountedPartition) || [];
+  const unusedDisks = availableDisks?.filter(d => !d.hasMountedPartition && d.size > 0) || [];
 
   return (
     <div className="space-y-8">
