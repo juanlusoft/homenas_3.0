@@ -750,6 +750,76 @@ activeBackupRouter.get('/devices/:id/download', requireAuth, (req, res) => {
   }
 });
 
+/** GET /devices/:id/snapshots — list HTTPS snapshots for a device */
+activeBackupRouter.get('/devices/:id/snapshots', requireAuth, (req: Request, res: Response) => {
+  const device = devices.get(req.params.id);
+  if (!device) return res.status(404).json({ error: 'Device not found' });
+
+  const snapshotBase = path.join(BACKUP_BASE_DIR, 'snapshots', device.id);
+  if (!fs.existsSync(snapshotBase)) return res.json([]);
+
+  try {
+    const entries = fs.readdirSync(snapshotBase);
+    const snapshots = entries
+      .filter(name => fs.existsSync(path.join(snapshotBase, name, 'status.json')))
+      .map(name => {
+        try {
+          const status = JSON.parse(
+            fs.readFileSync(path.join(snapshotBase, name, 'status.json'), 'utf8')
+          );
+          const manifestPath = path.join(snapshotBase, name, 'manifest.json');
+          const manifest = fs.existsSync(manifestPath)
+            ? JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+            : null;
+          return {
+            id: name,
+            timestamp: name,
+            state: status.state as string,
+            stats: manifest?.stats ?? null,
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b!.timestamp > a!.timestamp ? 1 : -1));
+
+    res.json(snapshots);
+  } catch (err) {
+    console.error('[active-backup] snapshots list error:', err);
+    res.status(500).json({ error: 'Failed to read snapshots' });
+  }
+});
+
+/** GET /devices/:id/snapshots/:snapshotId/tree — file list from manifest */
+activeBackupRouter.get(
+  '/devices/:id/snapshots/:snapshotId/tree',
+  requireAuth,
+  (req: Request, res: Response) => {
+    const device = devices.get(req.params.id);
+    if (!device) return res.status(404).json({ error: 'Device not found' });
+
+    const manifestPath = path.join(
+      BACKUP_BASE_DIR,
+      'snapshots',
+      device.id,
+      req.params.snapshotId,
+      'manifest.json'
+    );
+    if (!fs.existsSync(manifestPath)) {
+      return res.status(404).json({ error: 'Snapshot not found' });
+    }
+
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      res.json({ files: manifest.files, stats: manifest.stats });
+    } catch (err) {
+      console.error('[active-backup] snapshot tree error:', err);
+      res.status(500).json({ error: 'Failed to read manifest' });
+    }
+  }
+);
+
 /** GET /recovery/status — Check recovery assets */
 activeBackupRouter.get('/recovery/status', requireAuth, (_req, res) => {
   const scriptsExist = fs.existsSync(path.join(RECOVERY_USB_DIR, 'build-recovery-iso.sh'));
