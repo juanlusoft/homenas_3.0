@@ -270,7 +270,10 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
       if (!device.match(/\d+$/)) {
         // It's a raw disk like /dev/sdc, not a partition like /dev/sdc1
         await execFileAsync('sudo', ['parted', '-s', device, 'mklabel', 'gpt'], { timeout: 30000 }).catch(() => {});
+        // Tell kernel to re-read partition table — clears stale partition mounts
+        await execFileAsync('sudo', ['partprobe', device], { timeout: 10000 }).catch(() => {});
         await execFileAsync('sudo', ['parted', '-s', device, 'mkpart', 'primary', '0%', '100%'], { timeout: 30000 }).catch(() => {});
+        await execFileAsync('sudo', ['partprobe', device], { timeout: 10000 }).catch(() => {});
         await new Promise(r => setTimeout(r, 2000)); // Wait for kernel to detect partition
       }
 
