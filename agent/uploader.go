@@ -166,10 +166,10 @@ func Upload(cfg *Config, entries []FileEntry, chunkMap map[string][]ChunkInfo, s
 
 			mu.Lock()
 			local.UploadedChunks[h] = true
+			saveErr := saveLocalSession(local) // called under mu to prevent concurrent map read by JSON encoder
 			mu.Unlock()
 
-			// Persist after every successful chunk for resume support
-			if saveErr := saveLocalSession(local); saveErr != nil {
+			if saveErr != nil {
 				slog.Warn("failed to save local session", "err", saveErr)
 			}
 		}(hash, loc)
