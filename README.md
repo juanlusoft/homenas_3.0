@@ -5,17 +5,32 @@
 ## Instalación
 
 ```bash
-curl -sL https://raw.githubusercontent.com/juanlusoft/homenas_3.0/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/juanlusoft/homenas_3.0/main/install.sh | sudo bash
 ```
 
 El instalador automáticamente:
 - Actualiza el sistema (`apt update && upgrade`)
-- Instala Node.js 22, pnpm, nginx, git
+- Instala Node.js 22, pnpm, nginx, git, Docker
+- Instala herramientas de almacenamiento (mergerfs, snapraid, smartmontools, parted, ntfs-3g...)
 - Configura HTTPS con certificado self-signed (puerto 443)
 - Crea servicio systemd con auto-arranque
-- Configura sudoers para smartctl
+- Configura sudoers para todos los comandos NAS
 
 Accede por: `https://<IP-del-NAS>`
+
+## Desinstalación
+
+```bash
+curl -sSL https://raw.githubusercontent.com/juanlusoft/homenas_3.0/main/uninstall.sh | sudo bash
+```
+
+El desinstalador elimina:
+- Servicio systemd + configuración nginx + sudoers
+- Directorio `/opt/homepinas-v3` (código + base de datos)
+- Entradas de `/etc/fstab` creadas por el wizard
+- Puntos de montaje gestionados (`/mnt/storage`, `/mnt/cache`, `/mnt/parity`)
+
+**No toca:** Node.js, nginx, Docker, Git, ni los datos en los discos físicos.
 
 ## Stack
 
@@ -92,11 +107,11 @@ El agente trabaja a nivel de fichero (rsync / robocopy), **no** crea imágenes d
 | Linux | rsync → SSH | systemd service | `agent-linux-arm64` / `agent-linux-amd64` |
 
 Notas actuales del flujo:
-- El host del NAS para Active Backup ya no estÃ¡ fijado a una IP concreta: se deriva dinÃ¡micamente del host/URL del panel.
-- Las credenciales SMB ya no estÃ¡n hardcodeadas en el agente: se introducen al generar el instalador.
+- El host del NAS para Active Backup ya no está fijado a una IP concreta: se deriva dinámicamente del host/URL del panel.
+- Las credenciales SMB ya no están hardcodeadas en el agente: se introducen al generar el instalador.
 - macOS y Linux montan el share SMB real del NAS antes de ejecutar `rsync`.
 - La descarga manual del agente desde la UI permite elegir arquitectura en macOS y Linux (`amd64` / `arm64`).
-- El comando de instalaciÃ³n silenciosa de macOS y Linux autodetecta la arquitectura del cliente remoto antes de descargar el binario.
+- El comando de instalación silenciosa de macOS y Linux autodetecta la arquitectura del cliente remoto antes de descargar el binario.
 
 Para recompilar los binarios (requiere Go 1.22+). Opciones:
 
@@ -162,10 +177,10 @@ pnpm lint         # ESLint 10
 ### v6.6.2 (31 Marzo 2026)
 - Active Backup: tokens de instalación firmados (`v1.`) con `backupHost`, `backupShare`, `backupUsername`, `backupPassword` y `backupType`, para que el agente no pierda credenciales SMB si el backend reinicia entre "generar" y "activar"
 - Active Backup: incidencia detectada en el NAS de pruebas `192.168.1.81` — el endpoint `/api/active-backup/agent/generate/windows` seguía devolviendo tokens hexadecimales viejos hasta forzar el restart del proceso Node en memoria
-- Active Backup: eliminados los hardcodes de entorno en Windows (`juanlu`, `mimora`, `192.168.1.81`) â€” usuario SMB, contraseÃ±a y host del NAS ahora se configuran dinÃ¡micamente al generar el agente
+- Active Backup: eliminados los hardcodes de entorno en Windows — usuario SMB, contraseña y host del NAS ahora se configuran dinámicamente al generar el agente
 - Active Backup: macOS y Linux dejan de usar una ruta local falsa (`/mnt/storage/...`) y montan el share SMB real del NAS antes de ejecutar `rsync`
 - Active Backup: selector de arquitectura en la UI para descarga manual de agentes macOS/Linux (`amd64` / `arm64`)
-- Active Backup: el comando de instalaciÃ³n silenciosa de macOS/Linux autodetecta la arquitectura del cliente remoto
+- Active Backup: el comando de instalación silenciosa de macOS/Linux autodetecta la arquitectura del cliente remoto
 - Active Backup: binarios recompilados de nuevo para Windows amd64, Linux amd64/arm64 y macOS amd64/arm64
 
 ### v6.6.2 (2 Abril 2026)
