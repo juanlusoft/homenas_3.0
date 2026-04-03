@@ -6,6 +6,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
+import { requireAuth } from '../middleware/auth.js';
 
 export const filesRouter = Router();
 
@@ -36,7 +37,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 * 1024 } }); // 10GB max
 
 /** GET /api/files/list?path=/ — List directory contents */
-filesRouter.get('/list', async (req, res) => {
+filesRouter.get('/list', requireAuth, async (req, res) => {
   const dirPath = safePath((req.query.path as string) || '/');
   try {
     if (!fs.existsSync(dirPath)) {
@@ -72,7 +73,7 @@ filesRouter.get('/list', async (req, res) => {
 });
 
 /** POST /api/files/mkdir — Create directory */
-filesRouter.post('/mkdir', async (req, res) => {
+filesRouter.post('/mkdir', requireAuth, async (req, res) => {
   const { dirPath, name } = req.body;
   if (!name || /[\/\\]/.test(name)) return res.status(400).json({ error: 'Invalid name' });
   const target = path.join(safePath(dirPath || '/'), name);
@@ -86,7 +87,7 @@ filesRouter.post('/mkdir', async (req, res) => {
 });
 
 /** POST /api/files/upload?path=/ — Upload files */
-filesRouter.post('/upload', upload.array('files', 20), (req, res) => {
+filesRouter.post('/upload', requireAuth, upload.array('files', 20), (req, res) => {
   const files = req.files as Express.Multer.File[];
   res.json({
     success: true,
@@ -96,7 +97,7 @@ filesRouter.post('/upload', upload.array('files', 20), (req, res) => {
 });
 
 /** GET /api/files/download?path=/file.txt — Download a file */
-filesRouter.get('/download', async (req, res) => {
+filesRouter.get('/download', requireAuth, async (req, res) => {
   const filePath = safePath((req.query.path as string) || '');
   try {
     const stat = await fs.promises.stat(filePath);
@@ -108,7 +109,7 @@ filesRouter.get('/download', async (req, res) => {
 });
 
 /** DELETE /api/files/delete — Delete file or directory */
-filesRouter.delete('/delete', async (req, res) => {
+filesRouter.delete('/delete', requireAuth, async (req, res) => {
   const { filePath } = req.body;
   if (!filePath) return res.status(400).json({ error: 'Path required' });
   const target = safePath(filePath);
@@ -126,7 +127,7 @@ filesRouter.delete('/delete', async (req, res) => {
 });
 
 /** POST /api/files/rename — Rename file or directory */
-filesRouter.post('/rename', async (req, res) => {
+filesRouter.post('/rename', requireAuth, async (req, res) => {
   const { oldPath, newName } = req.body;
   if (!oldPath || !newName) return res.status(400).json({ error: 'Path and new name required' });
   const source = safePath(oldPath);

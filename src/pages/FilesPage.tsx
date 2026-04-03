@@ -198,23 +198,30 @@ export default function FilesPage() {
                   <td className="py-2 px-2 text-right" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
                       <button title="Descargar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-[var(--text-secondary)]"
-                        onClick={() => {
+                        onClick={async () => {
                           if (entry.type === 'file') {
-                            const url = `${window.location.origin}/api/files/download?path=${encodeURIComponent(currentPath + '/' + entry.name)}`;
-                            window.open(url, '_blank');
+                            const res = await authFetch(`/files/download?path=${encodeURIComponent(currentPath + '/' + entry.name)}`);
+                            if (!res.ok) return;
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = entry.name;
+                            a.click();
+                            URL.revokeObjectURL(url);
                           }
                         }}>⬇️</button>
                       <button title="Renombrar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-[var(--text-secondary)]"
                         onClick={() => {
                           const newName = prompt('Nuevo nombre:', entry.name);
                           if (newName && newName !== entry.name) {
-                            authFetch('/files/rename', { method: 'POST', body: JSON.stringify({ oldPath: currentPath + '/' + entry.name, newName }) }).then(() => fetchFiles(currentPath));
+                            authFetch('/files/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPath: currentPath + '/' + entry.name, newName }) }).then(() => fetchFiles(currentPath));
                           }
                         }}>✏️</button>
                       <button title="Eliminar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-red-400"
                         onClick={() => {
                           if (confirm(`¿Eliminar ${entry.name}?`)) {
-                            authFetch('/files/delete', { method: 'DELETE', body: JSON.stringify({ filePath: currentPath + '/' + entry.name }) }).then(() => fetchFiles(currentPath));
+                            authFetch('/files/delete', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filePath: currentPath + '/' + entry.name }) }).then(() => fetchFiles(currentPath));
                           }
                         }}>🗑️</button>
                     </div>
