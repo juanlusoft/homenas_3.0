@@ -4,7 +4,7 @@
 
 import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
 import { t } from '@/i18n';
-import type { BackupDevice } from './types';
+import type { BackupDevice, EngineProgress } from './types';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1e12) return `${(bytes / 1e12).toFixed(1)} TB`;
@@ -42,9 +42,19 @@ interface DeviceCardProps {
   device: BackupDevice;
   onBackup: (id: string) => void;
   onSelect: (id: string) => void;
+  engineProgress?: EngineProgress;
+  onEngineTrigger?: (id: string) => void;
+  engineLoading?: boolean;
 }
 
-export function DeviceCard({ device, onBackup, onSelect }: DeviceCardProps) {
+export function DeviceCard({
+  device,
+  onBackup,
+  onSelect,
+  engineProgress,
+  onEngineTrigger,
+  engineLoading,
+}: DeviceCardProps) {
   const statusMap = {
     'online': 'healthy' as const,
     'backing-up': 'warning' as const,
@@ -123,10 +133,35 @@ export function DeviceCard({ device, onBackup, onSelect }: DeviceCardProps) {
         </div>
       )}
 
+      {engineProgress && engineProgress.phase !== 'idle' && (
+        <div className="mt-3 space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-xs font-medium text-teal">Engine: {engineProgress.phase}</span>
+            <span className="font-mono text-[var(--text-secondary)]">{engineProgress.percent}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-surface-void overflow-hidden">
+            <div
+              className="h-full rounded-full bg-orange transition-all duration-500"
+              style={{ width: `${engineProgress.percent}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2 mt-4" onClick={e => e.stopPropagation()}>
         <StitchButton size="sm" onClick={() => onBackup(device.id)} disabled={device.status === 'backing-up'}>
           {device.status === 'backing-up' ? '⏳ Running...' : '▶ Backup Now'}
         </StitchButton>
+        {onEngineTrigger && (
+          <StitchButton
+            size="sm"
+            variant="ghost"
+            onClick={() => onEngineTrigger(device.id)}
+            disabled={engineLoading || engineProgress?.phase === 'running'}
+          >
+            {engineLoading ? '⏳ Engine...' : engineProgress?.phase === 'running' ? '⏳ Engine running' : 'Engine job'}
+          </StitchButton>
+        )}
         <StitchButton size="sm" variant="ghost" onClick={() => onSelect(device.id)}>{t('ab.details')}</StitchButton>
       </div>
     </GlassCard>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { authFetch } from '@/api/authFetch';
 
 interface Snapshot {
@@ -33,7 +33,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-export function SnapshotExplorer({ deviceId, deviceName }: Props) {
+export function SnapshotExplorer({ deviceId, deviceName: _deviceName }: Props) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [files, setFiles] = useState<BackupFile[]>([]);

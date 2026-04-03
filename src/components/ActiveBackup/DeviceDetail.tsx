@@ -3,9 +3,10 @@
  */
 
 import { useState, useRef } from 'react';
-import { GlassCard, GlowPill, StitchButton } from '@/components/UI';
+import { GlassCard, GlowPill, StitchButton, Modal } from '@/components/UI';
+import { authFetch } from '@/api/authFetch';
 import { t } from '@/i18n';
-import type { BackupDevice } from './types';
+import type { BackupBrowseItem, BackupBrowseResponse, BackupDevice, BackupVersion } from './types';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1e12) return `${(bytes / 1e12).toFixed(1)} TB`;
@@ -49,6 +50,11 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete, onRename, on
 
   const [editingPaths, setEditingPaths] = useState(false);
   const [pathsValue, setPathsValue] = useState<string[]>(device.backupPaths);
+  const [browseVersion, setBrowseVersion] = useState<BackupVersion | null>(null);
+  const [browsePath, setBrowsePath] = useState('/');
+  const [browseItems, setBrowseItems] = useState<BackupBrowseItem[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState<string | null>(null);
 
   const startEdit = () => {
     setNameValue(device.name);
@@ -82,6 +88,48 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete, onRename, on
   const removePath = (i: number) => setPathsValue(prev => prev.filter((_, idx) => idx !== i));
   const updatePath = (i: number, val: string) =>
     setPathsValue(prev => prev.map((p, idx) => idx === i ? val : p));
+
+  const parentPath = browsePath === '/' ? null : (() => {
+    const parts = browsePath.split('/').filter(Boolean);
+    if (parts.length <= 1) return '/';
+    return `/${parts.slice(0, -1).join('/')}`;
+  })();
+
+  const loadBrowse = async (version: BackupVersion, targetPath = '/') => {
+    setBrowseLoading(true);
+    setBrowseError(null);
+    try {
+      const res = await authFetch(`/active-backup/devices/${device.id}/browse?version=${encodeURIComponent(version.id)}&path=${encodeURIComponent(targetPath)}`);
+      const data = await res.json() as BackupBrowseResponse | { error?: string };
+      if (!res.ok) {
+        setBrowseError((data as { error?: string }).error || 'No se pudo cargar el backup');
+        return;
+      }
+      setBrowseVersion(version);
+      setBrowsePath((data as BackupBrowseResponse).path);
+      setBrowseItems((data as BackupBrowseResponse).items);
+    } catch (error) {
+      setBrowseError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBrowseLoading(false);
+    }
+  };
+
+  const handleDownload = async (item: BackupBrowseItem) => {
+    if (!browseVersion || item.type !== 'file') return;
+    const res = await authFetch(`/active-backup/devices/${device.id}/download?version=${encodeURIComponent(browseVersion.id)}&path=${encodeURIComponent(item.path)}`);
+    if (!res.ok) {
+      alert('No se pudo descargar el archivo.');
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = item.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const placeholders = getDefaultPlaceholders(device.os, device.backupType);
 
@@ -278,7 +326,14 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete, onRename, on
                       <GlowPill status={v.status === 'complete' ? 'healthy' : 'error'} label={v.status} />
                     </td>
                     <td className="py-2">
-                      <StitchButton size="sm" variant="ghost">{t('ab.browse')}</StitchButton>
+                      <StitchButton
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => loadBrowse(v, v.browsePath || '/')}
+                        disabled={!v.backupAvailable}
+                      >
+                        {t('ab.browse')}
+                      </StitchButton>
                     </td>
                   </tr>
                 ))}
@@ -300,6 +355,81 @@ export function DeviceDetail({ device, onClose, onBackup, onDelete, onRename, on
           </StitchButton>
         </div>
       </GlassCard>
+
+      <Modal
+        open={browseVersion !== null}
+        onClose={() => {
+          setBrowseVersion(null);
+          setBrowseItems([]);
+          setBrowsePath('/');
+          setBrowseError(null);
+        }}
+        title={browseVersion ? `Explorar backup · ${new Date(browseVersion.timestamp).toLocaleString()}` : 'Explorar backup'}
+        actions={browseVersion ? <StitchButton size="sm" variant="ghost" onClick={() => setBrowseVersion(null)}>Cerrar</StitchButton> : undefined}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)]">Ruta</p>
+              <p className="truncate font-mono text-xs text-[var(--text-primary)]">{browsePath}</p>
+            </div>
+            {parentPath && (
+              <StitchButton size="sm" variant="ghost" onClick={() => browseVersion && loadBrowse(browseVersion, parentPath)}>
+                Subir
+              </StitchButton>
+            )}
+          </div>
+
+          {browseLoading ? (
+            <div className="rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-4 text-sm text-[var(--text-secondary)]">
+              Cargando contenido del backup...
+            </div>
+          ) : browseError ? (
+            <div className="rounded-lg border border-[var(--error)]/30 bg-[var(--error)]/5 px-3 py-4 text-sm text-[var(--error)]">
+              {browseError}
+            </div>
+          ) : browseItems.length === 0 ? (
+            <div className="rounded-lg border border-[var(--outline-variant)] bg-surface-void px-3 py-4 text-sm text-[var(--text-secondary)]">
+              Esta carpeta no contiene archivos.
+            </div>
+          ) : (
+            <div className="max-h-[420px] overflow-y-auto rounded-lg border border-[var(--outline-variant)]">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-panel/95 backdrop-blur">
+                  <tr className="text-left text-xs uppercase text-[var(--text-secondary)]">
+                    <th className="px-3 py-2">Nombre</th>
+                    <th className="px-3 py-2">Tipo</th>
+                    <th className="px-3 py-2">Tamaño</th>
+                    <th className="px-3 py-2">Modificado</th>
+                    <th className="px-3 py-2">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {browseItems.map((item) => (
+                    <tr key={item.path} className="border-t border-[var(--outline-variant)]">
+                      <td className="px-3 py-2 font-mono text-xs text-[var(--text-primary)]">{item.name}</td>
+                      <td className="px-3 py-2 text-xs text-[var(--text-secondary)]">{item.type === 'directory' ? 'Carpeta' : 'Archivo'}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-[var(--text-primary)]">{item.type === 'directory' ? '-' : formatBytes(item.size)}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-[var(--text-secondary)]">{item.modified ? new Date(item.modified).toLocaleString() : '-'}</td>
+                      <td className="px-3 py-2">
+                        {item.type === 'directory' ? (
+                          <StitchButton size="sm" variant="ghost" onClick={() => browseVersion && loadBrowse(browseVersion, item.path)}>
+                            Abrir
+                          </StitchButton>
+                        ) : (
+                          <StitchButton size="sm" variant="ghost" onClick={() => handleDownload(item)}>
+                            Descargar
+                          </StitchButton>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
