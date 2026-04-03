@@ -57,18 +57,29 @@ servicesRouter.get('/docker', requireAuth, async (_req, res) => {
 
 /** GET /api/services/systemd — Key system services */
 servicesRouter.get('/systemd', requireAuth, async (_req, res) => {
+  const names = ['sshd', 'nginx', 'smbd', 'nmbd', 'docker', 'homepinas'];
   try {
-    const services = await si.services('sshd,nginx,smbd,nmbd,docker,homepinas');
+    const { execFile: ef } = await import('child_process');
+    const { promisify } = await import('util');
+    const execFileAsync = promisify(ef);
 
-    const result = services.map(s => ({
-      name: s.name,
-      status: s.running ? 'active' as const : 'inactive' as const,
-      state: s.running ? 'running' : 'dead',
-      enabled: true,
-      uptime: '',
+    const results = await Promise.all(names.map(async (name) => {
+      const [activeOut, enabledOut] = await Promise.all([
+        execFileAsync('systemctl', ['is-active', name], { timeout: 3000 }).then(r => r.stdout.trim()).catch(e => (e.stdout ?? '').trim()),
+        execFileAsync('systemctl', ['is-enabled', name], { timeout: 3000 }).then(r => r.stdout.trim()).catch(e => (e.stdout ?? '').trim()),
+      ]);
+      const running = activeOut === 'active';
+      const enabled = enabledOut === 'enabled' || enabledOut === 'static';
+      return {
+        name,
+        status: running ? 'active' as const : 'inactive' as const,
+        state: activeOut,
+        enabled,
+        uptime: '',
+      };
     }));
 
-    res.json(result);
+    res.json(results);
   } catch {
     res.status(500).json({ error: 'Failed to read services' });
   }
