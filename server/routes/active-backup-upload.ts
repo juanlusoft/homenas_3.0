@@ -3,7 +3,8 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { devices, saveData, Device, BACKUP_BASE_DIR } from '../lib/active-backup-store.js';
-import { hasChunk, writeChunk, verifyChunk } from '../lib/chunk-store.js';
+import { hasChunk, writeChunk, verifyChunk, readChunk } from '../lib/chunk-store.js';
+import { requireAuth } from '../middleware/auth.js';
 import {
   createSession,
   getSession,
@@ -267,5 +268,82 @@ activeBackupUploadRouter.get(
       snapshot_label: session.snapshotLabel,
       ...getSessionProgress(session),
     });
+  }
+);
+
+// ── GET /upload/restore/file ──────────────────────────────────────────────────
+// Reconstructs a single file from chunks and streams it to the browser.
+// Query params: deviceId, snapshotId, filePath (URL-encoded path)
+
+activeBackupUploadRouter.get(
+  '/upload/restore/file',
+  requireAuth,
+  (req: Request, res: Response) => {
+    const { deviceId, snapshotId, filePath } = req.query as {
+      deviceId?: string;
+      snapshotId?: string;
+      filePath?: string;
+    };
+
+    if (!deviceId || !snapshotId || !filePath) {
+      res.status(400).json({ error: 'deviceId, snapshotId, filePath are required' });
+      return;
+    }
+
+    if (!/^[\w-]+$/.test(deviceId) || !/^[\w\-:.]+$/.test(snapshotId)) {
+      res.status(400).json({ error: 'deviceId or snapshotId contains invalid characters' });
+      return;
+    }
+
+    const manifestPath = path.join(
+      BACKUP_BASE_DIR,
+      'snapshots',
+      deviceId,
+      snapshotId,
+      'manifest.json'
+    );
+
+    if (!fs.existsSync(manifestPath)) {
+      res.status(404).json({ error: 'Snapshot not found' });
+      return;
+    }
+
+    let manifest: { files: Array<{ path: string; size: number; chunks: string[] }> };
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    } catch {
+      res.status(500).json({ error: 'Failed to read manifest' });
+      return;
+    }
+
+    // Normalize separators for comparison (manifest stores forward slashes)
+    const normalizedTarget = filePath.replace(/\\/g, '/');
+    const fileEntry = manifest.files.find(f => f.path.replace(/\\/g, '/') === normalizedTarget);
+
+    if (!fileEntry) {
+      res.status(404).json({ error: 'File not found in snapshot' });
+      return;
+    }
+
+    const filename = path.basename(filePath);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', fileEntry.size);
+
+    // Stream chunks one by one — no need to buffer the whole file
+    try {
+      for (const hash of fileEntry.chunks) {
+        const chunk = readChunk(hash);
+        res.write(chunk);
+      }
+      res.end();
+    } catch (err) {
+      console.error('[restore] file stream error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Chunk read error' });
+      } else {
+        res.destroy();
+      }
+    }
   }
 );
