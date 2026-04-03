@@ -326,7 +326,7 @@ func runBackupHTTPS(cfg *Config, dc *DeviceConfig) (int64, error) {
 		chunkMap[e.AbsPath] = chunks
 		if i%500 == 0 {
 			pct := 10 + (i*20)/len(entries)
-			reportProgress(cfg, pct, fmt.Sprintf("Procesando %d/%d...", i, len(entries)), "")
+			reportProgress(cfg, pct, fmt.Sprintf("Procesando %d/%d...", i+1, len(entries)), "")
 		}
 	}
 
@@ -378,6 +378,8 @@ func backupTargetName(src string) string {
 	return leaf
 }
 
+// runBackupUnix is the legacy SMB-based backup for Unix. Kept for reference
+// until HTTPS backup is validated in production. No longer called by runBackup.
 func runBackupUnix(cfg *Config, dc *DeviceConfig) (int64, error) {
 	if dc.BackupHost == "" || dc.BackupShare == "" || dc.BackupUsername == "" || dc.BackupPassword == "" {
 		return 0, fmt.Errorf("backup share credentials are not configured")
@@ -974,6 +976,7 @@ USAGE:
   Install:    agent --install --nas https://NAS_IP --token TOKEN [--backup-type full|incremental|folders]
   Uninstall:  agent --uninstall
   Run daemon: agent --run   (called automatically by service manager)
+  Restore:    agent --restore --nas https://NAS_IP --token TOKEN [--snapshot ID] [--target DIR]
 
 BACKUP TYPES:
   full         - Full disk / entire filesystem
