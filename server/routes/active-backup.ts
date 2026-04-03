@@ -799,6 +799,10 @@ activeBackupRouter.get(
     const device = devices.get(req.params.id);
     if (!device) return res.status(404).json({ error: 'Device not found' });
 
+    if (!/^[\w\-:.]+$/.test(req.params.snapshotId)) {
+      return res.status(400).json({ error: 'Invalid snapshot ID' });
+    }
+
     const manifestPath = path.join(
       BACKUP_BASE_DIR,
       'snapshots',
