@@ -54,6 +54,11 @@ activeBackupUploadRouter.post(
       return;
     }
 
+    if (!/^[a-zA-Z0-9_\-.:]+$/.test(snapshot_label)) {
+      res.status(400).json({ error: 'snapshot_label contains invalid characters' });
+      return;
+    }
+
     // Deduplicate chunk hashes across all files
     const allHashes = [...new Set(files.flatMap(f => f.chunks))];
 
