@@ -42,6 +42,11 @@ export function SnapshotExplorer({ deviceId, deviceName }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Reset stale state immediately so useEffect 2 doesn't fire with old selectedId
+    setSnapshots([]);
+    setSelectedId(null);
+    setFiles([]);
+    setError(null);
     setLoadingSnapshots(true);
     authFetch(`/active-backup/devices/${deviceId}/snapshots`)
       .then(r => r.json())
@@ -55,6 +60,7 @@ export function SnapshotExplorer({ deviceId, deviceName }: Props) {
 
   useEffect(() => {
     if (!selectedId) return;
+    setError(null);
     setLoadingFiles(true);
     setFiles([]);
     authFetch(`/active-backup/devices/${deviceId}/snapshots/${selectedId}/tree`)
@@ -65,10 +71,11 @@ export function SnapshotExplorer({ deviceId, deviceName }: Props) {
   }, [deviceId, selectedId]);
 
   function downloadFile(filePath: string) {
-    const params = new URLSearchParams({ deviceId, snapshotId: selectedId!, filePath });
+    if (!selectedId) return;
+    const params = new URLSearchParams({ deviceId, snapshotId: selectedId, filePath });
     authFetch(`/active-backup/upload/restore/file?${params}`)
       .then(async r => {
-        if (!r.ok) return;
+        if (!r.ok) { setError('Error al descargar el archivo'); return; }
         const blob = await r.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -76,14 +83,16 @@ export function SnapshotExplorer({ deviceId, deviceName }: Props) {
         a.download = filePath.split(/[/\\]/).pop() || 'file';
         a.click();
         URL.revokeObjectURL(url);
-      });
+      })
+      .catch(() => setError('Error al descargar el archivo'));
   }
 
   function downloadSnapshot() {
-    const params = new URLSearchParams({ deviceId, snapshotId: selectedId! });
+    if (!selectedId) return;
+    const params = new URLSearchParams({ deviceId, snapshotId: selectedId });
     authFetch(`/active-backup/upload/restore/snapshot?${params}`)
       .then(async r => {
-        if (!r.ok) return;
+        if (!r.ok) { setError('Error al descargar el snapshot'); return; }
         const blob = await r.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -91,7 +100,8 @@ export function SnapshotExplorer({ deviceId, deviceName }: Props) {
         a.download = `snapshot-${selectedId}.zip`;
         a.click();
         URL.revokeObjectURL(url);
-      });
+      })
+      .catch(() => setError('Error al descargar el snapshot'));
   }
 
   if (loadingSnapshots) return <div className="text-sm text-muted-foreground">Cargando snapshots...</div>;

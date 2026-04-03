@@ -1,3 +1,11 @@
 export { DeviceCard } from './DeviceCard';
 export { DeviceDetail } from './DeviceDetail';
-export type { BackupDevice, BackupVersion, PendingAgent } from './types';
+export { SnapshotExplorer } from './SnapshotExplorer';
+export type {
+  BackupBrowseItem,
+  BackupBrowseResponse,
+  BackupDevice,
+  BackupVersion,
+  PendingAgent,
+  RecoveryStatus,
+} from './types';
