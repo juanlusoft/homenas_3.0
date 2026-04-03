@@ -50,21 +50,20 @@ export interface PendingAgent {
   requestedAt: string;
 }
 
+export interface PendingToken {
+  id: string;
+  name: string;
+  os: string;
+  backupType: string;
+  backupHost: string;
+  backupShare: string;
+  backupUsername: string;
+  backupPassword: string;
+}
+
 export const devices = new Map<string, Device>();
 export const pendingAgents = new Map<string, PendingAgent>();
-export const pendingTokens = new Map<
-  string,
-  {
-    id: string;
-    name: string;
-    os: string;
-    backupType: string;
-    backupHost: string;
-    backupShare: string;
-    backupUsername: string;
-    backupPassword: string;
-  }
->();
+export const pendingTokens = new Map<string, PendingToken>();
 
 export function saveData(): void {
   try {
@@ -91,7 +90,7 @@ export function loadData(): void {
       for (const [k, v] of payload.pendingAgents) pendingAgents.set(k, v as PendingAgent);
     }
     if (payload.pendingTokens) {
-      for (const [k, v] of payload.pendingTokens) pendingTokens.set(k, v as never);
+      for (const [k, v] of payload.pendingTokens) pendingTokens.set(k, v as PendingToken);
     }
     console.log(
       `[active-backup] loaded ${devices.size} devices, ${pendingAgents.size} pending`
