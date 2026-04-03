@@ -286,8 +286,9 @@ install_mergerfs() {
     fi
     # Build candidate filenames (trapexit uses multiple naming conventions across releases)
     local candidates=(
-        "mergerfs_${ver}_debian_${DEBIAN_CODENAME}_${SYS_ARCH}.deb"
+        "mergerfs_${ver}.debian-${DEBIAN_CODENAME}_${SYS_ARCH}.deb"
         "mergerfs_${ver}_debian-${DEBIAN_CODENAME}_${SYS_ARCH}.deb"
+        "mergerfs_${ver}_debian_${DEBIAN_CODENAME}_${SYS_ARCH}.deb"
         "mergerfs_${ver}_${SYS_ARCH}.deb"
     )
     local base_url="https://github.com/trapexit/mergerfs/releases/download/${ver}"
