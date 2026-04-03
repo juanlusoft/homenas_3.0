@@ -198,10 +198,17 @@ export default function FilesPage() {
                   <td className="py-2 px-2 text-right" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1 justify-end">
                       <button title="Descargar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-[var(--text-secondary)]"
-                        onClick={() => {
+                        onClick={async () => {
                           if (entry.type === 'file') {
-                            const url = `${window.location.origin}/api/files/download?path=${encodeURIComponent(currentPath + '/' + entry.name)}`;
-                            window.open(url, '_blank');
+                            const res = await authFetch(`/files/download?path=${encodeURIComponent(currentPath + '/' + entry.name)}`);
+                            if (!res.ok) return;
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = entry.name;
+                            a.click();
+                            URL.revokeObjectURL(url);
                           }
                         }}>⬇️</button>
                       <button title="Renombrar" className="text-xs px-1.5 py-0.5 rounded hover:bg-surface-void text-[var(--text-secondary)]"
