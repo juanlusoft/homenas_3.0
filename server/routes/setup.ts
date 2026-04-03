@@ -256,10 +256,12 @@ setupRouter.post('/apply', setupLimiter, async (req: Request, res: Response) => 
         const deviceBase = device.replace(/\d+$/, '');
         for (const line of mounts.split('\n')) {
           if (line.startsWith(deviceBase) || line.startsWith(device)) {
+            const dev = line.split(' on ')[0];
             const mountPoint = line.split(' on ')[1]?.split(' type ')[0];
-            if (mountPoint) {
-              await execFileAsync('sudo', ['umount', '-f', mountPoint], { timeout: 10000 }).catch(() => {});
-            }
+            // Kill processes using the device, then force+lazy unmount
+            if (dev) await execFileAsync('sudo', ['fuser', '-km', dev], { timeout: 5000 }).catch(() => {});
+            if (mountPoint) await execFileAsync('sudo', ['umount', '-f', '-l', mountPoint], { timeout: 10000 }).catch(() => {});
+            if (dev) await execFileAsync('sudo', ['umount', '-f', '-l', dev], { timeout: 10000 }).catch(() => {});
           }
         }
       } catch {}
