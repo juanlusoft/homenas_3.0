@@ -317,6 +317,7 @@ func runBackupHTTPS(cfg *Config, dc *DeviceConfig) (int64, error) {
 
 	// Step 2: chunk every file and collect chunk info
 	chunkMap := make(map[string][]ChunkInfo, len(entries))
+	chunked := make([]FileEntry, 0, len(entries))
 	for i, e := range entries {
 		chunks, err := ChunkFile(e.AbsPath)
 		if err != nil {
@@ -324,6 +325,7 @@ func runBackupHTTPS(cfg *Config, dc *DeviceConfig) (int64, error) {
 			continue
 		}
 		chunkMap[e.AbsPath] = chunks
+		chunked = append(chunked, e)
 		if i%500 == 0 {
 			pct := 10 + (i*20)/len(entries)
 			reportProgress(cfg, pct, fmt.Sprintf("Procesando %d/%d...", i+1, len(entries)), "")
@@ -332,8 +334,8 @@ func runBackupHTTPS(cfg *Config, dc *DeviceConfig) (int64, error) {
 
 	reportProgress(cfg, 30, "Negociando con el servidor...", "")
 
-	// Step 3: upload via 3-phase protocol
-	result, err := Upload(cfg, entries, chunkMap, snapshotLabel)
+	// Step 3: upload via 3-phase protocol (only files that were successfully chunked)
+	result, err := Upload(cfg, chunked, chunkMap, snapshotLabel)
 	if err != nil {
 		return 0, fmt.Errorf("upload: %w", err)
 	}

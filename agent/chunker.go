@@ -50,12 +50,8 @@ func ChunkFile(path string) ([]ChunkInfo, error) {
 		}
 	}
 
-	// Empty file: return one zero-length chunk with hash of empty string
-	if len(chunks) == 0 {
-		sum := sha256.Sum256(nil)
-		chunks = append(chunks, ChunkInfo{Hash: hex.EncodeToString(sum[:]), Offset: 0, Length: 0})
-	}
-
+	// Empty file: return empty slice — no chunks to upload.
+	// The server records the file as zero-length and restores it as such.
 	return chunks, nil
 }
 

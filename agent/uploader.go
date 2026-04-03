@@ -127,6 +127,7 @@ func Upload(cfg *Config, entries []FileEntry, chunkMap map[string][]ChunkInfo, s
 	// ── Phase 2: upload chunks ────────────────────────────────────────────────
 
 	sem := make(chan struct{}, uploadConcurrency)
+	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var uploadErr error
 
@@ -146,7 +147,9 @@ func Upload(cfg *Config, entries []FileEntry, chunkMap map[string][]ChunkInfo, s
 		}
 
 		sem <- struct{}{}
+		wg.Add(1)
 		go func(h string, l chunkLoc) {
+			defer wg.Done()
 			defer func() { <-sem }()
 
 			data, err := ReadChunk(l.path, l.offset, l.length)
@@ -175,10 +178,7 @@ func Upload(cfg *Config, entries []FileEntry, chunkMap map[string][]ChunkInfo, s
 		}(hash, loc)
 	}
 
-	// Drain semaphore (wait for all goroutines)
-	for i := 0; i < uploadConcurrency; i++ {
-		sem <- struct{}{}
-	}
+	wg.Wait()
 
 	if uploadErr != nil {
 		return nil, uploadErr
