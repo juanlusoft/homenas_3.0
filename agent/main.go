@@ -102,6 +102,17 @@ func logPath() string {
 	}
 }
 
+func backupLockPath() string {
+	switch runtime.GOOS {
+	case "windows":
+		return filepath.Join(os.Getenv("ProgramData"), "HomePiNAS", "backup.lock")
+	case "darwin":
+		return "/var/run/homepinas-agent.lock"
+	default:
+		return "/var/run/homepinas-agent.lock"
+	}
+}
+
 // ── Config IO ─────────────────────────────────────────────────────────────────
 
 func loadConfig() (*Config, error) {
@@ -284,21 +295,62 @@ func getDeviceConfig(cfg *Config) (*DeviceConfig, error) {
 
 // ── Backup execution ──────────────────────────────────────────────────────────
 
-func runBackup(cfg *Config, dc *DeviceConfig) (int64, error) {
-	slog.Info("starting backup", "type", dc.BackupType, "dest", dc.BackupDest, "paths", dc.BackupPaths)
-
+// runBackupHTTPS walks the configured backup paths, chunks every file,
+// and uploads them via the 3-phase HTTPS protocol to the NAS.
+func runBackupHTTPS(cfg *Config, dc *DeviceConfig) (int64, error) {
 	if len(dc.BackupPaths) == 0 {
 		return 0, fmt.Errorf("no backup paths configured")
 	}
 
-	reportProgress(cfg, 0, "Iniciando backup...", "")
+	snapshotLabel := time.Now().UTC().Format("2006-01-02_15-04-05")
+	slog.Info("starting HTTPS backup", "snapshot", snapshotLabel, "paths", dc.BackupPaths)
 
-	switch runtime.GOOS {
-	case "windows":
-		return runBackupWindows(cfg, dc)
-	default:
-		return runBackupUnix(cfg, dc)
+	reportProgress(cfg, 5, "Escaneando archivos...", "")
+
+	// Step 1: walk all source paths
+	entries, err := WalkPaths(dc.BackupPaths)
+	if err != nil {
+		return 0, fmt.Errorf("walk: %w", err)
 	}
+	slog.Info("walk complete", "files", len(entries))
+	reportProgress(cfg, 10, fmt.Sprintf("Calculando %d archivos...", len(entries)), "")
+
+	// Step 2: chunk every file and collect chunk info
+	chunkMap := make(map[string][]ChunkInfo, len(entries))
+	for i, e := range entries {
+		chunks, err := ChunkFile(e.AbsPath)
+		if err != nil {
+			slog.Warn("chunk error, skipping file", "path", e.AbsPath, "err", err)
+			continue
+		}
+		chunkMap[e.AbsPath] = chunks
+		if i%500 == 0 {
+			pct := 10 + (i*20)/len(entries)
+			reportProgress(cfg, pct, fmt.Sprintf("Procesando %d/%d...", i, len(entries)), "")
+		}
+	}
+
+	reportProgress(cfg, 30, "Negociando con el servidor...", "")
+
+	// Step 3: upload via 3-phase protocol
+	result, err := Upload(cfg, entries, chunkMap, snapshotLabel)
+	if err != nil {
+		return 0, fmt.Errorf("upload: %w", err)
+	}
+
+	slog.Info("HTTPS backup complete",
+		"snapshot", result.SnapshotID,
+		"files", result.FilesTotal,
+		"bytes", result.BytesTotal,
+		"chunksNew", result.ChunksNew,
+		"chunksDeduped", result.ChunksDeduped,
+	)
+	reportProgress(cfg, 100, "Completado", "")
+	return result.BytesTotal, nil
+}
+
+func runBackup(cfg *Config, dc *DeviceConfig) (int64, error) {
+	return runBackupHTTPS(cfg, dc)
 }
 
 func backupTargetName(src string) string {
@@ -416,10 +468,12 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) (int64, error) {
 		flags := []string{
 			src,
 			fullDest,
-			"/MIR",
-			"/COPY:DT",
+			"/E",
+			"/COPY:DAT",
 			"/DCOPY:T",
 			"/XJ",
+			"/FFT",
+			"/ZB",
 			"/R:2",
 			"/W:5",
 			"/NP",
@@ -428,6 +482,12 @@ func runBackupWindows(cfg *Config, dc *DeviceConfig) (int64, error) {
 			"/NC",
 			"/NJS",
 			"/NJH",
+		}
+		if strings.EqualFold(strings.TrimSpace(src), `C:\`) {
+			flags = append(flags,
+				"/XF", "pagefile.sys", "swapfile.sys", "hiberfil.sys", "DumpStack.log.tmp",
+				"/XD", "$RECYCLE.BIN", "System Volume Information", "Recovery", "Config.Msi",
+			)
 		}
 		cmd := exec.Command("robocopy", flags...)
 		slog.Info("robocopy", "src", src, "dest", fullDest)
@@ -560,6 +620,39 @@ func reportProgress(cfg *Config, percent int, currentFile, speed string) {
 	}
 }
 
+func acquireBackupLock() (func(), bool, error) {
+	lockPath := backupLockPath()
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0755); err != nil {
+		return nil, false, fmt.Errorf("create lock dir: %w", err)
+	}
+
+	if info, err := os.Stat(lockPath); err == nil {
+		if time.Since(info.ModTime()) > 12*time.Hour {
+			if removeErr := os.Remove(lockPath); removeErr != nil && !os.IsNotExist(removeErr) {
+				return nil, false, fmt.Errorf("remove stale lock: %w", removeErr)
+			}
+		}
+	}
+
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("create lock file: %w", err)
+	}
+
+	_, _ = fmt.Fprintf(f, "pid=%d\nstartedAt=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339))
+	_ = f.Close()
+
+	release := func() {
+		if err := os.Remove(lockPath); err != nil && !os.IsNotExist(err) {
+			slog.Warn("failed to remove backup lock", "path", lockPath, "err", err)
+		}
+	}
+	return release, true, nil
+}
+
 // ── Service daemon ────────────────────────────────────────────────────────────
 
 func runDaemon() {
@@ -634,6 +727,18 @@ func runDaemon() {
 			if dc.TriggerBackup {
 				reason = "manual trigger"
 			}
+			releaseLock, acquired, lockErr := acquireBackupLock()
+			if lockErr != nil {
+				slog.Error("backup lock failed", "err", lockErr)
+				reportResult(cfg, false, "Backup lock failed: "+lockErr.Error(), 0)
+				time.Sleep(5 * time.Minute)
+				continue
+			}
+			if !acquired {
+				slog.Warn("backup already running, skipping overlapping execution", "reason", reason)
+				time.Sleep(5 * time.Minute)
+				continue
+			}
 			slog.Info("running backup", "reason", reason, "type", dc.BackupType, "paths", dc.BackupPaths)
 			if size, err := runBackup(cfg, dc); err != nil {
 				slog.Error("backup failed", "err", err)
@@ -643,6 +748,7 @@ func runDaemon() {
 				reportResult(cfg, true, "Backup completed", size)
 				lastBackupDate = today
 			}
+			releaseLock()
 		}
 
 		time.Sleep(5 * time.Minute)
@@ -819,6 +925,9 @@ func main() {
 	installCmd := flag.Bool("install", false, "Install agent as system service (requires admin/root)")
 	uninstallCmd := flag.Bool("uninstall", false, "Uninstall agent and remove service")
 	runCmd := flag.Bool("run", false, "Run agent daemon (called by service manager)")
+	restoreCmd := flag.Bool("restore", false, "Restore mode: download files from NAS snapshot")
+	snapshotID := flag.String("snapshot", "", "Snapshot ID to restore (used with --restore)")
+	targetDir := flag.String("target", "", "Target directory for restore (used with --restore)")
 	nasURL := flag.String("nas", "", "NAS base URL, e.g. https://192.168.1.100")
 	token := flag.String("token", "", "Activation token from dashboard")
 	backupType := flag.String("backup-type", "folders", "Backup type: full | incremental | folders")
@@ -845,6 +954,15 @@ func main() {
 		}
 		fmt.Println("HomePiNAS Agent installed and started successfully.")
 		fmt.Println("Waiting for admin approval in the dashboard...")
+
+	case *restoreCmd:
+		if *nasURL == "" || *token == "" {
+			fmt.Fprintln(os.Stderr, "usage: agent --restore --nas https://NAS_IP --token TOKEN [--snapshot ID] [--target DIR]")
+			os.Exit(1)
+		}
+		fmt.Printf("Restore mode: NAS=%s snapshot=%s target=%s\n", *nasURL, *snapshotID, *targetDir)
+		fmt.Println("Restore not yet implemented — see Plan C.")
+		os.Exit(0)
 
 	case *runCmd:
 		runDaemon()
