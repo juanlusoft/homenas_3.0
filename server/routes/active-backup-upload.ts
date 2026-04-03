@@ -316,6 +316,11 @@ activeBackupUploadRouter.get(
       return;
     }
 
+    if (!Array.isArray(manifest.files)) {
+      res.status(500).json({ error: 'Corrupt manifest' });
+      return;
+    }
+
     // Normalize separators for comparison (manifest stores forward slashes)
     const normalizedTarget = filePath.replace(/\\/g, '/');
     const fileEntry = manifest.files.find(f => f.path.replace(/\\/g, '/') === normalizedTarget);
@@ -325,7 +330,7 @@ activeBackupUploadRouter.get(
       return;
     }
 
-    const filename = path.basename(filePath);
+    const filename = path.basename(filePath).replace(/[\r\n"]/g, '_');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Length', fileEntry.size);
